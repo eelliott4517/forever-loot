@@ -1,0 +1,12 @@
+{
+  "name": "forever-loot-tools",
+  "private": true,
+  "description": "Lint and smoke-test tooling for the Forever Loot addon",
+  "scripts": {
+    "test": "node test/lint.js ../ForeverLoot && node test/run.js ../ForeverLoot"
+  },
+  "devDependencies": {
+    "fengari": "^0.1.4",
+    "luaparse": "^0.3.1"
+  }
+}
