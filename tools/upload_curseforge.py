@@ -1,15 +1,17 @@
 """Upload a release zip to CurseForge. The release workflow runs this; it also works by hand.
 
     python3 tools/upload_curseforge.py dist/ForeverLoot-1.6.0.zip dist/notes.md
+    python3 tools/upload_curseforge.py --check     test the token and game version, upload nothing
 
-Settings come from the environment (in GitHub: Settings > Secrets and variables > Actions):
-  CF_API_TOKEN      secret: a CurseForge API token (CurseForge > Account > API tokens)
-  CF_PROJECT_ID     variable: the project id (shown in "About Project" on its CurseForge page)
-  CF_GAME_VERSIONS  variable, optional: game versions to tag the file with, as CurseForge names or
-                    ids, comma separated (e.g. "1.15.8"). By default the TOC's Interface number
-                    as a version (16001 -> 1.60.1). If CurseForge doesn't have it, the error
-                    lists the versions it does have.
-  CF_RELEASE_TYPE   variable, optional: release (default), beta or alpha
+Settings come from the environment. The workflows fill them in from the repository's
+Settings > Secrets and variables > Actions:
+  CF_API_TOKEN      from the secret CURSEFORGE: a CurseForge API token
+  CF_PROJECT_ID     from the variable PROJECTID: the project id ("About Project" on its CurseForge page)
+  CF_GAME_VERSIONS  from the variable CF_GAME_VERSIONS, optional: game versions to tag the file with,
+                    as CurseForge names or ids, comma separated. By default the TOC's Interface number
+                    as a version (16001 -> 1.60.1). If CurseForge doesn't have it, the error lists
+                    the versions it does have.
+  CF_RELEASE_TYPE   from the variable CF_RELEASE_TYPE, optional: release (default), beta or alpha
 """
 import json
 import os
@@ -32,7 +34,12 @@ def call(path, token, body=None, content_type=None):
         with urllib.request.urlopen(req, timeout=120) as r:
             return json.loads(r.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
-        raise SystemExit(f"CurseForge said {e.code} for {path}: {e.read().decode('utf-8', 'replace')[:500]}")
+        # CurseForge's errors can quote the token back; never print it
+        detail = e.read().decode("utf-8", "replace")[:500].replace(token, "***")
+        if e.code in (401, 403) or "token" in detail.lower():
+            raise SystemExit(f"CurseForge rejected the API token ({e.code}). Make a new token and save it "
+                             "as the CURSEFORGE secret.")
+        raise SystemExit(f"CurseForge said {e.code} for {path}: {detail}")
 
 
 def interface_version():
@@ -42,20 +49,18 @@ def interface_version():
     return f"{major}.{minor}.{patch}"
 
 
-def game_version_ids(token, wanted):
+def game_versions(token, wanted):
+    """The CurseForge game version entries the names (or ids) in `wanted` mean."""
     versions = call("/game/versions", token)
-    ids = []
+    found = []
     for w in wanted:
-        if w.isdigit() and any(v["id"] == int(w) for v in versions):
-            ids.append(int(w))
-            continue
-        match = [v for v in versions if v["name"] == w]
+        match = [v for v in versions if (w.isdigit() and v["id"] == int(w)) or v["name"] == w]
         if not match:
             near = sorted({v["name"] for v in versions if v["name"].startswith(w.split(".")[0] + ".")})
-            raise SystemExit(f"CurseForge has no game version called {w}. Set CF_GAME_VERSIONS to one of: "
-                             + ", ".join(near[-30:]))
-        ids.append(match[0]["id"])
-    return ids
+            raise SystemExit(f"CurseForge has no game version called {w}. Set the CF_GAME_VERSIONS variable "
+                             "to one of: " + ", ".join(near[-30:]))
+        found.append(match[0])
+    return found
 
 
 def multipart(fields, files):
@@ -73,18 +78,29 @@ def multipart(fields, files):
 def main():
     if len(sys.argv) < 2:
         raise SystemExit(__doc__)
+    token, project = os.environ.get("CF_API_TOKEN"), os.environ.get("CF_PROJECT_ID")
+    if not token:
+        raise SystemExit("no CurseForge API token: add it as the CURSEFORGE secret")
+    if not project:
+        raise SystemExit("no CurseForge project id: add it as the PROJECTID variable")
+    wanted = [v.strip() for v in (os.environ.get("CF_GAME_VERSIONS") or interface_version()).split(",") if v.strip()]
+    versions = game_versions(token, wanted)
+
+    if sys.argv[1] == "--check":
+        print("CurseForge accepted the API token.")
+        for v in versions:
+            print(f"Files will be tagged with game version {v['name']} (id {v['id']}, type {v['gameVersionTypeID']}).")
+        print(f"Project id: {project}. Release type: {os.environ.get('CF_RELEASE_TYPE') or 'release'}.")
+        return
+
     zip_path = sys.argv[1]
     notes = open(sys.argv[2], encoding="utf-8").read() if len(sys.argv) > 2 else ""
-    token, project = os.environ.get("CF_API_TOKEN"), os.environ.get("CF_PROJECT_ID")
-    if not token or not project:
-        raise SystemExit("set CF_API_TOKEN and CF_PROJECT_ID")
-    wanted = [v.strip() for v in (os.environ.get("CF_GAME_VERSIONS") or interface_version()).split(",") if v.strip()]
     version = re.search(r"ForeverLoot-([^/]+)\.zip$", zip_path).group(1)
     metadata = {
         "changelog": notes or f"Forever Loot {version}",
         "changelogType": "markdown",
         "displayName": f"Forever Loot {version}",
-        "gameVersions": game_version_ids(token, wanted),
+        "gameVersions": [v["id"] for v in versions],
         "releaseType": os.environ.get("CF_RELEASE_TYPE") or "release",
     }
     with open(zip_path, "rb") as f:

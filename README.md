@@ -98,9 +98,9 @@ git tag v1.6.0 && git push origin main v1.6.0
 
 The Release workflow (`.github/workflows/release.yml`) runs the tests, builds both zips, attaches them to a GitHub release, and uploads the CurseForge zip to CurseForge once these are set in the repository's Settings > Secrets and variables > Actions:
 
-- secret `CF_API_TOKEN`: a CurseForge API token (CurseForge account settings > API tokens)
-- variable `CF_PROJECT_ID`: the project id from the CurseForge project page ("About Project")
-- variable `CF_GAME_VERSIONS` (optional): the game version to tag files with, as CurseForge names it. The default is the TOC's Interface number as a version (16001 is 1.60.1); if CurseForge doesn't list that, the upload fails and prints the versions it does have.
+- secret `CURSEFORGE`: a CurseForge API token (CurseForge account settings > API tokens)
+- variable `PROJECTID`: the project id from the CurseForge project page ("About Project")
+- variable `CF_GAME_VERSIONS` (optional): the game version to tag files with, as CurseForge names it. The default is the TOC's Interface number as a version (16001 is 1.60.1). If CurseForge doesn't list that, the upload fails and prints the versions it does have.
 - variable `CF_RELEASE_TYPE` (optional): `release` (default), `beta` or `alpha`
 
-To send a release that's already tagged to CurseForge after adding these, open its run under Actions > Release and choose "Re-run all jobs".
+To test these without uploading anything, run Actions > CurseForge check > Run workflow.

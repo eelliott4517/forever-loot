@@ -1,6 +1,6 @@
 # Push a tag like v1.6.0 (matching "## Version:" in ForeverLoot.toc) to publish a release:
 # the tests run, the zips are built, a GitHub release gets them, and the CurseForge zip is
-# uploaded to CurseForge when the CF_API_TOKEN secret and CF_PROJECT_ID variable are set.
+# uploaded to CurseForge when the CURSEFORGE secret (API token) and PROJECTID variable are set.
 name: Release
 
 on:
@@ -14,8 +14,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-      CF_PROJECT_ID: ${{ vars.CF_PROJECT_ID }}
+      CF_API_TOKEN: ${{ secrets.CURSEFORGE }}
+      CF_PROJECT_ID: ${{ vars.PROJECTID }}
       CF_GAME_VERSIONS: ${{ vars.CF_GAME_VERSIONS }}
       CF_RELEASE_TYPE: ${{ vars.CF_RELEASE_TYPE }}
     steps:
