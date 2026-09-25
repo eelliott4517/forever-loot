@@ -102,3 +102,5 @@ The Release workflow (`.github/workflows/release.yml`) runs the tests, builds bo
 - variable `CF_PROJECT_ID`: the project id from the CurseForge project page ("About Project")
 - variable `CF_GAME_VERSIONS` (optional): the game version to tag files with, as CurseForge names it. The default is the TOC's Interface number as a version (16001 is 1.60.1); if CurseForge doesn't list that, the upload fails and prints the versions it does have.
 - variable `CF_RELEASE_TYPE` (optional): `release` (default), `beta` or `alpha`
+
+To send a release that's already tagged to CurseForge after adding these, open its run under Actions > Release and choose "Re-run all jobs".
