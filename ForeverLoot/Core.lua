@@ -91,6 +91,58 @@ local function BuildIndexes()
 	end
 end
 
+-- Everywhere an item comes from: boss drops, trash, datamined drops, quest rewards and
+-- crafts. Each source is { kind = "boss" | "trash" | "unconfirmed" | "quest" | "craft",
+-- instance, boss, pct, quest, profession, recipe }. Built the first time it's asked for.
+local sourcesByItem
+local NO_SOURCES = {}
+
+local function BuildSources()
+	sourcesByItem = {}
+	local function Add(itemID, source)
+		local list = sourcesByItem[itemID]
+		if not list then
+			list = {}
+			sourcesByItem[itemID] = list
+		end
+		list[#list + 1] = source
+	end
+	for _, list in ipairs({ ns.Dungeons, ns.Raids or {} }) do
+		for _, d in ipairs(list) do
+			for _, b in ipairs(d.bosses) do
+				local kind = (b.trash and "trash") or (b.unconfirmed and "unconfirmed") or "boss"
+				for _, itemID in ipairs(b.loot) do
+					Add(itemID, { kind = kind, instance = d, boss = b, pct = b.pct and b.pct[itemID] })
+				end
+			end
+			for _, q in ipairs(d.quests or {}) do
+				for _, itemID in ipairs(q.choices or {}) do Add(itemID, { kind = "quest", instance = d, quest = q }) end
+				for _, itemID in ipairs(q.rewards or {}) do Add(itemID, { kind = "quest", instance = d, quest = q }) end
+			end
+		end
+	end
+	for _, p in ipairs(ns.Professions or {}) do
+		for _, rec in ipairs(p.recipes) do
+			if rec.item then Add(rec.item, { kind = "craft", profession = p, recipe = rec }) end
+		end
+	end
+end
+
+function ns.SourcesOf(itemID)
+	if not sourcesByItem then BuildSources() end
+	return sourcesByItem[itemID] or NO_SOURCES
+end
+
+-- Quest sides in Data.lua: 1 Alliance, 2 Horde, 3 both
+ns.QUEST_SIDES = { [1] = "Alliance", [2] = "Horde" }
+
+-- Whether the player's faction can take a quest (unknown factions see them all)
+function ns.QuestForPlayer(q)
+	local faction = UnitFactionGroup and UnitFactionGroup("player")
+	local side = ns.QUEST_SIDES[q.side]
+	return not side or not faction or (faction ~= "Alliance" and faction ~= "Horde") or side == faction
+end
+
 -- Returns the dungeon or raid the player is standing in, if it is one we know
 function ns.CurrentDungeon()
 	local name, instanceType, _, _, _, _, _, instanceID = GetInstanceInfo()
@@ -104,11 +156,14 @@ end
 local defaults = {
 	minimap = { angle = 215, hide = false },
 	learned = {},
+	tooltip = true, -- "Drops from" lines on item tooltips
 }
 
 -- Per character (SavedVariablesPerCharacter), since each character chases its own gear
 local charDefaults = {
 	wishlist = {}, -- [itemID] = { added = time() }
+	-- The loot view filters: only gear this class can use, and no Classic-only loot
+	filters = { myClass = false, hideClassic = false },
 }
 
 local function ApplyDefaults(db, def)
@@ -217,7 +272,7 @@ local function CreateMinimapButton()
 	b:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:AddLine(ns.name, C.light[1], C.light[2], C.light[3])
-		GameTooltip:AddLine("Left-click: open dungeon loot and professions", C.mist[1], C.mist[2], C.mist[3])
+		GameTooltip:AddLine("Left-click: open dungeon and raid loot, sets and professions", C.mist[1], C.mist[2], C.mist[3])
 		local wanted = ns.Wishlist.Count()
 		GameTooltip:AddLine("Wishlist: " .. wanted .. (wanted == 1 and " item" or " items"), C.mist[1], C.mist[2], C.mist[3])
 		GameTooltip:AddLine("Right-click: commands", C.mist[1], C.mist[2], C.mist[3])
@@ -246,8 +301,9 @@ function ns:PrintHelp()
 	local C = ns.COLORS
 	self:Print("commands")
 	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl") .. "  open or close the loot window")
-	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl dungeons") .. ", " .. ns.Colorize(C.light, "/fl raids") .. ", " .. ns.Colorize(C.light, "/fl professions") .. " or " .. ns.Colorize(C.light, "/fl wishlist") .. "  open that tab")
+	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl dungeons") .. ", " .. ns.Colorize(C.light, "/fl raids") .. ", " .. ns.Colorize(C.light, "/fl sets") .. ", " .. ns.Colorize(C.light, "/fl professions") .. " or " .. ns.Colorize(C.light, "/fl wishlist") .. "  open that tab")
 	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl gloves") .. "  search the open tab for an item, slot, type, stat or material")
+	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl tooltip") .. "  turn the \"drops from\" lines on item tooltips on or off")
 	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl minimap") .. "  show or hide the minimap button")
 	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl reset") .. "  reset window and button positions")
 	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl forget") .. "  clear drops recorded from your own loot")
@@ -281,6 +337,12 @@ SlashCmdList.FOREVERLOOT = function(msg)
 		ns.UI:ShowMode("dungeons")
 	elseif msg == "raids" or msg == "raid" then
 		ns.UI:ShowMode("raids")
+	elseif msg == "sets" or msg == "set" then
+		ns.UI:ShowMode("sets")
+	elseif msg == "tooltip" or msg == "tooltips" then
+		ns.db.tooltip = not ns.db.tooltip
+		ns:Print(ns.db.tooltip and "item tooltips show where each item comes from." or
+			"item tooltips no longer show where items come from. Type /fl tooltip to turn it back on.")
 	elseif msg == "professions" or msg == "profession" or msg == "prof" or msg == "crafting" then
 		ns.UI:ShowMode("professions")
 	elseif msg == "wishlist" or msg == "wish" or msg == "list" then

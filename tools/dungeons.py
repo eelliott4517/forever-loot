@@ -10,7 +10,9 @@ dungeons, which Wowhead's database lists as 0-0, so those use Wowhead's
 "Dungeons Overview for Forever" guide. Wing ranges (and Dire Maul, which Wowhead
 lists as 44-54) come from wowtbc.gg's Forever loot tables.
 
-tbc maps a dungeon to its wowtbc.gg loot-table page(s): {slug: wing or None}.
+tbc maps a dungeon to its wowtbc.gg loot-table page(s): {slug: wing or None}. The new dungeons'
+pages are empty until players find their loot; refresh.py fetches them anyway, and any bosses
+and drops wowtbc.gg adds show up on the next build.
 """
 
 RARE = "Rare spawn"
@@ -50,20 +52,20 @@ DUNGEONS = [
              dict(name="Rath'mael", npc=[250657]),
              dict(name="Lordaeron Captain", npc=[255699], tag=RARE),
          ]),
-    dict(key="EXC", name="Excavation Site: Wetlands", zones=[16732], new=True, levels=(24, 29),
+    dict(key="EXC", name="Excavation Site: Wetlands", zones=[16732], new=True, levels=(24, 29), tbc={"excavation-site-wetlands": None},
          location="Wetlands", territory="Contested", aliases=["Excavation Site", "Whelgar's Excavation Site"],
          bosses=[]),
-    dict(key="DAL", name="City of Dalaran", zones=[16544, 16560], new=True, levels=(28, 33),
+    dict(key="DAL", name="City of Dalaran", zones=[16544, 16560], new=True, levels=(28, 33), tbc={"city-of-dalaran": None},
          location="Alterac Mountains", territory="Contested", aliases=["Dalaran"], bosses=[]),
-    dict(key="DROWN", name="The Drowned City", zones=[], new=True, levels=(35, 40),
+    dict(key="DROWN", name="The Drowned City", zones=[], new=True, levels=(35, 40), tbc={"the-drowned-city": None},
          location="Stranglethorn Vale coast", territory="Contested", bosses=[]),
-    dict(key="KROL", name="Krol'dok Stronghold", zones=[], new=True, levels=(40, 45),
+    dict(key="KROL", name="Krol'dok Stronghold", zones=[], new=True, levels=(40, 45), tbc={"krol-dok-stronghold": None},
          location="Riverglades", territory="Contested", bosses=[]),
-    dict(key="ALCAZ", name="Alcaz Prison", zones=[], new=True, levels=(48, 53),
+    dict(key="ALCAZ", name="Alcaz Prison", zones=[], new=True, levels=(48, 53), tbc={"alcaz-prison": None},
          location="Alcaz Island, Dustwallow Marsh", territory="Contested", bosses=[]),
-    dict(key="BMH", name="Blackmaw Hold", zones=[], new=True, levels=(55, 60),
+    dict(key="BMH", name="Blackmaw Hold", zones=[], new=True, levels=(55, 60), tbc={"blackmaw-hold": None},
          location="Northern Azshara", territory="Contested", bosses=[]),
-    dict(key="SHAPER", name="Shaper's Terrace", zones=[], new=True, levels=(58, 60),
+    dict(key="SHAPER", name="Shaper's Terrace", zones=[], new=True, levels=(58, 60), tbc={"shaper-s-terrace": None},
          location="Un'Goro Crater", territory="Contested", aliases=["The Shapers Terrace", "Shapers Terrace"],
          bosses=[]),
 

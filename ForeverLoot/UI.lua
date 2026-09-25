@@ -9,7 +9,7 @@ local K = {}
 ns.UIKit = K
 
 -- Each tab in the title bar is a mode with its own list, detail view and search.
--- The Dungeons and Raids tabs are at the bottom of this file; Professions.lua and
+-- The Dungeons and Raids tabs are at the bottom of this file; Sets.lua, Professions.lua and
 -- Wishlist.lua add the others.
 UI.modes, UI.modeOrder = {}, {}
 function UI:RegisterMode(mode)
@@ -38,7 +38,8 @@ local ITEM_H = 26
 local NOTE_H = 22
 local SECTION_GAP = 10
 local SCROLL_STEP = 48
-local SEARCH_H, FILTER_H = 24, 22
+local SEARCH_H, FILTER_H, TOGGLE_H = 24, 22, 18
+local QUEST_H = 26
 local SOURCE_W = 140
 local PAINT_PAD = 60
 local MENU_COLS, MENU_COL_W, MENU_ROW_H, MENU_PAD = 3, 92, 20, 8
@@ -548,6 +549,38 @@ local function CreateDropdown(parent, which, width)
 	return b
 end
 
+-- A checkbox for the loot filters (My class, Hide Classic)
+local function CreateToggle(parent, key, label, width)
+	local b = CreateFrame("Button", nil, parent)
+	b:SetSize(width, TOGGLE_H)
+	b.key = key
+	local box = CreateFrame("Frame", nil, b)
+	box:SetSize(12, 12)
+	box:SetPoint("LEFT", 1, 0)
+	Tex(box, "BACKGROUND", C.black, 0.7):SetAllPoints()
+	box.edges = Border(box, C.graphite, 1)
+	b.box = box
+	b.check = Tex(box, "ARTWORK", C.blue, 1)
+	b.check:SetPoint("TOPLEFT", 3, -3)
+	b.check:SetPoint("BOTTOMRIGHT", -3, 3)
+	b.text = Text(b, Font("toggle", GameFontHighlightSmall, C.mist, 11))
+	b.text:SetPoint("LEFT", box, "RIGHT", 6, 0)
+	b.text:SetText(label)
+	b:SetScript("OnEnter", function(self)
+		SetBorderColor(self.box.edges, C.blue)
+		ShowHint(self, self.text:GetText(), self.Hint and self.Hint())
+	end)
+	b:SetScript("OnLeave", function(self)
+		SetBorderColor(self.box.edges, C.graphite)
+		GameTooltip:Hide()
+	end)
+	b:SetScript("OnClick", function(self)
+		UI:ClearSearchFocus()
+		UI:ToggleFilter(self.key)
+	end)
+	return b
+end
+
 local function CreateMenuOption(menu)
 	local o = CreateFrame("Button", nil, menu)
 	o:SetHeight(MENU_ROW_H)
@@ -657,6 +690,32 @@ function UI:UpdateFilterButtons()
 		b.text:SetText(spec.label .. ": " .. ns.Colorize(C.light, value and spec.names[value] or "Any"))
 		local bg = value and C.steel or C.black
 		b.bg:SetColorTexture(bg[1], bg[2], bg[3], value and 1 or 0.7)
+	end
+end
+
+function UI:UpdateToggles()
+	local f = K.Filters()
+	for key, t in pairs(self.toggles or {}) do
+		local on = f[key] and true or false
+		t.check:SetShown(on)
+		SetTextColor(t.text, on and C.light or C.mist)
+	end
+end
+
+-- My class / Hide Classic: redraw the open entry (or the search) with the new filter
+function UI:ToggleFilter(key)
+	local f = K.Filters()
+	f[key] = not f[key]
+	self:UpdateToggles()
+	if not (self.frame and self.frame:IsShown()) then return end
+	if self:IsSearching() then
+		self:Refresh()
+	else
+		self:BuildList()
+		if self.current then
+			self:Mode().ShowHeader(self, self.header, self.current)
+			self:Refresh()
+		end
 	end
 end
 
@@ -778,16 +837,24 @@ function UI:Create()
 	kindFilter:SetPoint("TOPRIGHT", search, "BOTTOMRIGHT", 0, -6)
 	self.filterButtons = { slot = slotFilter, kind = kindFilter }
 
+	-- Loot filters, on the tabs that list loot
+	local classToggle = CreateToggle(left, "myClass", "My class", filterW)
+	classToggle:SetPoint("TOPLEFT", slotFilter, "BOTTOMLEFT", 2, -6)
+	classToggle.Hint = function() return K.ClassFilterText() end
+	local classicToggle = CreateToggle(left, "hideClassic", "Hide Classic", filterW)
+	classicToggle:SetPoint("TOPLEFT", kindFilter, "BOTTOMLEFT", 2, -6)
+	classicToggle.Hint = function()
+		return "Hide Classic loot: items Wowhead's Forever database doesn't have, so Forever may have replaced them."
+	end
+	self.toggles = { myClass = classToggle, hideClassic = classicToggle }
+
 	self.listLabel = Text(left, Font("label", GameFontNormalSmall, C.red, 10))
-	self.listLabel:SetPoint("TOPLEFT", 12, -74)
 	self.listRight = Text(left, Font("small", GameFontHighlightSmall, C.mist, 10), "RIGHT")
-	self.listRight:SetPoint("TOPRIGHT", -14, -74)
 
 	local listWidth = LIST_W - 26
 	local list = CreateScrollArea(left, listWidth)
-	list:SetPoint("TOPLEFT", 6, -92)
-	list:SetPoint("BOTTOMRIGHT", -16, 6)
 	self.list = list
+	self.left = left
 
 	-- Right: the open entry, or search results
 	local right = CreateFrame("Frame", nil, f)
@@ -875,6 +942,17 @@ end
 function UI:UpdateChrome()
 	local mode = self:Mode()
 	self:UpdateTabs()
+	-- The loot filters take a row under the Slot and Type menus on the tabs that have them
+	local top = mode.filters and 96 or 74
+	for _, t in pairs(self.toggles) do t:SetShown(mode.filters and true or false) end
+	self:UpdateToggles()
+	self.listLabel:ClearAllPoints()
+	self.listLabel:SetPoint("TOPLEFT", 12, -top)
+	self.listRight:ClearAllPoints()
+	self.listRight:SetPoint("TOPRIGHT", -14, -top)
+	self.list:ClearAllPoints()
+	self.list:SetPoint("TOPLEFT", 6, -(top + 18))
+	self.list:SetPoint("BOTTOMRIGHT", -16, 6)
 	self.listLabel:SetText(mode.listTitle)
 	self.listRight:SetText(mode.listRight)
 	self.searchBox.hint:SetText(mode.searchHint)
@@ -1583,6 +1661,123 @@ function K.Matches(info, terms, filter, extra)
 end
 
 ----------------------------------------------------------------------
+-- What the player's class can use, for the "My class" filter
+----------------------------------------------------------------------
+-- Class ids, as the game and Wowhead number them
+local CLASS_IDS = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, SHAMAN = 7, MAGE = 8, WARLOCK = 9, DRUID = 11 }
+-- Each class's own armor, and the type it wears until it learns that one at level 40
+local ARMOR = {
+	WARRIOR = { plate = true, mail = true }, PALADIN = { plate = true, mail = true },
+	HUNTER = { mail = true, leather = true }, SHAMAN = { mail = true, leather = true },
+	ROGUE = { leather = true }, DRUID = { leather = true },
+	PRIEST = { cloth = true }, MAGE = { cloth = true }, WARLOCK = { cloth = true },
+}
+-- Weapon skills each class can learn: "1" one-handed, "2" two-handed
+local WEAPON_SKILLS = {
+	WARRIOR = "axe1 axe2 mace1 mace2 sword1 sword2 dagger fist polearm staff bow crossbow gun thrown",
+	PALADIN = "axe1 axe2 mace1 mace2 sword1 sword2 polearm",
+	HUNTER = "axe1 axe2 sword1 sword2 dagger fist polearm staff bow crossbow gun thrown",
+	ROGUE = "dagger fist mace1 sword1 bow crossbow gun thrown",
+	PRIEST = "dagger mace1 staff wand",
+	SHAMAN = "axe1 axe2 mace1 mace2 dagger fist staff",
+	MAGE = "dagger sword1 staff wand",
+	WARLOCK = "dagger sword1 staff wand",
+	DRUID = "dagger fist mace1 mace2 staff",
+}
+local DUAL_WIELD = { WARRIOR = true, ROGUE = true, HUNTER = true }
+local SHIELDS = { WARRIOR = true, PALADIN = true, SHAMAN = true }
+local RELICS = { PALADIN = "Libram", SHAMAN = "Totem", DRUID = "Idol" }
+local HELD_OFFHAND = { PALADIN = true, PRIEST = true, SHAMAN = true, MAGE = true, WARLOCK = true, DRUID = true }
+local skillSets = {}
+for class, list in pairs(WEAPON_SKILLS) do
+	skillSets[class] = {}
+	for skill in list:gmatch("%S+") do skillSets[class][skill] = true end
+end
+
+function K.PlayerClass()
+	local name, file, id = UnitClass("player")
+	return file, id or CLASS_IDS[file], name
+end
+
+-- Whether a class can equip the item. Anything that isn't armor, a weapon, a shield or a
+-- relic (rings, cloaks, trinkets, recipes, bags) counts as usable.
+function K.UsableBy(itemID, class)
+	local entry = ns.Items[itemID]
+	local classes = entry and entry[8]
+	if classes then
+		local id = CLASS_IDS[class]
+		for _, c in ipairs(classes) do
+			if c == id then return true end
+		end
+		return false
+	end
+	local info = SearchInfo(itemID)
+	local slot, kind = info.slot, info.kind
+	if ARMOR_SLOTS[slot] and kind then return ARMOR[class][kind] == true end
+	if slot == "shield" then return SHIELDS[class] == true end
+	if slot == "offhand" then return HELD_OFFHAND[class] == true end
+	if slot == "relic" then
+		local typeText = entry and entry[3] or ""
+		return RELICS[class] ~= nil and typeText:find(RELICS[class], 1, true) ~= nil
+	end
+	if kind and (slot == "onehand" or slot == "twohand" or slot == "ranged") then
+		local skills = skillSets[class]
+		if kind == "axe" or kind == "mace" or kind == "sword" then
+			if not skills[kind .. (slot == "twohand" and "2" or "1")] then return false end
+		elseif not skills[kind] then
+			return false
+		end
+		local typeText = entry and entry[3] or ""
+		if typeText:sub(1, 9) == "Off Hand " then return DUAL_WIELD[class] == true end
+		return true
+	end
+	return true
+end
+
+function K.Filters()
+	return (ns.char and ns.char.filters) or {}
+end
+
+-- Whether the filters leave an item in the Dungeons, Raids and Sets tabs
+function K.Visible(itemID)
+	local f = K.Filters()
+	if f.hideClassic then
+		local entry = ns.Items[itemID]
+		if entry and entry[4] == 2 then return false end
+	end
+	if f.myClass then
+		local class = K.PlayerClass()
+		if class and ARMOR[class] and not K.UsableBy(itemID, class) then return false end
+	end
+	return true
+end
+
+-- The items the filters leave, and how many they hid
+function K.VisibleItems(itemIDs)
+	local f = K.Filters()
+	if not (f.myClass or f.hideClassic) then return itemIDs, 0 end
+	local out = {}
+	for _, itemID in ipairs(itemIDs) do
+		if K.Visible(itemID) then out[#out + 1] = itemID end
+	end
+	return out, #itemIDs - #out
+end
+
+-- "Plate, mail, and a Warrior's weapons" for the filter's tooltip
+local ARMOR_ORDER = { "plate", "mail", "leather", "cloth" }
+function K.ClassFilterText()
+	local class, _, name = K.PlayerClass()
+	if not (class and ARMOR[class]) then return "Only gear your class can use." end
+	local armor = {}
+	for _, a in ipairs(ARMOR_ORDER) do
+		if ARMOR[class][a] then armor[#armor + 1] = a end
+	end
+	return "Only gear a " .. (name or class) .. " can use: " .. table.concat(armor, " and ") ..
+		" armor, its weapon types" .. (SHIELDS[class] and ", shields" or "") .. (RELICS[class] and (", " .. RELICS[class]:lower() .. "s") or "") ..
+		", and items made for the class. Rings, necks, cloaks and trinkets always show."
+end
+
+----------------------------------------------------------------------
 -- Searching, shared by both tabs
 ----------------------------------------------------------------------
 function UI:IsSearching()
@@ -1939,6 +2134,76 @@ K.RegisterKind("boss", CreateBoss, function(b, d)
 	b.tag:SetText(d.tag or "")
 end)
 
+-- "Level 22  ·  Alliance  ·  choose 1 of 3"
+local function QuestTag(q)
+	local parts = {}
+	if q.new then parts[#parts + 1] = ns.Colorize(C.red, "NEW") end
+	if q.level then parts[#parts + 1] = "Level " .. q.level end
+	local side = ns.QUEST_SIDES[q.side]
+	if side then parts[#parts + 1] = side end
+	local choices, rewards = #(q.choices or {}), #(q.rewards or {})
+	if choices > 1 then
+		parts[#parts + 1] = "choose 1 of " .. choices .. (rewards > 0 and (", plus " .. rewards) or "")
+	elseif choices + rewards == 0 then
+		parts[#parts + 1] = "no item reward"
+	end
+	return table.concat(parts, "  ·  ")
+end
+K.QuestTag = QuestTag
+
+-- Quest bar: its rewards follow as item rows. Click for the quest's Wowhead link.
+local function CreateQuest(parent, width)
+	local b = CreateFrame("Button", nil, parent)
+	b:SetSize(width, QUEST_H)
+	b.isForeverLootRow = true
+	b.bg = Tex(b, "BACKGROUND", C.graphite, 0.55)
+	b.bg:SetAllPoints()
+	local accent = Tex(b, "ARTWORK", C.blue, 1)
+	accent:SetPoint("TOPLEFT"); accent:SetPoint("BOTTOMLEFT"); accent:SetWidth(3)
+	b.tag = Text(b, Font("quest_tag", GameFontHighlightSmall, C.mist, 10), "RIGHT")
+	b.tag:SetPoint("RIGHT", -10, 0)
+	b.name = Text(b, Font("quest", GameFontNormal, C.light, 12))
+	b.name:SetPoint("LEFT", 12, 0)
+	b.name:SetPoint("RIGHT", b.tag, "LEFT", -10, 0)
+	b:SetScript("OnEnter", function(self)
+		self.bg:SetColorTexture(C.steel[1], C.steel[2], C.steel[3], 0.8)
+		local q = self.quest
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip:AddLine(q.name, C.light[1], C.light[2], C.light[3])
+		local level = {}
+		if q.level then level[#level + 1] = "Level " .. q.level end
+		if q.req then level[#level + 1] = "requires level " .. q.req end
+		if #level > 0 then GameTooltip:AddLine(table.concat(level, ", "), C.mist[1], C.mist[2], C.mist[3]) end
+		GameTooltip:AddLine(ns.QUEST_SIDES[q.side] and (ns.QUEST_SIDES[q.side] .. " only") or "Alliance and Horde",
+			C.mist[1], C.mist[2], C.mist[3])
+		local choices = #(q.choices or {})
+		if choices > 1 then GameTooltip:AddLine("Choose one of " .. choices .. " rewards.", C.mist[1], C.mist[2], C.mist[3]) end
+		if q.new then GameTooltip:AddLine("New in Forever.", C.red[1], C.red[2], C.red[3]) end
+		for _, change in ipairs(q.changes or {}) do
+			GameTooltip:AddLine("Forever: " .. change, C.red[1], C.red[2], C.red[3], true)
+		end
+		if q.id then GameTooltip:AddLine("Click for its Wowhead link.", C.mist[1], C.mist[2], C.mist[3]) end
+		GameTooltip:Show()
+	end)
+	b:SetScript("OnLeave", function(self)
+		self.bg:SetColorTexture(C.graphite[1], C.graphite[2], C.graphite[3], 0.55)
+		GameTooltip:Hide()
+	end)
+	b:SetScript("OnClick", function(self)
+		local q = self.quest
+		if q.id then UI:ShowURL(q.name .. " on Wowhead", ns.WOWHEAD .. "quest=" .. q.id) end
+	end)
+	return b
+end
+
+K.RegisterKind("quest", CreateQuest, function(b, d)
+	b.bg:SetColorTexture(C.graphite[1], C.graphite[2], C.graphite[3], 0.55)
+	b.quest = d.quest
+	b.name:SetText(d.quest.name)
+	b.tag:SetText(QuestTag(d.quest))
+end)
+K.QUEST_H = QUEST_H
+
 local FOOTER = "Click: Wowhead link    Shift-click: link in chat    Ctrl-click: preview    Right-click: wishlist    " ..
 	ns.Colorize(C.red, "Red bar") .. ": your level"
 
@@ -1956,6 +2221,7 @@ local function InstanceMode(cfg)
 		searchAbout = "The search looks at item names, slots, types and stats.",
 		noMatch = cfg.noMatch,
 		footer = FOOTER,
+		filters = true,
 	}
 	local Sorted = cfg.sorted
 
@@ -2038,9 +2304,23 @@ local function InstanceMode(cfg)
 			local known = {}
 			for _, itemID in ipairs(loot) do known[itemID] = true end
 			local learned, counts = LearnedFor(d, learnedKeys, known)
-			AddItems(loot, nil, pct, hints)
-			AddItems(learned, counts)
-			if #loot == 0 and #learned == 0 then AddNote(emptyText) end
+			local shown, hidden = K.VisibleItems(loot)
+			local shownLearned, hiddenLearned = K.VisibleItems(learned)
+			AddItems(shown, nil, pct, hints)
+			AddItems(shownLearned, counts)
+			if #shown == 0 and #shownLearned == 0 then
+				local filtered = hidden + hiddenLearned
+				AddNote(filtered > 0 and (Count(filtered, "item") .. " hidden by the My class / Hide Classic filters.") or emptyText)
+			end
+			ui:AddGap(SECTION_GAP)
+		end
+
+		-- A quest bar, then its rewards: the ones to choose from, then the ones it always gives
+		local function AddQuest(q)
+			ui:AddEntry("quest", QUEST_H, { quest = q })
+			ui:AddGap(2)
+			AddItems((K.VisibleItems(q.choices or {})))
+			AddItems((K.VisibleItems(q.rewards or {})))
 			ui:AddGap(SECTION_GAP)
 		end
 
@@ -2066,8 +2346,10 @@ local function InstanceMode(cfg)
 				local url = boss.npc and boss.npc[1] and (ns.WOWHEAD .. "npc=" .. boss.npc[1]) or nil
 				local tag = boss.tag
 				if not boss.trash then
-					local count = #boss.loot
-					tag = (tag and (tag .. "  ·  ") or "") .. count .. (count == 1 and " item" or " items")
+					local count, visible = #boss.loot, #(K.VisibleItems(boss.loot))
+					local countText = visible < count and (visible .. " of " .. count .. " items")
+						or (count .. (count == 1 and " item" or " items"))
+					tag = (tag and (tag .. "  ·  ") or "") .. countText
 				end
 				local plain = boss.trash or boss.unconfirmed
 				AddBoss(boss.name, tag, url, boss.loot, plain and {} or keys,
@@ -2095,6 +2377,36 @@ local function InstanceMode(cfg)
 			AddNote("Wowhead has no boss or loot data for this " .. cfg.groupUnit .. " yet.")
 			AddNote("Kill its bosses and loot them: drops will be recorded here automatically.")
 		end
+
+		-- Its quests for your faction, in a section of their own. A quest whose rewards the
+		-- filters all hide (another class's tier token, say) is left out too.
+		local quests, otherSide, filtered = {}, 0, 0
+		for _, q in ipairs(d.quests or {}) do
+			local rewards = #(q.choices or {}) + #(q.rewards or {})
+			if not ns.QuestForPlayer(q) then
+				otherSide = otherSide + 1
+			elseif rewards > 0 and #(K.VisibleItems(q.choices or {})) + #(K.VisibleItems(q.rewards or {})) == 0 then
+				filtered = filtered + 1
+			else
+				quests[#quests + 1] = q
+			end
+		end
+		if #quests + filtered > 0 then
+			if ui.contentY > 0 then ui:AddGap(SECTION_GAP) end
+			if not ui:AddSection("d:" .. d.key .. ":quests", "QUESTS", Count(#quests, "quest")) then
+				ui:AddGap(4)
+				for _, q in ipairs(quests) do AddQuest(q) end
+				if otherSide > 0 then
+					local faction = UnitFactionGroup and UnitFactionGroup("player")
+					AddNote(Count(otherSide, "quest") .. " for the " .. (faction == "Alliance" and "Horde" or "Alliance") ..
+						(otherSide == 1 and " isn't" or " aren't") .. " shown.")
+				end
+				if filtered > 0 then
+					AddNote(Count(filtered, "quest") .. " with only rewards the My class / Hide Classic filters hide " ..
+						(filtered == 1 and "isn't" or "aren't") .. " shown.")
+				end
+			end
+		end
 	end
 
 	-- Every matching drop, grouped by instance in list order and by boss order within one.
@@ -2106,7 +2418,7 @@ local function InstanceMode(cfg)
 			local rows = {}
 			local function Add(itemID, source, from, wing, learnedCount, pct, hint)
 				local extra = (learnedCount and " seen " or "") .. (ns.Wishlist.IsWanted(itemID) and " wanted wishlist " or "")
-				if K.Matches(SearchInfo(itemID), terms, filter, extra) then
+				if K.Visible(itemID) and K.Matches(SearchInfo(itemID), terms, filter, extra) then
 					rows[#rows + 1] = { itemID = itemID, source = source, from = from, wing = wing,
 						learnedCount = learnedCount, pct = pct, hint = hint }
 				end
@@ -2148,6 +2460,15 @@ local function InstanceMode(cfg)
 					for _, itemID in ipairs(learned) do
 						Add(itemID, e.name, "You looted it from " .. e.name .. " in " .. d.name .. ".", nil, counts[itemID])
 					end
+				end
+			end
+
+			-- Quest rewards, in a Quests section after the bosses
+			for _, q in ipairs(d.quests or {}) do
+				if ns.QuestForPlayer(q) then
+					local from = "Reward from the quest " .. q.name .. " (" .. d.name .. ")."
+					for _, itemID in ipairs(q.choices or {}) do Add(itemID, "Quest reward", from, "Quests") end
+					for _, itemID in ipairs(q.rewards or {}) do Add(itemID, "Quest reward", from, "Quests") end
 				end
 			end
 

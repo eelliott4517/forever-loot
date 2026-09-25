@@ -3,3 +3,7 @@ dist/
 tools/node_modules/
 __pycache__/
 *.pyc
+# Wowhead tooltip cache: rebuilt by tools/build_data.py (a few minutes) and rewritten on every refresh
+tools/cache/
+# The generated console script (python3 tools/refresh.py --script-only writes it)
+tools/scrape_console.js

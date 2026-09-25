@@ -5,7 +5,7 @@ if not (UI and K) then return end
 
 -- The Wishlist tab: the gear this character wants, grouped by where to get it, with a
 -- chat alert when any of it drops or comes up for a roll. Items go on the list with a
--- right-click on the Dungeons, Raids and Professions tabs (Core.lua keeps the list).
+-- right-click on the Dungeons, Raids, Sets and Professions tabs (Core.lua keeps the list).
 
 local ITEM_H, RECIPE_H = K.ITEM_H, K.RECIPE_H
 local NOTE_H, SECTION_GAP = K.NOTE_H, K.SECTION_GAP
@@ -52,6 +52,21 @@ local function Gather(filter)
 						rows[#rows + 1] = { itemID = itemID, source = source, from = from,
 							pct = boss.pct and boss.pct[itemID], hint = boss.hints and boss.hints[itemID],
 							owned = ns.Wishlist.IsOwned(itemID) }
+					end
+				end
+			end
+		end
+		-- Quest rewards
+		for _, q in ipairs(d.quests or {}) do
+			for _, list in ipairs({ q.choices or {}, q.rewards or {} }) do
+				for _, itemID in ipairs(list) do
+					if wanted[itemID] and not here[itemID] then
+						placed[itemID], here[itemID] = true, true
+						if Keep(itemID) then
+							rows[#rows + 1] = { itemID = itemID, source = "Quest reward",
+								from = "Reward from the quest " .. q.name .. " in " .. d.name .. ".",
+								owned = ns.Wishlist.IsOwned(itemID) }
+						end
 					end
 				end
 			end
@@ -203,7 +218,7 @@ function Wishlist.ShowHeader(ui, h, entry)
 		if entry.minLevel then table.insert(parts, 1, K.LevelText(entry)) end
 		h.meta:SetText(table.concat(parts, "   ·   "))
 	end
-	h.note:SetText("Right-click an item on the Dungeons or Raids tab, or a recipe on the Professions tab, to add it; " ..
+	h.note:SetText("Right-click an item on the Dungeons, Raids or Sets tab, or a recipe on the Professions tab, to add it; " ..
 		"right-click it here to take it off. You get a chat alert when one drops or comes up for a roll. " ..
 		ns.Colorize(C.blue, "OWNED") .. " = in your bags, bank or worn.")
 end
@@ -219,7 +234,7 @@ function Wishlist.Render(ui, entry)
 	if shown > 0 then return end
 	if ns.Wishlist.Count() == 0 then
 		ui:AddEntry("note", NOTE_H, { text = "Your wishlist is empty." })
-		ui:AddEntry("note", NOTE_H, { text = "Right-click any item on the Dungeons or Raids tab, or any recipe on the Professions tab, to add it." })
+		ui:AddEntry("note", NOTE_H, { text = "Right-click any item on the Dungeons, Raids or Sets tab, or any recipe on the Professions tab, to add it." })
 	else
 		ui:AddEntry("note", NOTE_H, { text = "Nothing from here is on your wishlist anymore." })
 	end

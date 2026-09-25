@@ -92,10 +92,10 @@ check(total > 800, "raid loot entries (" .. total .. ")")
 local UI, K, C = ns.UI, ns.UIKit, ns.COLORS
 UI:Toggle()
 check(UI.frame:IsShown(), "window opens")
-check(table.concat(UI.modeOrder, ",") == "dungeons,raids,professions,wishlist", "tabs: " .. table.concat(UI.modeOrder, ","))
+check(table.concat(UI.modeOrder, ",") == "dungeons,raids,sets,professions,wishlist", "tabs: " .. table.concat(UI.modeOrder, ","))
 local tabLabels = {}
 for _, t in ipairs(UI.tabs) do tabLabels[#tabLabels + 1] = t.label.text end
-check(table.concat(tabLabels, ",") == "DUNGEONS,RAIDS,PROFESSIONS,WISHLIST", "tab labels " .. table.concat(tabLabels, ","))
+check(table.concat(tabLabels, ",") == "DUNGEONS,RAIDS,SETS,PROFESSIONS,WISHLIST", "tab labels " .. table.concat(tabLabels, ","))
 
 local function Count(kind)
 	local c = 0
@@ -133,7 +133,12 @@ for _, r in ipairs(ns.Raids) do
 	local meta = UI.header.meta.text
 	check(meta:find("Level 60", 1, true) and meta:find(r.size .. " players", 1, true), "raid header " .. r.name .. ": " .. meta)
 	check(UI.header.note.text ~= "" and UI.header.note.text ~= nil, "raid note " .. r.name)
-	if Count("wing") == 0 then
+	-- Raids without wings: every boss and its loot shows (the Quests section starts collapsed)
+	local wings = 0
+	for _, e in ipairs(UI.entries) do
+		if e.kind == "wing" and e.data.id ~= "d:" .. r.key .. ":quests" then wings = wings + 1 end
+	end
+	if wings == 0 then
 		check(Count("boss") == #r.bosses, ("boss rows %s: %d vs %d"):format(r.name, Count("boss"), #r.bosses))
 		local items = 0
 		for _, b in ipairs(r.bosses) do items = items + #b.loot end
@@ -227,6 +232,224 @@ for _, e in ipairs(UI.entries) do
 	if e.kind == "item" and e.data.itemID == 299003 then under = true end
 end
 check(under, "recorded Hyjal drop shows under Bandalar")
+
+----------------------------------------------------------------------
+-- 1.6: quests, sets, filters, tooltips
+----------------------------------------------------------------------
+local function Entries(kind)
+	local out = {}
+	for _, e in ipairs(UI.entries) do if e.kind == kind then out[#out + 1] = e end end
+	return out
+end
+local function Section(id)
+	for _, e in ipairs(UI.entries) do if e.kind == "wing" and e.data.id == id then return e end end
+end
+
+-- Quests in the data
+local defias
+for _, q in ipairs(R.DM.quests or {}) do if q.id == 166 then defias = q end end
+check(defias and defias.name == "The Defias Brotherhood" and defias.side == 1, "Deadmines has The Defias Brotherhood")
+check(defias and Has(defias.choices or {}, 6087), "with its reward choices")
+local questCount, rewardItems = 0, 0
+for _, list in ipairs({ ns.Dungeons, ns.Raids }) do
+	for _, d in ipairs(list) do
+		for _, q in ipairs(d.quests or {}) do
+			questCount = questCount + 1
+			check(type(q.name) == "string" and (q.side == 1 or q.side == 2 or q.side == 3), "quest fields " .. tostring(q.name))
+			for _, id in ipairs(q.choices or {}) do
+				rewardItems = rewardItems + 1
+				check(ns.Items[id] ~= nil, "quest reward bundled " .. id)
+			end
+			for _, id in ipairs(q.rewards or {}) do
+				rewardItems = rewardItems + 1
+				check(ns.Items[id] ~= nil, "quest reward bundled " .. id)
+			end
+		end
+	end
+end
+check(questCount > 100 and rewardItems > 200, ("quests %d, reward items %d"):format(questCount, rewardItems))
+
+-- The Quests section: collapsed at first, then a bar per quest with its rewards
+MOCK.faction = "Alliance"
+UI:SetMode("dungeons")
+UI:Select(R.DM)
+local qs = Section("d:DM:quests")
+check(qs ~= nil and #Entries("quest") == 0, "Deadmines has a Quests section, collapsed")
+UI:ToggleSection("d:DM:quests")
+local bars = Entries("quest")
+check(#bars > 3, "opening it lists the quests (" .. #bars .. ")")
+local sawDefias = false
+for _, e in ipairs(bars) do if e.data.quest == defias then sawDefias = true end end
+check(sawDefias, "The Defias Brotherhood is listed")
+local rewardRow = false
+for _, e in ipairs(UI.entries) do
+	if e.kind == "item" and e.data.itemID == 6087 then rewardRow = true end
+end
+check(rewardRow, "its reward is an item row")
+check(K.QuestTag(defias):find("Alliance", 1, true) and K.QuestTag(defias):find("choose 1 of", 1, true), "quest tag: " .. K.QuestTag(defias))
+UI.loot.bar:SetValue(bars[1].y) -- scroll the quests into view
+local bar
+for i = 1, (UI.used.quest or 0) do if UI.pools.quest[i]:IsShown() then bar = UI.pools.quest[i] break end end
+check(bar ~= nil, "a quest bar is painted")
+if bar then
+	bar.scripts.OnEnter(bar)
+	check(GameTooltip.lines[1] == bar.quest.name, "quest bar tooltip")
+	bar.scripts.OnLeave(bar)
+	bar.scripts.OnClick(bar)
+	check(UI.urlPopup and UI.urlPopup.url:find("quest=" .. bar.quest.id, 1, true), "quest bar gives its Wowhead link")
+	UI.urlPopup:Hide()
+end
+-- The other faction's quests are left out
+MOCK.faction = "Horde"
+UI:Refresh()
+local hordeBars = #Entries("quest")
+check(hordeBars < #bars, "a Horde character sees fewer Deadmines quests (" .. hordeBars .. ")")
+MOCK.faction = "Alliance"
+UI:Refresh()
+
+-- Quest rewards are searchable
+UI:Search("tunic of westfall")
+local questHit = false
+for _, g in ipairs(UI.searchGroups or {}) do
+	for _, r in ipairs(g.rows) do if r.itemID == 2041 and r.wing == "Quests" then questHit = true end end
+end
+check(questHit, "search finds a quest reward under Quests")
+UI:ClearSearch()
+
+-- My class: a Mage doesn't see plate, a Warrior does
+local plate, cloth
+for id, e in pairs(ns.Items) do
+	if e[3] == "Plate Chest" and not e[8] then plate = plate or id end
+	if e[3] == "Cloth Chest" and not e[8] then cloth = cloth or id end
+end
+check(K.UsableBy(plate, "WARRIOR") and not K.UsableBy(plate, "MAGE"), "plate is for Warriors, not Mages")
+check(K.UsableBy(cloth, "MAGE") and not K.UsableBy(cloth, "WARRIOR"), "cloth is for Mages (the filter hides it for Warriors)")
+local wand, shield
+for id, e in pairs(ns.Items) do
+	if e[3] == "Wand" and not e[8] then wand = wand or id end
+	if e[3] == "Shield" and not e[8] then shield = shield or id end
+end
+check(K.UsableBy(wand, "PRIEST") and not K.UsableBy(wand, "ROGUE"), "wands for casters only")
+check(K.UsableBy(shield, "SHAMAN") and not K.UsableBy(shield, "DRUID"), "shields for Shamans, not Druids")
+local restricted
+for id, e in pairs(ns.Items) do
+	if e[8] and #e[8] == 1 and e[8][1] == 8 then restricted = id break end
+end
+check(restricted and K.UsableBy(restricted, "MAGE") and not K.UsableBy(restricted, "PRIEST"), "Classes: Mage items are Mage-only")
+check(K.UsableBy(ns.DungeonByKey.DM.bosses[1].loot[1], "WARRIOR") ~= nil, "UsableBy answers for any drop")
+
+MOCK.class = { "Mage", "MAGE", 8 }
+UI:SetMode("raids")
+UI:Select(R.MC)
+local before = #Entries("item")
+UI:ToggleFilter("myClass")
+check(ns.char.filters.myClass == true and UI.toggles.myClass.check:IsShown(), "My class turns on")
+local after = #Entries("item")
+check(after < before, ("My class hides gear a Mage can't use in Molten Core (%d -> %d)"):format(before, after))
+for _, e in ipairs(Entries("item")) do
+	check(K.UsableBy(e.data.itemID, "MAGE"), "only Mage gear left: " .. e.data.itemID)
+end
+local tagged = false
+for _, e in ipairs(Entries("boss")) do if e.data.tag and e.data.tag:find(" of ", 1, true) then tagged = true end end
+check(tagged, "boss bars say how many items the filter left")
+UI:Search("chest")
+for _, g in ipairs(UI.searchGroups or {}) do
+	for _, r in ipairs(g.rows) do check(K.UsableBy(r.itemID, "MAGE"), "search respects My class: " .. r.itemID) end
+end
+UI:ClearSearch()
+UI:ToggleFilter("myClass")
+check(#Entries("item") == before, "turning it off brings them back")
+
+-- Hide Classic
+UI:Select(R.MC)
+UI:ToggleFilter("hideClassic")
+for _, e in ipairs(Entries("item")) do
+	check(ns.Items[e.data.itemID][4] ~= 2, "Hide Classic leaves no Classic-only item: " .. e.data.itemID)
+end
+local notes = Entries("note")
+check(#notes > 0, "bosses left empty by the filter say so")
+UI:ToggleFilter("hideClassic")
+MOCK.class = { "Warrior", "WARRIOR", 1 }
+
+-- The toggles only show on tabs with loot
+UI:SetMode("professions")
+check(not UI.toggles.myClass:IsShown(), "no loot filters on Professions")
+UI:SetMode("dungeons")
+check(UI.toggles.myClass:IsShown() and UI.toggles.hideClassic:IsShown(), "loot filters on Dungeons")
+
+-- Sets
+check(#ns.Sets > 20, "item sets (" .. #ns.Sets .. ")")
+local valor
+for _, st in ipairs(ns.Sets) do
+	for _, id in ipairs(st.pieces) do check(ns.Items[id] ~= nil, "set piece bundled " .. id .. " (" .. st.name .. ")") end
+	if st.id == 189 then valor = st end
+end
+check(valor and valor.name == "Battlegear of Valor" and #valor.pieces == 8 and #valor.bonuses > 0, "Battlegear of Valor")
+UI:SetMode("sets")
+check(UI.mode == "sets" and UI.listLabel.text == "ITEM SETS", "Sets tab")
+check(#ShownRows() == #ns.Sets, "one row per set (" .. #ShownRows() .. ")")
+UI:Select(valor)
+check(UI.header.name.text == "Battlegear of Valor" and UI.header.meta.text:find("8 pieces", 1, true), "set header: " .. UI.header.meta.text)
+check(#Entries("text") == #valor.bonuses and #Entries("item") == 8, "set bonuses and pieces")
+local sourced = 0
+for _, e in ipairs(Entries("item")) do
+	if e.data.source and e.data.source ~= "No known source" then sourced = sourced + 1 end
+end
+check(sourced >= 6, "most Valor pieces say where they drop (" .. sourced .. ")")
+check(select(2, UI:Mode().WowheadLink(valor)):find("item-set=189", 1, true), "set Wowhead link")
+local valorRow = RowFor(valor)
+check(valorRow and valorRow.marker.shown, "red bar: a Warrior can wear Valor")
+MOCK.class = { "Mage", "MAGE", 8 }
+UI:BuildList()
+check(valorRow and not RowFor(valor).marker.shown, "but not a Mage")
+UI:ToggleFilter("myClass")
+check(RowFor(valor) == nil and #ShownRows() < #ns.Sets, "My class hides sets a Mage can't wear")
+UI:ToggleFilter("myClass")
+MOCK.class = { "Warrior", "WARRIOR", 1 }
+UI:Search("valor")
+check((UI.searchTotal or 0) >= 8, "set search finds the Valor pieces by set name (" .. tostring(UI.searchTotal) .. ")")
+UI:ClearSearch()
+SlashCmdList.FOREVERLOOT("sets")
+check(UI.mode == "sets", "/fl sets")
+
+-- "Drops from" lines on the game's item tooltips
+local barb = 5191 -- Cruel Barb, Edwin VanCleef
+local sources = ns.SourcesOf(barb)
+check(#sources > 0 and sources[1].instance == R.DM, "Cruel Barb's sources")
+GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+GameTooltip:SetItemByID(barb)
+local joined = table.concat(GameTooltip.lines, "\n")
+check(joined:find("Forever Loot", 1, true) and joined:find("Edwin VanCleef", 1, true), "item tooltip says who drops it")
+local before = #GameTooltip.lines
+GameTooltip:SetItemByID(barb)
+check(#GameTooltip.lines == before, "the lines aren't added twice")
+GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+GameTooltip:SetItemByID(2041)
+check(table.concat(GameTooltip.lines, "\n"):find("Quest: ", 1, true), "quest rewards say which quest")
+ItemRefTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+ItemRefTooltip:SetHyperlink("item:" .. barb)
+check(table.concat(ItemRefTooltip.lines, "\n"):find("Edwin VanCleef", 1, true), "chat link tooltips too")
+SlashCmdList.FOREVERLOOT("tooltip")
+check(ns.db.tooltip == false, "/fl tooltip turns it off")
+GameTooltip:SetOwner(UIParent, "ANCHOR_CURSOR")
+GameTooltip:SetItemByID(barb)
+check(not table.concat(GameTooltip.lines, "\n"):find("Forever Loot", 1, true), "and the lines are gone")
+SlashCmdList.FOREVERLOOT("tooltip")
+check(ns.db.tooltip == true, "/fl tooltip turns it back on")
+-- The addon's own rows don't get the extra lines
+UI:SetMode("dungeons")
+UI:Select(R.DM)
+UI:Paint()
+local own
+for i = 1, (UI.used.item or 0) do
+	local r = UI.pools.item[i]
+	if r:IsShown() and MOCK.cached[r.itemID] then own = r break end
+end
+if own then
+	own.scripts.OnEnter(own)
+	check(not table.concat(GameTooltip.lines, "\n"):find("Forever Loot", 1, true), "own item rows skip the source lines")
+	own.scripts.OnLeave(own)
+end
 
 ----------------------------------------------------------------------
 -- The other tabs still work

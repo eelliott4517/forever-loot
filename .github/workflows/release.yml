@@ -1,0 +1,59 @@
+# Push a tag like v1.6.0 (matching "## Version:" in ForeverLoot.toc) to publish a release:
+# the tests run, the zips are built, a GitHub release gets them, and the CurseForge zip is
+# uploaded to CurseForge when the CF_API_TOKEN secret and CF_PROJECT_ID variable are set.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CF_PROJECT_ID: ${{ vars.CF_PROJECT_ID }}
+      CF_GAME_VERSIONS: ${{ vars.CF_GAME_VERSIONS }}
+      CF_RELEASE_TYPE: ${{ vars.CF_RELEASE_TYPE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Check the tag matches the TOC version
+        run: |
+          version=$(sed -n 's/^## Version: //p' ForeverLoot/ForeverLoot.toc | tr -d '\r')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match ForeverLoot.toc (## Version: $version)"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Lint and smoke test the addon
+        working-directory: tools
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+
+      - name: Build the zips
+        run: |
+          python3 tools/package.py
+          python3 tools/changelog.py "$VERSION" > dist/notes.md
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/ForeverLoot-*.zip \
+            --title "Forever Loot $VERSION" --notes-file dist/notes.md
+
+      - name: Upload to CurseForge
+        if: env.CF_API_TOKEN != '' && env.CF_PROJECT_ID != ''
+        run: python3 tools/upload_curseforge.py "dist/ForeverLoot-$VERSION.zip" dist/notes.md

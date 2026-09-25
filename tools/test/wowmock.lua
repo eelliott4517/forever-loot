@@ -226,17 +226,48 @@ function PlaySound(id) assert(type(id) == "number", "PlaySound needs a sound kit
 
 DEFAULT_CHAT_FRAME = { AddMessage = function(_, msg) table.insert(MOCK.printed, msg) end }
 
-GameTooltip = setmetatable({ lines = {} }, strict("GameTooltip", {
-	SetOwner = function(self, owner, anchor) assert(owner, "SetOwner needs owner"); self.lines = {}; self.item = nil; self.owner = owner end,
-	GetOwner = function(self) return self.owner end,
-	IsShown = function(self) return self.visible end,
-	SetItemByID = function(self, id) assert(type(id) == "number", "SetItemByID needs a number"); self.item = id end,
-	SetHyperlink = function(self, link) self.link = link end,
-	AddLine = function(self, text) assert(type(text) == "string"); table.insert(self.lines, text) end,
-	AddDoubleLine = function(self, left, right) assert(type(left) == "string" and type(right) == "string"); table.insert(self.lines, left .. " | " .. right) end,
-	Show = function(self) self.visible = true end,
-	Hide = function(self) self.visible = false end,
-}))
+-- Tooltip data post-calls (TooltipDataProcessor), run when a tooltip is set to an item
+MOCK.postCalls = {}
+Enum = { TooltipDataType = { Item = 0 } }
+TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn)
+	assert(kind == Enum.TooltipDataType.Item and type(fn) == "function")
+	table.insert(MOCK.postCalls, fn)
+end }
+
+local function newTooltip(name)
+	local tip = setmetatable({ lines = {}, hooks = {}, name = name }, strict(name, {
+		SetOwner = function(self, owner, anchor)
+			assert(owner, "SetOwner needs owner")
+			self.lines = {}; self.item = nil; self.owner = owner
+			for _, fn in ipairs(self.hooks.OnTooltipCleared or {}) do fn(self) end
+		end,
+		GetOwner = function(self) return self.owner end,
+		IsShown = function(self) return self.visible end,
+		SetItemByID = function(self, id)
+			assert(type(id) == "number", "SetItemByID needs a number")
+			self.item = id
+			for _, fn in ipairs(MOCK.postCalls) do fn(self, { id = id, type = 0 }) end
+		end,
+		SetHyperlink = function(self, link)
+			self.link = link
+			local id = tonumber(tostring(link):match("item:(%d+)"))
+			if id then self.item = id; for _, fn in ipairs(MOCK.postCalls) do fn(self, { id = id, type = 0 }) end end
+		end,
+		GetItem = function(self) if self.item then return "item", "|Hitem:" .. self.item .. "|h" end end,
+		HookScript = function(self, script, fn)
+			assert(script == "OnTooltipCleared" or script == "OnTooltipSetItem", "unexpected tooltip script " .. tostring(script))
+			self.hooks[script] = self.hooks[script] or {}
+			table.insert(self.hooks[script], fn)
+		end,
+		AddLine = function(self, text) assert(type(text) == "string"); table.insert(self.lines, text) end,
+		AddDoubleLine = function(self, left, right) assert(type(left) == "string" and type(right) == "string"); table.insert(self.lines, left .. " | " .. right) end,
+		Show = function(self) self.visible = true end,
+		Hide = function(self) self.visible = false end,
+	}))
+	return tip
+end
+GameTooltip = newTooltip("GameTooltip")
+ItemRefTooltip = newTooltip("ItemRefTooltip")
 
 function strsplit(sep, s)
 	local out, start = {}, 1
@@ -253,6 +284,10 @@ function wipe(t) for k in pairs(t) do t[k] = nil end return t end
 tinsert = table.insert
 
 MOCK.level = 16
+MOCK.class = { "Warrior", "WARRIOR", 1 }
+MOCK.faction = "Alliance"
+function UnitClass(unit) assert(unit == "player"); return unpack(MOCK.class) end
+function UnitFactionGroup(unit) assert(unit == "player"); return MOCK.faction end
 MOCK.instance = { "World", "none", 0, "", 5, 0, false, 0 }
 MOCK.time = 1000
 MOCK.cached = {}      -- itemID -> true when the "server" has sent item data

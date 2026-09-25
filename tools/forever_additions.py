@@ -43,10 +43,9 @@ ADDITIONS = {
 UNCONFIRMED = {
     "DM": [(273102, "Cookie")],                                   # Blueprint: Cookie's Feast
     "STOCKS": [(273807, None), (273811, None), (273817, None), (273819, None), (273820, None)],
-    "BFD": [(273839, "Ghamoo-ra"), (273840, "Gelihast"), (273841, "Twilight Lord Kelris"),
-            (273842, None), (273843, None)],
+    "BFD": [(273839, "Ghamoo-ra"), (273840, "Gelihast"), (273841, "Twilight Lord Kelris")],   # 273842-3: Lorgus Jett
     "GNOMER": [(274042, None), (274043, None)],
-    "RFK": [(274149, None), (274152, "Roogug"), (274155, None), (274158, None), (274161, None)],
+    "RFK": [(274149, None), (274155, None), (274158, None), (274161, None)],   # 274152: Roogug
     "SM": [(274290, None), (274291, None), (274292, "Houndmaster Loksey"), (274293, None), (274295, None)],
     "RFD": [(274380, None), (274381, "Amnennar the Coldbringer")],
     "ZF": [(274638, None), (274639, None), (274641, "Theka the Martyr"), (274642, None), (274643, None),

@@ -18,6 +18,7 @@ const KNOWN = new Set(`
   ChatFontNormal strsplit strtrim wipe tinsert UnitGUID
   ForeverLootCharDB GetItemCount IsEquippedItem time issecretvalue IsShiftKeyDown GetNumSkillLines
   GetSkillLineInfo GetSpellLink ChatEdit_InsertLink GetLootRollItemLink
+  UnitClass UnitFactionGroup TooltipDataProcessor Enum ItemRefTooltip
   ipairs pairs type tostring tonumber select math table string next error pcall
 `.split(/\s+/).filter(Boolean));
 
