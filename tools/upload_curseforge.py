@@ -75,10 +75,30 @@ def multipart(fields, files):
     return b"".join(out), f"multipart/form-data; boundary={boundary}"
 
 
+def clean(token):
+    """The token without what a terminal paste can add around it: spaces, line breaks, and the
+    bracketed-paste markers ESC[200~ / ESC[201~"""
+    for marker in ("\x1b[200~", "\x1b[201~", "[200~", "[201~"):
+        token = token.replace(marker, "")
+    return token.strip()
+
+
+def describe(token):
+    """What the token looks like, without showing any of it"""
+    shape = "a UUID" if re.fullmatch(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", token) else "not a UUID"
+    odd = sum(1 for c in token if not (c.isalnum() or c in "-_"))
+    return f"{len(token)} characters, {shape}, {odd} unusual characters"
+
+
 def main():
     if len(sys.argv) < 2:
         raise SystemExit(__doc__)
-    token, project = os.environ.get("CF_API_TOKEN"), os.environ.get("CF_PROJECT_ID")
+    raw, project = os.environ.get("CF_API_TOKEN") or "", (os.environ.get("CF_PROJECT_ID") or "").strip()
+    token = clean(raw)
+    if raw and token != raw:
+        print(f"note: removed {len(raw) - len(token)} characters of spaces or paste markers from the token")
+    if sys.argv[1] == "--check" and token:
+        print(f"token: {describe(token)}")
     if not token:
         raise SystemExit("no CurseForge API token: add it as the CURSEFORGE secret")
     if not project:
