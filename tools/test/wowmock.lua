@@ -352,8 +352,13 @@ time = time or os.time
 function GetItemCount(item, includeBank) return MOCK.owned and MOCK.owned[item] or 0 end
 function IsEquippedItem(item) return false end
 function IsShiftKeyDown() return MOCK.shift == true end
-function GetNumSkillLines() return 0 end
-function GetSkillLineInfo(i) return nil end
-function GetSpellLink(id) return nil end
-function ChatEdit_InsertLink(link) return false end
+-- Forever keeps these under C_ tables: it has no GetSkillLineInfo, GetNumSkillLines or GetSpellLink
+-- globals, and ChatEdit_InsertLink only with the loadDeprecationFallbacks CVar on
+C_SkillInfo = {
+	GetNumSkillLines = function() return 0 end,
+	GetSkillLineInfo = function(i) return nil end,
+	GetSkillLineInfoByID = function(id) return nil end,
+}
+C_Spell = { GetSpellLink = function(id) return nil end }
+ChatFrameUtil = { InsertLink = function(link) return false end }
 function GetLootRollItemLink(rollID) return nil end

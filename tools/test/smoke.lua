@@ -218,8 +218,15 @@ end
 check(seen, "recorded raid drop listed under its boss")
 
 MOCK.instance = { "Hyjal Summit", "raid", 9, "20 Player", 20, 0, false, 9100 }
-MOCK.Fire("ENCOUNTER_END", 4001, "Bandalar", 9, 20, 1)
+-- encounterUnitStatus lists the boss units the encounter engaged; only their loot is credited to it
+MOCK.Fire("ENCOUNTER_END", 4001, "Bandalar", 9, 20, 1, { { creatureID = 299999, creatureName = "Bandalar", remainingHealthPercent = 0 } })
 MOCK.time = MOCK.time + 10
+MOCK.itemsDB[299004] = { "Test Trash Epic", 4, "Plate Legs" }
+MOCK.cached[299004] = true
+MOCK.loot = { { link = "|cffa335ee|Hitem:299004::::::::::::|h[Test Trash Epic]|h|r", guid = "Creature-0-1-9100-1-299888-00003" } }
+MOCK.Fire("LOOT_OPENED")
+local trash = ns.db.learned.HYJAL and ns.db.learned.HYJAL["enc:bandalar"]
+check(not (trash and trash.items[299004]), "trash looted after an encounter isn't credited to its boss")
 MOCK.itemsDB[299003] = { "Test Cloak", 4, "Back" }
 MOCK.cached[299003] = true
 MOCK.loot = { { link = "|cffa335ee|Hitem:299003::::::::::::|h[Test Cloak]|h|r", guid = "Creature-0-1-9100-1-299999-00002" } }

@@ -88,6 +88,14 @@ Tests alone (needs Node; `npm install` in `tools/` the first time):
 cd tools && npm test
 ```
 
+The deeper tests run the addon in real Lua 5.1 (what WoW runs) against a strict mock of Forever's API, through every tab, entry, filter, class and search (needs `python3 -m pip install lupa` once):
+
+```
+python3 tools/lupa/run.py
+```
+
+`FL_ADDON_DIR=<folder>/` points them at another copy, like the one in your AddOns folder. Both suites run on every push and before every release.
+
 ### Releases
 
 Bump `## Version:` in `ForeverLoot/ForeverLoot.toc`, add the version's notes to `CHANGELOG.md`, commit, then tag and push:

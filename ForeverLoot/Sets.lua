@@ -109,7 +109,9 @@ local KIND_ORDER = { boss = 1, quest = 2, trash = 3, unconfirmed = 4, craft = 5 
 -- Where a piece comes from: the best source's short name, and every source for its tooltip
 local function PieceSource(itemID)
 	local sources = {}
-	for i, s in ipairs(ns.SourcesOf(itemID)) do sources[i] = s end
+	for _, s in ipairs(ns.SourcesOf(itemID)) do
+		if not (s.kind == "quest" and not ns.QuestForPlayer(s.quest)) then sources[#sources + 1] = s end
+	end
 	if #sources == 0 then return "No known source", "No dungeon, raid, quest or recipe here lists this piece." end
 	table.sort(sources, function(a, b)
 		if a.kind ~= b.kind then return KIND_ORDER[a.kind] < KIND_ORDER[b.kind] end
@@ -187,8 +189,9 @@ end
 function Sets.Default()
 	local byID = {}
 	for _, st in ipairs(ns.Sets) do byID[st.id] = st end
+	-- The set you looked at last, unless the filters now hide it
 	local last = ns.db.lastSet and byID[ns.db.lastSet]
-	if last then return last end
+	if last and Visible(last) then return last end
 	local entries = Sets.Entries()
 	for _, st in ipairs(entries) do
 		if ForMe(st) then return st end

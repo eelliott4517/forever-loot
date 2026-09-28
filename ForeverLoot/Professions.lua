@@ -106,21 +106,48 @@ end
 
 local CHANGED = { "CHANGED", C.steel }
 
--- Your rank in each profession, from the skills list. A collapsed Professions header
--- in the skills panel hides them; the skill colors just don't show then.
-local skills
+-- Your rank in each profession, by name and by skill line id. Forever keeps the skills list
+-- under C_SkillInfo, one table per line (the Classic globals are only a fallback). A profession
+-- under a collapsed header in the skills panel is looked up by its id instead.
+local skills, skillsByID
+local function Add(name, id, rank, maxRank)
+	local info = { rank = rank, max = maxRank }
+	if name then skills[name] = info end
+	if id then skillsByID[id] = info end
+end
 local function PlayerSkills()
 	if skills then return skills end
-	skills = {}
-	if GetNumSkillLines and GetSkillLineInfo then
+	skills, skillsByID = {}, {}
+	local api = C_SkillInfo
+	if api and api.GetNumSkillLines and api.GetSkillLineInfo then
+		for i = 1, api.GetNumSkillLines() do
+			local s = api.GetSkillLineInfo(i)
+			if s and s.name and not s.isHeader then Add(s.name, s.skillID, s.rank, s.maxRank) end
+		end
+		if api.GetSkillLineInfoByID then
+			for _, p in ipairs(ns.Professions or {}) do
+				if p.skill and not skillsByID[p.skill] then
+					local s = api.GetSkillLineInfoByID(p.skill)
+					if s and (s.maxRank or 0) > 0 and (s.rank or 0) > 0 then Add(nil, p.skill, s.rank, s.maxRank) end
+				end
+			end
+		end
+	elseif GetNumSkillLines and GetSkillLineInfo then
 		for i = 1, GetNumSkillLines() do
 			local name, header, _, rank, _, _, maxRank = GetSkillLineInfo(i)
-			if name and not header then skills[name] = { rank = rank, max = maxRank } end
+			if name and not header then Add(name, nil, rank, maxRank) end
 		end
 	end
 	return skills
 end
 K.PlayerSkills = PlayerSkills
+
+-- Your skill in a profession, or nil if you don't have it
+local function MySkill(p)
+	PlayerSkills()
+	return (p.skill and skillsByID[p.skill]) or skills[p.name]
+end
+K.MySkill = MySkill
 
 local function SkillColor(rec, mine)
 	if not (mine and rec.skill) then return nil end
@@ -297,9 +324,13 @@ local function CreateRecipe(parent, width)
 				return
 			end
 			-- Recipes that make no item (enchants) can still be linked as a spell
-			local link = GetSpellLink and GetSpellLink(rec.id)
-			if not (link and IsShiftKeyDown() and ChatEdit_InsertLink and ChatEdit_InsertLink(link)) then
-				ns:Print(rec.name .. " doesn't make an item to link.")
+			local getLink = (C_Spell and C_Spell.GetSpellLink) or GetSpellLink
+			local insert = (ChatFrameUtil and ChatFrameUtil.InsertLink) or ChatEdit_InsertLink
+			local link = getLink and getLink(rec.id)
+			if not link then
+				ns:Print(rec.name .. " can't be linked.")
+			elseif IsShiftKeyDown() and not (insert and insert(link)) then
+				ns:Print("open the chat box first, then shift-click " .. rec.name .. " to link it.")
 			end
 			return
 		end
@@ -407,7 +438,7 @@ function Professions.Entries()
 end
 
 function Professions.RowInfo(p)
-	return p.name, #p.recipes, "", PlayerSkills()[p.name] ~= nil
+	return p.name, #p.recipes, "", MySkill(p) ~= nil
 end
 
 -- Crafting professions come before Cooking and First Aid, and those before gathering,
@@ -420,7 +451,7 @@ function Professions.Default()
 	if last then return last end
 	local best, bestKey
 	for _, p in ipairs(professions) do
-		local mine = PlayerSkills()[p.name]
+		local mine = MySkill(p)
 		if mine then
 			local key = { PRIORITY[p.key] or 1, -mine.rank }
 			if not bestKey or key[1] < bestKey[1] or (key[1] == bestKey[1] and key[2] < bestKey[2]) then
@@ -446,7 +477,7 @@ function Professions.ShowHeader(ui, h, p)
 		if rec.train then trained = trained + 1 end
 	end
 	local parts = { Count(#p.recipes, "recipe"), trained .. " from trainers" }
-	local mine = PlayerSkills()[p.name]
+	local mine = MySkill(p)
 	if mine then parts[#parts + 1] = "Your skill " .. mine.rank .. "/" .. mine.max end
 	h.meta:SetText(table.concat(parts, "   ·   "))
 	h.note:SetText("Forever's recipes, materials and sources from Wowhead (" .. (ns.PROFESSION_DATE or "") .. "). " ..
@@ -458,7 +489,7 @@ end
 -- One collapsible section per group, collapsed until opened (a profession with a single
 -- group shows it open); recipes keep their skill order inside it
 function Professions.Render(ui, p)
-	local mine = PlayerSkills()[p.name]
+	local mine = MySkill(p)
 	local sections, byGroup = {}, {}
 	for _, rec in ipairs(p.recipes) do
 		local group = GroupOf(rec)
@@ -493,7 +524,7 @@ function Professions.Find(filter)
 	local terms = K.ParseQuery(filter.text)
 	local groups, total = {}, 0
 	for _, p in ipairs(professions) do
-		local rows, mine = {}, PlayerSkills()[p.name]
+		local rows, mine = {}, MySkill(p)
 		for _, rec in ipairs(p.recipes) do
 			local extra = rec.item and ns.Wishlist.IsWanted(rec.item) and " wanted wishlist "
 			if K.Matches(RecipeInfo(rec, p), terms, filter, extra) then

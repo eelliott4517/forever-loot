@@ -61,11 +61,18 @@ local function BossByName(dungeon, name)
 	end
 end
 
-function Learn:OnEncounterEnd(_, encounterName, _, _, success)
+-- The boss units the encounter engaged (ENCOUNTER_END's encounterUnitStatus): only loot from
+-- one of them is credited to the encounter, so trash looted afterwards isn't
+function Learn:OnEncounterEnd(_, encounterName, _, _, success, units)
 	if success ~= 1 and success ~= true then return end
 	local dungeon = ns.CurrentDungeon()
 	if dungeon and encounterName then
-		self.last = { name = encounterName, dungeon = dungeon, time = GetTime() }
+		local creatures = {}
+		for _, u in ipairs(type(units) == "table" and units or {}) do
+			local id = type(u) == "table" and u.creatureID
+			if type(id) == "number" and not (issecretvalue and issecretvalue(id)) then creatures[id] = true end
+		end
+		self.last = { name = encounterName, dungeon = dungeon, time = GetTime(), creatures = creatures }
 	end
 end
 
@@ -91,7 +98,8 @@ function Learn:OnLootOpened()
 					if boss and boss.dungeon == dungeon then
 						Record(dungeon, "npc:" .. npcID, boss.name, itemID)
 						changed = true
-					elseif self.last and self.last.dungeon == dungeon and GetTime() - self.last.time <= ENCOUNTER_WINDOW then
+					elseif self.last and self.last.dungeon == dungeon and GetTime() - self.last.time <= ENCOUNTER_WINDOW
+						and self.last.creatures[npcID] then
 						local named = BossByName(dungeon, self.last.name)
 						Record(dungeon, "enc:" .. ns.Normalize(self.last.name), named and named.name or self.last.name, itemID)
 						changed = true

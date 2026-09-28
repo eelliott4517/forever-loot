@@ -42,23 +42,34 @@ local function Gather(filter)
 	local instances = K.SortedDungeons()
 	for _, r in ipairs(K.SortedRaids()) do instances[#instances + 1] = r end
 	for _, d in ipairs(instances) do
-		local rows, here = {}, {}
+		local rows, here, rowOf = {}, {}, {}
 		for _, boss in ipairs(d.bosses) do
 			for _, itemID in ipairs(boss.loot) do
-				if wanted[itemID] then
+				if wanted[itemID] and here[itemID] then
+					-- Another boss here drops it too: one row, "Lucifron +1", both in its tooltip
+					local row = rowOf[itemID]
+					if row then
+						local _, from = BossSource(d, boss)
+						row.others = (row.others or 0) + 1
+						row.source = row.first .. " +" .. row.others
+						row.from = row.from .. " " .. from
+					end
+				elseif wanted[itemID] then
 					placed[itemID], here[itemID] = true, true
 					if Keep(itemID) then
 						local source, from = BossSource(d, boss)
-						rows[#rows + 1] = { itemID = itemID, source = source, from = from,
+						local row = { itemID = itemID, source = source, first = source, from = from,
 							pct = boss.pct and boss.pct[itemID], hint = boss.hints and boss.hints[itemID],
 							owned = ns.Wishlist.IsOwned(itemID) }
+						rows[#rows + 1] = row
+						rowOf[itemID] = row
 					end
 				end
 			end
 		end
-		-- Quest rewards
+		-- Quest rewards, for quests your faction can take
 		for _, q in ipairs(d.quests or {}) do
-			for _, list in ipairs({ q.choices or {}, q.rewards or {} }) do
+			for _, list in ipairs(ns.QuestForPlayer(q) and { q.choices or {}, q.rewards or {} } or {}) do
 				for _, itemID in ipairs(list) do
 					if wanted[itemID] and not here[itemID] then
 						placed[itemID], here[itemID] = true, true
@@ -87,14 +98,13 @@ local function Gather(filter)
 		Group(d, rows)
 	end
 
-	local skills = K.PlayerSkills and K.PlayerSkills() or {}
 	for _, p in ipairs(ns.Professions or {}) do
-		local rows = {}
+		local rows, mine = {}, K.MySkill and K.MySkill(p)
 		for _, rec in ipairs(p.recipes) do
 			if rec.item and wanted[rec.item] then
 				placed[rec.item] = true
 				if Keep(rec.item) then
-					rows[#rows + 1] = { recipe = rec, prof = p, mine = skills[p.name], owned = ns.Wishlist.IsOwned(rec.item) }
+					rows[#rows + 1] = { recipe = rec, prof = p, mine = mine, owned = ns.Wishlist.IsOwned(rec.item) }
 				end
 			end
 		end
@@ -177,7 +187,7 @@ function Wishlist.RowInfo(entry)
 		local level = UnitLevel("player") or 0
 		marker = level >= entry.minLevel and level <= entry.maxLevel
 	elseif entry.recipes then
-		marker = K.PlayerSkills ~= nil and K.PlayerSkills()[entry.name] ~= nil
+		marker = K.MySkill ~= nil and K.MySkill(entry) ~= nil
 	end
 	return entry.name, counts[entry] or 0, "", marker
 end

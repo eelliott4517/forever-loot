@@ -35,8 +35,12 @@ end
 function ns.TooltipLines(itemID)
 	local sources = ns.SourcesOf(itemID)
 	if #sources == 0 then return nil end
+	-- Quests the other faction gets aren't a source for you, as on the Dungeons tab
 	local sorted = {}
-	for i, s in ipairs(sources) do sorted[i] = s end
+	for _, s in ipairs(sources) do
+		if not (s.kind == "quest" and not ns.QuestForPlayer(s.quest)) then sorted[#sorted + 1] = s end
+	end
+	if #sorted == 0 then return nil end
 	table.sort(sorted, function(a, b)
 		if a.kind ~= b.kind then return KIND_ORDER[a.kind] < KIND_ORDER[b.kind] end
 		if (a.pct or 0) ~= (b.pct or 0) then return (a.pct or 0) > (b.pct or 0) end

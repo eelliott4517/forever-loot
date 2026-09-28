@@ -736,7 +736,9 @@ function UI:Create()
 
 	local f = CreateFrame("Frame", "ForeverLootFrame", UIParent)
 	f:SetSize(WIDTH, HEIGHT)
-	f:SetFrameStrata("HIGH")
+	-- Blizzard's panels' layer, so the dressing room from Ctrl-click (and any other window you
+	-- open) comes up in front instead of under it; clicking brings this back to the front
+	f:SetFrameStrata("MEDIUM")
 	f:SetToplevel(true)
 	f:SetClampedToScreen(true)
 	f:SetMovable(true)

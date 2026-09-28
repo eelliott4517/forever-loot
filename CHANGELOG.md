@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.1
+
+- **Your profession skills show up now.** The Professions tab's skill colors, the red bar on professions you know, "Your skill" and opening on your own profession never worked on Forever, which keeps the skills list in a different place than Classic. They do now, in any client language, and professions under a collapsed header in your skills panel count too.
+- Shift-clicking an enchant now links it in chat. With the chat box closed it tells you to open it.
+- Loot recorded from your own kills is credited only to the encounter's own bosses. Trash looted in the minutes after a boss fight no longer shows up as that boss's drop.
+- A wishlist item several bosses drop is one row ("Lucifron +2"), counted once.
+- Item tooltips, set pieces and the wishlist no longer list quest rewards from the other faction's quests.
+- The Sets tab doesn't reopen a set your filters hide.
+- The window now opens on the same layer as Blizzard's windows, so the dressing room (Ctrl-click) and other windows come up in front of it.
+
 ## 1.6.0
 
 - **Where it drops, on every item tooltip.** Bags, chat links, the auction house and loot windows now show which bosses drop an item (with drop chances), which quest gives it, and which profession makes it. `/fl tooltip` turns it off.
