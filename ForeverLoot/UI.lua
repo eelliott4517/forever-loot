@@ -27,22 +27,23 @@ UI.selected = {}
 -- start open and forget their state with each new search.
 UI.sections, UI.searchSections = {}, {}
 
-local WIDTH, HEIGHT = 870, 590
-local TITLE_H, FOOTER_H = 34, 26
+-- The window is built from the game's own templates (portrait frame, insets, side tabs,
+-- search box, dropdowns, checkboxes, scroll bars), so it takes on WoW: Forever's own art
+local WIDTH, HEIGHT = 880, 600
+local TOP_H, FOOTER_H = 60, 26
 local LIST_W = 272
-local LIST_ROW_H = 24
-local HEADER_H = 90
+local LIST_ROW_H = 22
+local HEADER_H = 96
 local WING_H = 26
 local BOSS_H = 28
-local ITEM_H = 26
+local ITEM_H = 28
 local NOTE_H = 22
 local SECTION_GAP = 10
-local SCROLL_STEP = 48
-local SEARCH_H, FILTER_H, TOGGLE_H = 24, 22, 18
+local SEARCH_H = 20
 local QUEST_H = 26
 local SOURCE_W = 140
 local PAINT_PAD = 60
-local MENU_COLS, MENU_COL_W, MENU_ROW_H, MENU_PAD = 3, 92, 20, 8
+local SCROLLBAR_W = 18
 K.WING_H, K.ITEM_H, K.NOTE_H, K.SECTION_GAP = WING_H, ITEM_H, NOTE_H, SECTION_GAP
 
 ----------------------------------------------------------------------
@@ -54,64 +55,22 @@ local function Tex(parent, layer, color, alpha)
 	return t
 end
 
-local function Border(frame, color, alpha)
-	local top = Tex(frame, "BORDER", color, alpha)
-	top:SetPoint("TOPLEFT"); top:SetPoint("TOPRIGHT"); top:SetHeight(1)
-	local bottom = Tex(frame, "BORDER", color, alpha)
-	bottom:SetPoint("BOTTOMLEFT"); bottom:SetPoint("BOTTOMRIGHT"); bottom:SetHeight(1)
-	local left = Tex(frame, "BORDER", color, alpha)
-	left:SetPoint("TOPLEFT"); left:SetPoint("BOTTOMLEFT"); left:SetWidth(1)
-	local right = Tex(frame, "BORDER", color, alpha)
-	right:SetPoint("TOPRIGHT"); right:SetPoint("BOTTOMRIGHT"); right:SetWidth(1)
-	return { top, bottom, left, right }
+-- A texture from the game's atlases: the same pieces Blizzard's lists and headers use
+local function Atlas(parent, layer, atlas, alpha)
+	local t = parent:CreateTexture(nil, layer or "ARTWORK")
+	t:SetAtlas(atlas)
+	if alpha then t:SetAlpha(alpha) end
+	return t
 end
 
-local function SetBorderColor(edges, color)
-	for _, t in ipairs(edges) do t:SetColorTexture(color[1], color[2], color[3], 1) end
-end
-
--- Small arrows drawn from color bars, so they don't depend on texture files
-local function DownArrow(parent, color)
-	local a = CreateFrame("Frame", nil, parent)
-	a:SetSize(7, 4)
-	for i, w in ipairs({ 7, 5, 3, 1 }) do
-		local line = Tex(a, "ARTWORK", color, 1)
-		line:SetSize(w, 1)
-		line:SetPoint("TOP", 0, 1 - i)
-	end
-	return a
-end
-
-local function RightArrow(parent, color)
-	local a = CreateFrame("Frame", nil, parent)
-	a:SetSize(4, 7)
-	for i, h in ipairs({ 7, 5, 3, 1 }) do
-		local line = Tex(a, "ARTWORK", color, 1)
-		line:SetSize(1, h)
-		line:SetPoint("LEFT", i - 1, 0)
-	end
-	return a
-end
-
-local fonts = {}
-local function Font(key, base, color, size)
-	if not fonts[key] then
-		base = base or GameFontNormal
-		local f = CreateFont("ForeverLootFont_" .. key)
-		f:CopyFontObject(base)
-		if size then
-			local file, _, flags = base:GetFont()
-			f:SetFont(file, size, flags or "")
-		end
-		f:SetTextColor(color[1], color[2], color[3])
-		fonts[key] = f
-	end
-	return fonts[key]
+-- The game's font objects by name, so text matches the rest of the interface
+local function Font(name)
+	return _G[name] or GameFontHighlight
 end
 
 local function Text(parent, font, justify)
 	local fs = parent:CreateFontString(nil, "OVERLAY")
-	fs:SetFontObject(font)
+	fs:SetFontObject(type(font) == "string" and Font(font) or font)
 	fs:SetJustifyH(justify or "LEFT")
 	fs:SetWordWrap(false)
 	return fs
@@ -138,85 +97,87 @@ local function Money(copper)
 	return table.concat(parts, " ")
 end
 
-local function FlatButton(parent, label, width, height)
-	local b = CreateFrame("Button", nil, parent)
-	b:SetSize(width, height)
-	b.bg = Tex(b, "BACKGROUND", C.steel, 1)
-	b.bg:SetAllPoints()
-	b.label = Text(b, Font("button", GameFontHighlightSmall, C.light, 11), "CENTER")
-	b.label:SetPoint("CENTER")
-	b.label:SetText(label)
-	b:SetScript("OnEnter", function(self) self.bg:SetColorTexture(C.blue[1], C.blue[2], C.blue[3], 1) end)
-	b:SetScript("OnLeave", function(self) self.bg:SetColorTexture(C.steel[1], C.steel[2], C.steel[3], 1) end)
+-- The standard red panel button
+local function PanelButton(parent, label, width)
+	local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+	b:SetSize(width, 22)
+	b:SetText(label)
 	return b
 end
 
+-- A tooltip in the game's style: a white title, gold text under it
 local function ShowHint(owner, title, line)
 	GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
-	GameTooltip:AddLine(title, C.light[1], C.light[2], C.light[3])
-	if line then GameTooltip:AddLine(line, C.mist[1], C.mist[2], C.mist[3], true) end
+	GameTooltip:SetText(title, C.white[1], C.white[2], C.white[3])
+	if line then GameTooltip:AddLine(line, C.gold[1], C.gold[2], C.gold[3], true) end
 	GameTooltip:Show()
 end
 
-K.Tex, K.Border, K.Font, K.Text, K.SetTextColor, K.HexToRGB = Tex, Border, Font, Text, SetTextColor, HexToRGB
-K.Count, K.Money, K.ShowHint = Count, Money, ShowHint
+-- The hover and selection art of Blizzard's own lists (the Professions recipe list)
+local function RowHighlight(row, alpha)
+	local h = Atlas(row, "HIGHLIGHT", "Professions_Recipe_Hover", alpha or 0.5)
+	h:SetAllPoints()
+	return h
+end
 
--- ScrollFrame with a slim brand-colored scrollbar and mouse wheel support
+-- Difficulty colors for a level, as the quest log colors quests (and falls back to its
+-- rules where the client doesn't expose them)
+local DIFFICULTY = {
+	impossible = { 1.00, 0.10, 0.10 }, verydifficult = { 1.00, 0.50, 0.25 }, difficult = { 1.00, 0.82, 0.00 },
+	standard = { 0.25, 0.75, 0.25 }, trivial = { 0.50, 0.50, 0.50 },
+}
+local function GreenRange(level)
+	if GetQuestGreenRange then return GetQuestGreenRange() end
+	if level <= 5 then return 5 elseif level <= 39 then return math.floor(level / 10) + 5 end
+	return math.floor(level / 5) + 1
+end
+local function DifficultyColor(level)
+	local player = UnitLevel("player") or 1
+	local diff = level - player
+	local key
+	if diff >= 5 then key = "impossible"
+	elseif diff >= 3 then key = "verydifficult"
+	elseif diff >= -2 then key = "difficult"
+	elseif -diff <= GreenRange(player) then key = "standard"
+	else key = "trivial" end
+	local c = QuestDifficultyColors and QuestDifficultyColors[key]
+	if c then return { c.r, c.g, c.b } end
+	return DIFFICULTY[key]
+end
+
+K.Tex, K.Atlas, K.Font, K.Text, K.SetTextColor, K.HexToRGB = Tex, Atlas, Font, Text, SetTextColor, HexToRGB
+K.Count, K.Money, K.ShowHint, K.PanelButton, K.RowHighlight = Count, Money, ShowHint, PanelButton, RowHighlight
+K.DifficultyColor = DifficultyColor
+
+-- A ScrollFrame with the game's minimal scroll bar (ScrollFrameTemplate wires the bar and the
+-- mouse wheel); the bar sits just right of it
 local function CreateScrollArea(parent, contentWidth)
-	local sf = CreateFrame("ScrollFrame", nil, parent)
+	local sf = CreateFrame("ScrollFrame", nil, parent, "ScrollFrameTemplate")
+	if sf.ScrollBar and sf.ScrollBar.SetHideIfUnscrollable then sf.ScrollBar:SetHideIfUnscrollable(true) end
 	local content = CreateFrame("Frame", nil, sf)
 	content:SetSize(contentWidth, 1)
 	sf:SetScrollChild(content)
 	sf.content = content
 
-	local bar = CreateFrame("Slider", nil, parent)
-	bar:SetOrientation("VERTICAL")
-	bar:SetWidth(6)
-	bar:SetPoint("TOPLEFT", sf, "TOPRIGHT", 4, 0)
-	bar:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 4, 0)
-	local track = Tex(bar, "BACKGROUND", C.graphite, 0.7)
-	track:SetAllPoints()
-	local thumb = bar:CreateTexture(nil, "OVERLAY")
-	thumb:SetColorTexture(C.blue[1], C.blue[2], C.blue[3], 1)
-	thumb:SetSize(6, 40)
-	bar:SetThumbTexture(thumb)
-	bar:SetMinMaxValues(0, 0)
-	bar:SetValueStep(1)
-	bar:SetValue(0)
-	bar:SetScript("OnValueChanged", function(_, value)
-		sf:SetVerticalScroll(value)
-		if sf.OnScrolled then sf:OnScrolled() end
-	end)
-	bar.thumb = thumb
-	sf.bar = bar
-
-	sf:EnableMouseWheel(true)
-	sf:SetScript("OnMouseWheel", function(_, delta)
-		local lo, hi = bar:GetMinMaxValues()
-		bar:SetValue(math.max(lo, math.min(hi, bar:GetValue() - delta * SCROLL_STEP)))
-	end)
-
 	function sf:SetContentHeight(h)
 		content:SetHeight(math.max(h, 1))
-		local view = self:GetHeight()
-		local maxScroll = math.max(0, h - view)
-		bar:SetMinMaxValues(0, maxScroll)
-		if maxScroll <= 0 then
-			bar:Hide()
-			bar:SetValue(0)
-			self:SetVerticalScroll(0)
-		else
-			bar:Show()
-			thumb:SetHeight(math.max(24, view * view / h))
-			if bar:GetValue() > maxScroll then bar:SetValue(maxScroll) end
-		end
+		self:UpdateScrollChildRect()
+		local range = self:GetVerticalScrollRange()
+		if self:GetVerticalScroll() > range then self:SetVerticalScroll(range) end
+	end
+
+	-- Scrolls to an offset, kept inside the content
+	function sf:ScrollTo(offset)
+		self:SetVerticalScroll(math.max(0, math.min(offset, self:GetVerticalScrollRange())))
 	end
 
 	function sf:ScrollToTop()
-		bar:SetValue(0)
 		self:SetVerticalScroll(0)
 	end
 
+	sf:HookScript("OnVerticalScroll", function(self)
+		if self.onScrolled then self:onScrolled() end
+	end)
 	return sf
 end
 
@@ -279,21 +240,22 @@ local function FormatPct(p)
 	return (("%.1f"):format(p):gsub("%.0$", "")) .. "%"
 end
 
--- Item flags from Data.lua: 1 new in Forever, 2 Classic only, 3 new with no confirmed boss
+-- Item flags from Data.lua: 1 new in Forever, 2 Classic only, 3 new with no confirmed boss.
+-- Shown as a colored word next to the item's name.
 local BADGES = {
-	owned = { "OWNED", C.blue },
-	seen = { "SEEN", C.blue },
-	new = { "NEW", C.red },
-	classic = { "CLASSIC", C.slate },
+	owned = { "Owned", C.blue },
+	seen = { "Seen", C.blue },
+	new = { "New", C.green },
+	classic = { "Classic", C.grey },
 }
 K.BADGES = BADGES
 
 -- The tooltip line under any item that can go on the wishlist
 function K.WishlistNote(itemID)
 	if ns.Wishlist.IsWanted(itemID) then
-		return { "On your wishlist. Right-click to take it off.", C.light }
+		return { "On your wishlist. Right-click to take it off.", C.white }
 	end
-	return { "Right-click to add it to your wishlist.", C.mist }
+	return { "Right-click to add it to your wishlist.", C.green }
 end
 
 -- The item part of a row's tooltip: the game's own once the server has sent the item,
@@ -348,69 +310,51 @@ function K.ItemModifiedClick(itemID)
 end
 
 ----------------------------------------------------------------------
--- Wowhead link popup (WoW can't open a browser, so give a copyable URL)
+-- Wowhead link dialog (WoW can't open a browser, so give a copyable URL). It's the
+-- game's own popup with an edit box, like the ones for sharing a link or naming a set.
 ----------------------------------------------------------------------
-function UI:ShowURL(title, url)
-	local p = self.urlPopup
-	if not p then
-		p = CreateFrame("Frame", "ForeverLootURLPopup", UIParent)
-		p:SetSize(460, 104)
-		p:SetPoint("CENTER", 0, 160)
-		p:SetFrameStrata("DIALOG")
-		p:SetToplevel(true)
-		p:EnableMouse(true)
-		Tex(p, "BACKGROUND", C.night, 0.98):SetAllPoints()
-		Border(p, C.blue, 1)
+local URL_DIALOG = "FOREVERLOOT_WOWHEAD_LINK"
 
-		p.title = Text(p, Font("body", GameFontHighlight, C.light, 12))
-		p.title:SetPoint("TOPLEFT", 14, -14)
-		p.title:SetPoint("RIGHT", -40, 0)
+local function DialogEditBox(dialog)
+	return (dialog.GetEditBox and dialog:GetEditBox()) or dialog.editBox or dialog.EditBox
+end
 
-		local close = CreateFrame("Button", nil, p)
-		close:SetSize(24, 24)
-		close:SetPoint("TOPRIGHT", -6, -6)
-		close.bg = Tex(close, "BACKGROUND", C.graphite, 0)
-		close.bg:SetAllPoints()
-		local x = Text(close, Font("close", GameFontHighlight, C.light, 13), "CENTER")
-		x:SetPoint("CENTER", 0, 1)
-		x:SetText("X")
-		close:SetScript("OnEnter", function(self) self.bg:SetColorTexture(C.red[1], C.red[2], C.red[3], 1) end)
-		close:SetScript("OnLeave", function(self) self.bg:SetColorTexture(C.graphite[1], C.graphite[2], C.graphite[3], 0) end)
-		close:SetScript("OnClick", function() p:Hide() end)
-
-		local eb = CreateFrame("EditBox", nil, p)
-		eb:SetPoint("TOPLEFT", 14, -40)
-		eb:SetPoint("TOPRIGHT", -14, -40)
-		eb:SetHeight(26)
-		eb:SetAutoFocus(false)
-		eb:SetFontObject(Font("url", ChatFontNormal, C.light))
-		eb:SetTextInsets(8, 8, 0, 0)
-		Tex(eb, "BACKGROUND", C.black, 0.7):SetAllPoints()
-		Border(eb, C.graphite, 1)
-		eb:SetScript("OnEscapePressed", function() p:Hide() end)
-		eb:SetScript("OnEnterPressed", function() p:Hide() end)
-		eb:SetScript("OnTextChanged", function(self, userInput)
-			if userInput then
-				self:SetText(p.url or "")
-				self:HighlightText()
+if StaticPopupDialogs then
+	StaticPopupDialogs[URL_DIALOG] = {
+		text = "%s|n|nPress Ctrl+C (Cmd+C on a Mac) to copy the link, then paste it into your browser.",
+		button1 = CLOSE or "Close",
+		hasEditBox = 1,
+		editBoxWidth = 350,
+		OnShow = function(dialog, data)
+			local box = DialogEditBox(dialog)
+			if box and data then
+				box:SetText(data.url)
+				box:HighlightText()
+				box:SetFocus()
 			end
-		end)
-		eb:SetScript("OnMouseUp", function(self) self:HighlightText() end)
-		p.editBox = eb
+		end,
+		-- The link can't be edited away: typing puts it back
+		EditBoxOnTextChanged = function(box, data)
+			if data and box:GetText() ~= data.url then
+				box:SetText(data.url)
+				box:HighlightText()
+			end
+		end,
+		EditBoxOnEnterPressed = function(box) box:GetParent():Hide() end,
+		EditBoxOnEscapePressed = function(box) box:GetParent():Hide() end,
+		timeout = 0,
+		whileDead = 1,
+		hideOnEscape = 1,
+	}
+end
 
-		local hint = Text(p, Font("hint", GameFontHighlightSmall, C.mist, 10))
-		hint:SetPoint("BOTTOMLEFT", 14, 12)
-		hint:SetText("Press Ctrl+C (Cmd+C on Mac) to copy, then paste it into your browser.")
-
-		tinsert(UISpecialFrames, "ForeverLootURLPopup")
-		self.urlPopup = p
+function UI:ShowURL(title, url)
+	self.lastURL = { title = title, url = url }
+	if StaticPopup_Show and StaticPopupDialogs and StaticPopupDialogs[URL_DIALOG] then
+		StaticPopup_Show(URL_DIALOG, title, nil, { url = url })
+	else
+		ns:Print(title .. ": " .. url)
 	end
-	p.url = url
-	p.title:SetText(title)
-	p.editBox:SetText(url)
-	p:Show()
-	p.editBox:SetFocus()
-	p.editBox:HighlightText()
 end
 
 ----------------------------------------------------------------------
@@ -470,235 +414,80 @@ for _, menu in pairs(FILTER_MENUS) do
 	end
 end
 
+-- The game's search box: magnifier, grey hint text and the clear button come with it
 local function CreateSearchBox(parent)
-	local eb = CreateFrame("EditBox", "ForeverLootSearchBox", parent)
+	local eb = CreateFrame("EditBox", "ForeverLootSearchBox", parent, "SearchBoxTemplate")
 	eb:SetHeight(SEARCH_H)
-	eb:SetAutoFocus(false)
 	eb:SetMaxLetters(60)
-	eb:EnableMouse(true)
-	eb:SetFontObject(Font("search", ChatFontNormal, C.light, 12))
-	eb:SetTextInsets(24, 22, 0, 0)
-	Tex(eb, "BACKGROUND", C.black, 0.7):SetAllPoints()
-	eb.edges = Border(eb, C.graphite, 1)
-
-	local icon = eb:CreateTexture(nil, "ARTWORK")
-	icon:SetSize(14, 14)
-	icon:SetPoint("LEFT", 6, 0)
-	icon:SetTexture("Interface\\Common\\UI-Searchbox-Icon")
-	icon:SetVertexColor(C.mist[1], C.mist[2], C.mist[3])
-
-	eb.hint = Text(eb, Font("search_hint", GameFontHighlightSmall, C.mist, 11))
-	eb.hint:SetPoint("LEFT", 24, 0)
-	eb.hint:SetPoint("RIGHT", -22, 0)
-	eb.hint:SetAlpha(0.75)
-
-	local clear = CreateFrame("Button", nil, eb)
-	clear:SetSize(18, 18)
-	clear:SetPoint("RIGHT", -3, 0)
-	clear.bg = Tex(clear, "BACKGROUND", C.red, 0)
-	clear.bg:SetAllPoints()
-	local x = Text(clear, Font("search_clear", GameFontHighlightSmall, C.light, 11), "CENTER")
-	x:SetPoint("CENTER", 0, 0)
-	x:SetText("X")
-	clear:SetScript("OnEnter", function(self)
-		self.bg:SetColorTexture(C.red[1], C.red[2], C.red[3], 1)
-		ShowHint(self, "Clear the search")
+	-- Typing and the clear button both land here (the clear button sets the text to "")
+	eb:HookScript("OnTextChanged", function(self)
+		UI:SetSearchText(self:GetText())
 	end)
-	clear:SetScript("OnLeave", function(self)
-		self.bg:SetColorTexture(C.red[1], C.red[2], C.red[3], 0)
-		GameTooltip:Hide()
-	end)
-	clear:SetScript("OnClick", function()
-		eb:SetText("")
-		eb:ClearFocus()
-		UI:SetSearchText("")
-	end)
-	clear:Hide()
-	eb.clear = clear
-
-	eb:SetScript("OnTextChanged", function(self, userInput)
-		local text = self:GetText()
-		self.hint:SetShown(text == "")
-		self.clear:SetShown(text ~= "")
-		if userInput then UI:SetSearchText(text) end
-	end)
-	eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-	eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-	eb:SetScript("OnEditFocusGained", function(self) SetBorderColor(self.edges, C.blue) end)
-	eb:SetScript("OnEditFocusLost", function(self) SetBorderColor(self.edges, C.graphite) end)
 	return eb
 end
 
+-- A Slot or Type dropdown on Blizzard's menu system, with its choices grouped under titles
 local function CreateDropdown(parent, which, width)
-	local b = CreateFrame("Button", nil, parent)
-	b:SetSize(width, FILTER_H)
-	b.which = which
-	b.bg = Tex(b, "BACKGROUND", C.black, 0.7)
-	b.bg:SetAllPoints()
-	b.edges = Border(b, C.graphite, 1)
-	b.text = Text(b, Font("filter", GameFontHighlightSmall, C.mist, 11))
-	b.text:SetPoint("LEFT", 8, 0)
-	b.text:SetPoint("RIGHT", -20, 0)
-	DownArrow(b, C.mist):SetPoint("RIGHT", -8, 0)
-	b:SetScript("OnEnter", function(self) SetBorderColor(self.edges, C.blue) end)
-	b:SetScript("OnLeave", function(self) SetBorderColor(self.edges, C.graphite) end)
-	b:SetScript("OnClick", function(self)
-		UI:ClearSearchFocus()
-		UI:OpenMenu(self)
+	local spec = FILTER_MENUS[which]
+	local d = CreateFrame("DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
+	d:SetWidth(width)
+	d.which = which
+	d:SetDefaultText(spec.all)
+	local function IsSelected(key) return UI.filter[which] == key end
+	local function SetSelected(key) UI:SetFilter(which, key, true) end
+	d:SetupMenu(function(_, root)
+		root:CreateRadio(spec.all, function() return UI.filter[which] == nil end, function() UI:SetFilter(which, nil, true) end)
+		for _, group in ipairs(MenuGroups(which, UI.mode)) do
+			root:CreateTitle(group[1])
+			for i = 2, #group do root:CreateRadio(group[i][2], IsSelected, SetSelected, group[i][1]) end
+		end
 	end)
-	return b
+	-- "Slot: Hands" on the button once something is picked
+	d:SetSelectionTranslator(function(selection)
+		if selection.data == nil then return spec.all end
+		return spec.label .. ": " .. (spec.names[selection.data] or selection.text or "")
+	end)
+	return d
 end
 
 -- A checkbox for the loot filters (My class, Hide Classic)
-local function CreateToggle(parent, key, label, width)
-	local b = CreateFrame("Button", nil, parent)
-	b:SetSize(width, TOGGLE_H)
+local function CreateToggle(parent, key, label)
+	local b = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+	b:SetSize(24, 24)
 	b.key = key
-	local box = CreateFrame("Frame", nil, b)
-	box:SetSize(12, 12)
-	box:SetPoint("LEFT", 1, 0)
-	Tex(box, "BACKGROUND", C.black, 0.7):SetAllPoints()
-	box.edges = Border(box, C.graphite, 1)
-	b.box = box
-	b.check = Tex(box, "ARTWORK", C.blue, 1)
-	b.check:SetPoint("TOPLEFT", 3, -3)
-	b.check:SetPoint("BOTTOMRIGHT", -3, 3)
-	b.text = Text(b, Font("toggle", GameFontHighlightSmall, C.mist, 11))
-	b.text:SetPoint("LEFT", box, "RIGHT", 6, 0)
-	b.text:SetText(label)
+	b.Text:SetText(label)
 	b:SetScript("OnEnter", function(self)
-		SetBorderColor(self.box.edges, C.blue)
-		ShowHint(self, self.text:GetText(), self.Hint and self.Hint())
+		ShowHint(self, label, self.Hint and self.Hint())
 	end)
-	b:SetScript("OnLeave", function(self)
-		SetBorderColor(self.box.edges, C.graphite)
-		GameTooltip:Hide()
-	end)
+	b:SetScript("OnLeave", function() GameTooltip:Hide() end)
 	b:SetScript("OnClick", function(self)
+		if SOUNDKIT then
+			PlaySound(self:GetChecked() and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+		end
 		UI:ClearSearchFocus()
 		UI:ToggleFilter(self.key)
 	end)
 	return b
 end
 
-local function CreateMenuOption(menu)
-	local o = CreateFrame("Button", nil, menu)
-	o:SetHeight(MENU_ROW_H)
-	o.hover = Tex(o, "BACKGROUND", C.steel, 0.55)
-	o.hover:SetAllPoints()
-	o.hover:Hide()
-	o.selected = Tex(o, "BACKGROUND", C.blue, 1)
-	o.selected:SetAllPoints()
-	o.selected:Hide()
-	o.text = Text(o, Font("menu_option", GameFontHighlightSmall, C.light, 11))
-	o.text:SetPoint("LEFT", 8, 0)
-	o.text:SetPoint("RIGHT", -4, 0)
-	o:SetScript("OnEnter", function(self) if not self.selected:IsShown() then self.hover:Show() end end)
-	o:SetScript("OnLeave", function(self) self.hover:Hide() end)
-	o:SetScript("OnClick", function(self)
-		UI:CloseMenu()
-		UI:SetFilter(menu.which, self.key)
-	end)
-	return o
-end
-
-function UI:OpenMenu(button)
-	local m = self.menu
-	if not m then
-		-- Invisible layer over the whole screen, under the menu: a click anywhere else closes it
-		local catcher = CreateFrame("Button", nil, self.frame)
-		catcher:SetFrameStrata("DIALOG")
-		catcher:SetAllPoints(UIParent)
-		catcher:EnableMouse(true)
-		catcher:SetScript("OnMouseDown", function() UI:CloseMenu() end)
-		catcher:Hide()
-		self.menuCatcher = catcher
-
-		m = CreateFrame("Frame", nil, self.frame)
-		m:SetFrameStrata("DIALOG")
-		m:SetFrameLevel(catcher:GetFrameLevel() + 10)
-		m:EnableMouse(true)
-		Tex(m, "BACKGROUND", C.night, 0.98):SetAllPoints()
-		Border(m, C.blue, 1)
-		m.options, m.labels = {}, {}
-		m:Hide()
-		self.menu = m
-	end
-
-	local spec = FILTER_MENUS[button.which]
-	local current = self.filter[button.which]
-	m.which = button.which
-	for _, o in ipairs(m.options) do o:Hide() end
-	for _, l in ipairs(m.labels) do l:Hide() end
-
-	local inner = MENU_COLS * MENU_COL_W
-	local y, used = MENU_PAD, 0
-	local function AddOption(key, name, x, width)
-		used = used + 1
-		local o = m.options[used]
-		if not o then
-			o = CreateMenuOption(m)
-			m.options[used] = o
-		end
-		o:ClearAllPoints()
-		o:SetPoint("TOPLEFT", MENU_PAD + x, -y)
-		o:SetWidth(width)
-		o.key = key
-		o.text:SetText(name)
-		o.selected:SetShown(key == current)
-		o.hover:Hide()
-		o:Show()
-	end
-
-	AddOption(nil, spec.all, 0, inner)
-	y = y + MENU_ROW_H + 4
-	for g, group in ipairs(MenuGroups(button.which, self.mode)) do
-		local label = m.labels[g]
-		if not label then
-			label = Text(m, Font("label", GameFontNormalSmall, C.red, 10))
-			m.labels[g] = label
-		end
-		label:ClearAllPoints()
-		label:SetPoint("TOPLEFT", MENU_PAD + 8, -(y + 4))
-		label:SetText(group[1]:upper())
-		label:Show()
-		y = y + 20
-		for i = 2, #group do
-			local col = (i - 2) % MENU_COLS
-			AddOption(group[i][1], group[i][2], col * MENU_COL_W, MENU_COL_W)
-			if col == MENU_COLS - 1 or i == #group then y = y + MENU_ROW_H end
-		end
-		y = y + 4
-	end
-	m:SetSize(inner + MENU_PAD * 2, y + MENU_PAD - 4)
-	m:ClearAllPoints()
-	m:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 0, -2)
-	self.menuCatcher:Show()
-	m:Show()
-end
-
+-- Closes a dropdown menu that's open (the menu system closes it anyway when the window hides)
 function UI:CloseMenu()
-	if self.menu then
-		self.menu:Hide()
-		self.menuCatcher:Hide()
+	for _, d in pairs(self.filterButtons or {}) do
+		if d.IsMenuOpen and d:IsMenuOpen() then d:CloseMenu() end
 	end
 end
 
+-- The dropdowns show whatever the filter is now (after a search reset or a tab switch)
 function UI:UpdateFilterButtons()
-	for which, b in pairs(self.filterButtons) do
-		local spec, value = FILTER_MENUS[which], self.filter[which]
-		b.text:SetText(spec.label .. ": " .. ns.Colorize(C.light, value and spec.names[value] or "Any"))
-		local bg = value and C.steel or C.black
-		b.bg:SetColorTexture(bg[1], bg[2], bg[3], value and 1 or 0.7)
+	for _, d in pairs(self.filterButtons or {}) do
+		if d.GenerateMenu then d:GenerateMenu() end
 	end
 end
 
 function UI:UpdateToggles()
 	local f = K.Filters()
 	for key, t in pairs(self.toggles or {}) do
-		local on = f[key] and true or false
-		t.check:SetShown(on)
-		SetTextColor(t.text, on and C.light or C.mist)
+		t:SetChecked(f[key] and true or false)
 	end
 end
 
@@ -734,7 +523,8 @@ function UI:Create()
 	if self.frame then return self.frame end
 	self.mode = (ns.db.mode and self.modes[ns.db.mode]) and ns.db.mode or self.modeOrder[1]
 
-	local f = CreateFrame("Frame", "ForeverLootFrame", UIParent)
+	-- A portrait frame like the game's own windows: title, portrait and close button included
+	local f = CreateFrame("Frame", "ForeverLootFrame", UIParent, "PortraitFrameTemplate")
 	f:SetSize(WIDTH, HEIGHT)
 	-- Blizzard's panels' layer, so the dressing room from Ctrl-click (and any other window you
 	-- open) comes up in front instead of under it; clicking brings this back to the front
@@ -747,185 +537,153 @@ function UI:Create()
 	self.frame = f
 	self:ResetPosition(true)
 	tinsert(UISpecialFrames, "ForeverLootFrame")
-
-	Tex(f, "BACKGROUND", C.night, 0.97):SetAllPoints()
-	Border(f, C.graphite, 1)
-
-	-- Title bar (drag handle)
-	local bar = CreateFrame("Frame", nil, f)
-	bar:SetPoint("TOPLEFT", 1, -1)
-	bar:SetPoint("TOPRIGHT", -1, -1)
-	bar:SetHeight(TITLE_H)
-	bar:EnableMouse(true)
-	bar:RegisterForDrag("LeftButton")
-	bar:SetScript("OnDragStart", function() f:StartMoving() end)
-	bar:SetScript("OnDragStop", function() f:StopMovingOrSizing(); UI:SavePosition() end)
-	Tex(bar, "BACKGROUND", C.navy, 1):SetAllPoints()
-	local stripe = Tex(bar, "ARTWORK", C.red, 1)
-	stripe:SetPoint("BOTTOMLEFT"); stripe:SetPoint("BOTTOMRIGHT"); stripe:SetHeight(2)
-
-	local icon = bar:CreateTexture(nil, "ARTWORK")
-	icon:SetSize(20, 20)
-	icon:SetPoint("LEFT", 10, 1)
-	icon:SetTexture(ns.ICON)
-	icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-
-	local title = Text(bar, Font("title", GameFontNormalLarge, C.light, 15))
-	title:SetPoint("LEFT", icon, "RIGHT", 8, 0)
-	title:SetText(ns.name)
-
-	-- A tab per mode, right after the title
-	self.tabs = {}
-	local x = 38 + math.ceil(title:GetStringWidth()) + 18
-	for _, key in ipairs(self.modeOrder) do
-		local t = CreateFrame("Button", nil, bar)
-		t.key = key
-		t:SetHeight(TITLE_H - 2)
-		t:SetPoint("TOPLEFT", bar, "TOPLEFT", x, 0)
-		t.bg = Tex(t, "BACKGROUND", C.blue, 1)
-		t.bg:SetAllPoints()
-		t.label = Text(t, Font("tab", GameFontNormal, C.light, 11), "CENTER")
-		t.label:SetPoint("CENTER", 0, 1)
-		t.label:SetText(self.modes[key].tab:upper())
-		t:SetWidth(math.ceil(t.label:GetStringWidth()) + 28)
-		t:SetScript("OnEnter", function(self)
-			if UI.mode ~= self.key then
-				self.bg:SetColorTexture(C.steel[1], C.steel[2], C.steel[3], 0.8)
-				self.bg:Show()
-				SetTextColor(self.label, C.light)
-			end
-		end)
-		t:SetScript("OnLeave", function() UI:UpdateTabs() end)
-		t:SetScript("OnClick", function(self)
-			UI:ClearSearchFocus()
-			UI:SetMode(self.key)
-		end)
-		self.tabs[#self.tabs + 1] = t
-		x = x + t:GetWidth() + 2
+	if f.SetTitle then f:SetTitle(ns.name) end
+	if f.SetPortraitToAsset then f:SetPortraitToAsset(ns.ICON) end
+	-- The close button goes through UI:Hide, for its sound
+	f.onCloseCallback = function()
+		UI:Hide()
+		return false
 	end
 
-	local close = CreateFrame("Button", nil, bar)
-	close:SetSize(TITLE_H - 2, TITLE_H - 2)
-	close:SetPoint("TOPRIGHT", 0, 0)
-	close.bg = Tex(close, "BACKGROUND", C.red, 0)
-	close.bg:SetAllPoints()
-	local xText = Text(close, Font("close", GameFontHighlight, C.light, 13), "CENTER")
-	xText:SetPoint("CENTER", 0, 1)
-	xText:SetText("X")
-	close:SetScript("OnEnter", function(self) self.bg:SetColorTexture(C.red[1], C.red[2], C.red[3], 1) end)
-	close:SetScript("OnLeave", function(self) self.bg:SetColorTexture(C.red[1], C.red[2], C.red[3], 0) end)
-	close:SetScript("OnClick", function() UI:Hide() end)
+	-- Drag the window by its title bar
+	local drag = CreateFrame("Frame", nil, f)
+	drag:SetPoint("TOPLEFT", 60, 0)
+	drag:SetPoint("TOPRIGHT", -28, 0)
+	drag:SetHeight(22)
+	drag:EnableMouse(true)
+	drag:RegisterForDrag("LeftButton")
+	drag:SetScript("OnDragStart", function() f:StartMoving() end)
+	drag:SetScript("OnDragStop", function() f:StopMovingOrSizing(); UI:SavePosition() end)
 
-	-- Left: search, filters and the list
-	local left = CreateFrame("Frame", nil, f)
-	left:SetPoint("TOPLEFT", 1, -(TITLE_H + 1))
-	left:SetPoint("BOTTOMLEFT", 1, FOOTER_H + 1)
-	left:SetWidth(LIST_W)
-	Tex(left, "BACKGROUND", C.black, 0.28):SetAllPoints()
-	local divider = Tex(f, "ARTWORK", C.graphite, 1)
-	divider:SetPoint("TOPLEFT", left, "TOPRIGHT")
-	divider:SetPoint("BOTTOMLEFT", left, "BOTTOMRIGHT")
-	divider:SetWidth(1)
+	-- A side tab per mode, down the right edge, as on the game's Character and Collections windows
+	self.tabs = {}
+	local previous
+	for _, key in ipairs(self.modeOrder) do
+		local mode = self.modes[key]
+		local t = CreateFrame("Frame", nil, f, "LargeSideTabButtonTemplate")
+		t.key = key
+		t.tooltipText = mode.tab
+		t.Icon:SetTexture(mode.icon or ns.ICON)
+		if t.SetFillToInterior then t:SetFillToInterior(true) end
+		t:SetCustomOnMouseUpHandler(function(tab, button, upInside)
+			if button == "LeftButton" and upInside then
+				UI:ClearSearchFocus()
+				UI:SetMode(tab.key)
+			end
+		end)
+		if previous then
+			t:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, -2)
+		else
+			t:SetPoint("TOPLEFT", f, "TOPRIGHT", 0, -TOP_H)
+		end
+		previous = t
+		self.tabs[#self.tabs + 1] = t
+	end
 
-	local search = CreateSearchBox(left)
-	search:SetPoint("TOPLEFT", 10, -10)
-	search:SetPoint("TOPRIGHT", -10, -10)
+	-- Top bar: search, the Slot and Type dropdowns, and the loot filters
+	local search = CreateSearchBox(f)
+	search:SetPoint("TOPLEFT", 68, -31)
+	search:SetWidth(LIST_W - 70)
 	self.searchBox = search
 
-	local filterW = (LIST_W - 26) / 2
-	local slotFilter = CreateDropdown(left, "slot", filterW)
-	slotFilter:SetPoint("TOPLEFT", search, "BOTTOMLEFT", 0, -6)
-	local kindFilter = CreateDropdown(left, "kind", filterW)
-	kindFilter:SetPoint("TOPRIGHT", search, "BOTTOMRIGHT", 0, -6)
+	local slotFilter = CreateDropdown(f, "slot", 140)
+	slotFilter:SetPoint("LEFT", search, "RIGHT", 18, 0)
+	local kindFilter = CreateDropdown(f, "kind", 140)
+	kindFilter:SetPoint("LEFT", slotFilter, "RIGHT", 10, 0)
 	self.filterButtons = { slot = slotFilter, kind = kindFilter }
 
-	-- Loot filters, on the tabs that list loot
-	local classToggle = CreateToggle(left, "myClass", "My class", filterW)
-	classToggle:SetPoint("TOPLEFT", slotFilter, "BOTTOMLEFT", 2, -6)
+	local classToggle = CreateToggle(f, "myClass", "My class")
+	classToggle:SetPoint("LEFT", kindFilter, "RIGHT", 14, 0)
 	classToggle.Hint = function() return K.ClassFilterText() end
-	local classicToggle = CreateToggle(left, "hideClassic", "Hide Classic", filterW)
-	classicToggle:SetPoint("TOPLEFT", kindFilter, "BOTTOMLEFT", 2, -6)
+	local classicToggle = CreateToggle(f, "hideClassic", "Hide Classic")
+	classicToggle:SetPoint("LEFT", classToggle.Text, "RIGHT", 12, 0)
 	classicToggle.Hint = function()
 		return "Hide Classic loot: items Wowhead's Forever database doesn't have, so Forever may have replaced them."
 	end
 	self.toggles = { myClass = classToggle, hideClassic = classicToggle }
 
-	self.listLabel = Text(left, Font("label", GameFontNormalSmall, C.red, 10))
-	self.listRight = Text(left, Font("small", GameFontHighlightSmall, C.mist, 10), "RIGHT")
-
-	local listWidth = LIST_W - 26
-	local list = CreateScrollArea(left, listWidth)
-	self.list = list
+	-- Left inset: the list
+	local left = CreateFrame("Frame", nil, f, "InsetFrameTemplate")
+	left:SetPoint("TOPLEFT", 4, -TOP_H)
+	left:SetPoint("BOTTOMLEFT", 4, FOOTER_H)
+	left:SetWidth(LIST_W)
 	self.left = left
 
-	-- Right: the open entry, or search results
-	local right = CreateFrame("Frame", nil, f)
-	right:SetPoint("TOPLEFT", left, "TOPRIGHT", 1, 0)
-	right:SetPoint("BOTTOMRIGHT", -1, FOOTER_H + 1)
+	self.listLabel = Text(left, "GameFontNormalSmall")
+	self.listLabel:SetPoint("TOPLEFT", 10, -8)
+	self.listRight = Text(left, "GameFontNormalSmall", "RIGHT")
+	self.listRight:SetPoint("TOPRIGHT", -(SCROLLBAR_W + 8), -8)
+
+	local listWidth = LIST_W - 12 - SCROLLBAR_W - 4
+	local list = CreateScrollArea(left, listWidth)
+	list:SetPoint("TOPLEFT", 6, -24)
+	list:SetPoint("BOTTOMRIGHT", -(SCROLLBAR_W + 6), 6)
+	self.list = list
+
+	-- Right inset: the open entry, or search results
+	local right = CreateFrame("Frame", nil, f, "InsetFrameTemplate")
+	right:SetPoint("TOPLEFT", left, "TOPRIGHT", 4, 0)
+	right:SetPoint("BOTTOMRIGHT", -6, FOOTER_H)
 	self.right = right
 
 	local header = CreateFrame("Frame", nil, right)
 	header:SetPoint("TOPLEFT")
 	header:SetPoint("TOPRIGHT")
 	header:SetHeight(HEADER_H)
-	Tex(header, "BACKGROUND", C.graphite, 0.35):SetAllPoints()
-	local headerLine = Tex(header, "ARTWORK", C.graphite, 1)
-	headerLine:SetPoint("BOTTOMLEFT"); headerLine:SetPoint("BOTTOMRIGHT"); headerLine:SetHeight(1)
+	local divider = Atlas(header, "ARTWORK", "Options_HorizontalDivider")
+	divider:SetPoint("BOTTOMLEFT", 10, 0)
+	divider:SetPoint("BOTTOMRIGHT", -10, 0)
+	divider:SetHeight(2)
+	divider:SetVertexColor(C.gold[1], C.gold[2], C.gold[3])
 
-	header.name = Text(header, Font("h1", GameFontNormalHuge or GameFontNormalLarge, C.light, 20))
-	header.name:SetPoint("TOPLEFT", 16, -14)
+	header.name = Text(header, "GameFontNormalHuge")
+	header.name:SetPoint("TOPLEFT", 14, -14)
 
+	-- "New in Forever" after the name
 	header.badge = CreateFrame("Frame", nil, header)
 	header.badge:SetHeight(16)
 	header.badge:SetPoint("LEFT", header.name, "RIGHT", 10, 0)
-	Tex(header.badge, "BACKGROUND", C.red, 1):SetAllPoints()
-	header.badge.text = Text(header.badge, Font("badge", GameFontHighlightSmall, C.light, 9), "CENTER")
-	header.badge.text:SetPoint("CENTER", 0, 0)
-	header.badge.text:SetText("NEW IN FOREVER")
-	header.badge:SetWidth(header.badge.text:GetStringWidth() + 12)
+	header.badge.text = Text(header.badge, "GameFontGreenSmall")
+	header.badge.text:SetPoint("LEFT")
+	header.badge.text:SetText("New in Forever")
+	header.badge:SetWidth(header.badge.text:GetStringWidth() + 4)
 
-	header.meta = Text(header, Font("meta", GameFontHighlight, C.mist, 11))
-	header.meta:SetPoint("TOPLEFT", header.name, "BOTTOMLEFT", 0, -6)
+	header.meta = Text(header, "GameFontHighlight")
+	header.meta:SetPoint("TOPLEFT", header.name, "BOTTOMLEFT", 0, -7)
 
-	header.note = Text(header, Font("small", GameFontHighlightSmall, C.mist, 10))
-	header.note:SetPoint("TOPLEFT", header.meta, "BOTTOMLEFT", 0, -6)
-	header.note:SetPoint("RIGHT", -16, 0)
+	header.note = Text(header, "GameFontHighlightSmall")
+	header.note:SetPoint("TOPLEFT", header.meta, "BOTTOMLEFT", 0, -7)
+	header.note:SetPoint("RIGHT", -14, 0)
 	header.note:SetWordWrap(true)
+	SetTextColor(header.note, C.silver)
 
-	header.wowhead = FlatButton(header, "Wowhead", 84, 22)
-	header.wowhead:SetPoint("TOPRIGHT", -14, -14)
+	header.wowhead = PanelButton(header, "Wowhead", 96)
+	header.wowhead:SetPoint("TOPRIGHT", -10, -12)
 	header.wowhead:SetScript("OnClick", function()
 		local title, url = UI:Mode().WowheadLink(UI.current)
 		if url then UI:ShowURL(title, url) end
 	end)
 
 	-- Takes the place of the Wowhead button while search results are showing
-	header.clear = FlatButton(header, "Clear search", 100, 22)
-	header.clear:SetPoint("TOPRIGHT", -14, -14)
+	header.clear = PanelButton(header, "Clear search", 110)
+	header.clear:SetPoint("TOPRIGHT", -10, -12)
 	header.clear:SetScript("OnClick", function() UI:ClearSearch() end)
 	header.clear:Hide()
 	self.header = header
 
-	local contentWidth = WIDTH - LIST_W - 3 - 16 - 22
+	local contentWidth = WIDTH - LIST_W - 4 - 4 - 6 - 10 - SCROLLBAR_W - 8
 	local loot = CreateScrollArea(right, contentWidth)
-	loot:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 14, -10)
-	loot:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT", -18, 8)
-	loot.OnScrolled = function() UI:Paint() end
+	loot:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 10, -6)
+	loot:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT", -(SCROLLBAR_W + 8), 6)
+	loot.onScrolled = function() UI:Paint() end
 	self.loot = loot
 	self.contentWidth = contentWidth
 
-	-- Footer
-	local footer = CreateFrame("Frame", nil, f)
-	footer:SetPoint("BOTTOMLEFT", 1, 1)
-	footer:SetPoint("BOTTOMRIGHT", -1, 1)
-	footer:SetHeight(FOOTER_H)
-	Tex(footer, "BACKGROUND", C.black, 0.45):SetAllPoints()
-	local footerLine = Tex(footer, "ARTWORK", C.graphite, 1)
-	footerLine:SetPoint("TOPLEFT"); footerLine:SetPoint("TOPRIGHT"); footerLine:SetHeight(1)
-	self.footerHelp = Text(footer, Font("small", GameFontHighlightSmall, C.mist, 10))
-	self.footerHelp:SetPoint("LEFT", 12, 0)
-	self.footerSource = Text(footer, Font("small", GameFontHighlightSmall, C.mist, 10), "RIGHT")
-	self.footerSource:SetPoint("RIGHT", -12, 0)
+	-- Footer: what the clicks do, and how fresh the data is
+	self.footerHelp = Text(f, "GameFontDisableSmall")
+	self.footerHelp:SetPoint("BOTTOMLEFT", 14, 8)
+	self.footerSource = Text(f, "GameFontDisableSmall", "RIGHT")
+	self.footerSource:SetPoint("BOTTOMRIGHT", -14, 8)
 
 	self.listRows = {}
 	self.pools, self.used = {}, {}
@@ -944,32 +702,19 @@ end
 function UI:UpdateChrome()
 	local mode = self:Mode()
 	self:UpdateTabs()
-	-- The loot filters take a row under the Slot and Type menus on the tabs that have them
-	local top = mode.filters and 96 or 74
+	-- The loot filters are only on the tabs that list loot
 	for _, t in pairs(self.toggles) do t:SetShown(mode.filters and true or false) end
 	self:UpdateToggles()
-	self.listLabel:ClearAllPoints()
-	self.listLabel:SetPoint("TOPLEFT", 12, -top)
-	self.listRight:ClearAllPoints()
-	self.listRight:SetPoint("TOPRIGHT", -14, -top)
-	self.list:ClearAllPoints()
-	self.list:SetPoint("TOPLEFT", 6, -(top + 18))
-	self.list:SetPoint("BOTTOMRIGHT", -16, 6)
 	self.listLabel:SetText(mode.listTitle)
 	self.listRight:SetText(mode.listRight)
-	self.searchBox.hint:SetText(mode.searchHint)
+	self.searchBox.Instructions:SetText(mode.searchHint)
 	self.footerHelp:SetText(mode.footer)
 	self.footerSource:SetText("Wowhead data " .. (mode.dataDate() or ""))
 	self:UpdateFilterButtons()
 end
 
 function UI:UpdateTabs()
-	for _, t in ipairs(self.tabs) do
-		local on = t.key == self.mode
-		t.bg:SetColorTexture(C.blue[1], C.blue[2], C.blue[3], 1)
-		t.bg:SetShown(on)
-		SetTextColor(t.label, on and C.light or C.mist)
-	end
+	for _, t in ipairs(self.tabs) do t:SetChecked(t.key == self.mode) end
 end
 
 function UI:SavePosition()
@@ -995,34 +740,22 @@ end
 local function CreateListRow(parent, width)
 	local b = CreateFrame("Button", nil, parent)
 	b:SetSize(width, LIST_ROW_H)
-	b.hover = Tex(b, "BACKGROUND", C.steel, 0.55)
-	b.hover:SetAllPoints()
-	b.hover:Hide()
-	b.selected = Tex(b, "BACKGROUND", C.blue, 1)
+	b.selected = Atlas(b, "BACKGROUND", "Professions_Recipe_Active")
 	b.selected:SetAllPoints()
 	b.selected:Hide()
-	b.marker = Tex(b, "ARTWORK", C.red, 1)
-	b.marker:SetPoint("TOPLEFT")
-	b.marker:SetPoint("BOTTOMLEFT")
-	b.marker:SetWidth(3)
-	b.levels = Text(b, Font("list_levels", GameFontHighlightSmall, C.mist, 11), "RIGHT")
-	b.levels:SetPoint("RIGHT", -6, 0)
-	b.levels:SetWidth(40)
-	b.tag = Text(b, Font("list_tag", GameFontHighlightSmall, C.red, 9), "RIGHT")
+	RowHighlight(b)
+	b.levels = Text(b, "GameFontHighlightSmall", "RIGHT")
+	b.levels:SetPoint("RIGHT", -4, 0)
+	b.levels:SetWidth(44)
+	b.tag = Text(b, "GameFontHighlightSmall", "RIGHT")
 	b.tag:SetPoint("RIGHT", b.levels, "LEFT", -4, 0)
 	-- Match count, shown while searching
-	b.count = CreateFrame("Frame", nil, b)
-	b.count:SetHeight(14)
-	b.count:SetPoint("RIGHT", b.levels, "LEFT", -6, 0)
-	Tex(b.count, "BACKGROUND", C.graphite, 1):SetAllPoints()
-	b.count.text = Text(b.count, Font("badge", GameFontHighlightSmall, C.light, 9), "CENTER")
-	b.count.text:SetPoint("CENTER")
+	b.count = Text(b, "GameFontHighlightSmall", "RIGHT")
+	b.count:SetPoint("RIGHT", -4, 0)
 	b.count:Hide()
-	b.name = Text(b, Font("list_name", GameFontHighlight, C.light, 11))
-	b.name:SetPoint("LEFT", 10, 0)
+	b.name = Text(b, "GameFontHighlight")
+	b.name:SetPoint("LEFT", 8, 0)
 	b.name:SetPoint("RIGHT", b.tag, "LEFT", -4, 0)
-	b:SetScript("OnEnter", function(self) if not self.isSelected then self.hover:Show() end end)
-	b:SetScript("OnLeave", function(self) self.hover:Hide() end)
 	b:SetScript("OnClick", function(self)
 		UI:ClearSearchFocus()
 		if UI:IsSearching() then
@@ -1036,6 +769,9 @@ end
 
 -- Normally lists every entry of the tab. While searching it lists "All ..." and then
 -- only the entries with matches, each with its match count.
+-- RowInfo gives name, right column, tag, marker (the entry is yours: your level range, your
+-- profession, your class), tag color and right column color. Marked names are gold, as the
+-- game marks what's yours; the rest are white.
 function UI:BuildList()
 	local mode = self:Mode()
 	local searching = self:IsSearching()
@@ -1063,23 +799,25 @@ function UI:BuildList()
 			self.listRows[i] = row
 		end
 		row.entry = e.entry
-		local name, right, tag, marker, tagColor = mode.allLabel, "", "", false, nil
-		if e.entry then name, right, tag, marker, tagColor = mode.RowInfo(e.entry) end
-		row.tagColor = tagColor
+		local name, right, tag, marker, tagColor, rightColor = mode.allLabel, "", "", false, nil, nil
+		if e.entry then name, right, tag, marker, tagColor, rightColor = mode.RowInfo(e.entry) end
+		row.isMarked = marker and true or false
 		row.name:SetText(name)
-		row.levels:SetText(right)
-		row.marker:SetShown(marker and true or false)
-		row.name:ClearAllPoints()
-		row.name:SetPoint("LEFT", 10, 0)
+		SetTextColor(row.name, row.isMarked and C.gold or C.white)
 		if e.count then
-			row.tag:SetText("")
-			row.count.text:SetText(e.count)
-			row.count:SetWidth(row.count.text:GetStringWidth() + 10)
+			row.levels:Hide()
+			row.tag:Hide()
+			row.count:SetText(e.count)
 			row.count:Show()
 			row.name:SetPoint("RIGHT", row.count, "LEFT", -6, 0)
 		else
-			row.tag:SetText(tag or "")
 			row.count:Hide()
+			row.levels:SetText(right)
+			SetTextColor(row.levels, rightColor or C.silver)
+			row.levels:Show()
+			row.tag:SetText(tag or "")
+			SetTextColor(row.tag, tagColor or C.green)
+			row.tag:Show()
 			row.name:SetPoint("RIGHT", row.tag, "LEFT", -4, 0)
 		end
 		row:Show()
@@ -1098,9 +836,6 @@ function UI:UpdateListSelection()
 		local on = row:IsShown() and row.entry == selected
 		row.isSelected = on
 		row.selected:SetShown(on)
-		if on then row.hover:Hide() end
-		SetTextColor(row.levels, on and C.light or C.mist)
-		SetTextColor(row.tag, on and C.light or (row.tagColor or C.red))
 	end
 end
 
@@ -1211,7 +946,6 @@ function UI:Paint()
 		local w = Acquire(self, e.kind)
 		w:SetPoint("TOPLEFT", 0, -e.y)
 		w.entry = e.data
-		if w.hover then w.hover:Hide() end
 		K.kinds[e.kind].fill(w, e.data)
 	end
 	for kind, pool in pairs(self.pools) do
@@ -1228,36 +962,34 @@ end
 ----------------------------------------------------------------------
 -- Rows both tabs use: section headers, item rows and notes
 ----------------------------------------------------------------------
--- Section header: click to collapse or expand, shift-click for every section
+-- Section header, like the categories of the game's recipe list: a bar with a plus or minus.
+-- Click to collapse or expand it, shift-click for every section.
 local function CreateWing(parent, width)
 	local w = CreateFrame("Button", nil, parent)
 	w:SetSize(width, WING_H)
 	w.isForeverLootRow = true
 	w:RegisterForClicks("LeftButtonUp")
-	w.hover = Tex(w, "BACKGROUND", C.steel, 0.35)
-	w.hover:SetPoint("TOPLEFT", 0, -6)
-	w.hover:SetPoint("BOTTOMRIGHT", 0, 1)
-	w.hover:Hide()
-	w.text = Text(w, Font("wing", GameFontNormalSmall, C.red, 11))
-	w.text:SetPoint("BOTTOMLEFT", 16, 6)
-	w.open = DownArrow(w, C.red)
-	w.open:SetPoint("RIGHT", w.text, "LEFT", -5, 0)
-	w.closed = RightArrow(w, C.red)
-	w.closed:SetPoint("RIGHT", w.text, "LEFT", -6, 0)
-	w.levels = Text(w, Font("wing_levels", GameFontHighlightSmall, C.mist, 11), "RIGHT")
-	w.levels:SetPoint("BOTTOMRIGHT", -2, 6)
-	w.line = Tex(w, "ARTWORK", C.garnet, 0.8)
-	w.line:SetHeight(1)
-	w.line:SetPoint("LEFT", w.text, "RIGHT", 8, 0)
-	w.line:SetPoint("RIGHT", w.levels, "LEFT", -8, 0)
+	w.bg = Atlas(w, "BACKGROUND", "common-button-list-collapseExpand")
+	w.bg:SetPoint("TOPLEFT", 0, -1)
+	w.bg:SetPoint("BOTTOMRIGHT", 0, 1)
+	w.glow = Atlas(w, "HIGHLIGHT", "common-button-list-collapseExpand", 0.4)
+	w.glow:SetBlendMode("ADD")
+	w.glow:SetAllPoints(w.bg)
+	w.icon = w:CreateTexture(nil, "ARTWORK")
+	w.icon:SetPoint("RIGHT", -8, 0)
+	w.text = Text(w, "GameFontNormal")
+	w.text:SetPoint("LEFT", 10, 0)
+	w.levels = Text(w, "GameFontHighlightSmall", "RIGHT")
+	w.levels:SetPoint("RIGHT", -32, 0)
+	SetTextColor(w.levels, C.silver)
 	w:SetScript("OnEnter", function(self)
 		if not self.sectionId then return end
-		self.hover:Show()
+		SetTextColor(self.text, C.white)
 		ShowHint(self, self.text:GetText(), (UI:IsCollapsed(self.sectionId) and "Click to expand." or "Click to collapse.") ..
 			" Shift-click expands or collapses every section.")
 	end)
 	w:SetScript("OnLeave", function(self)
-		self.hover:Hide()
+		SetTextColor(self.text, C.gold)
 		GameTooltip:Hide()
 	end)
 	w:SetScript("OnClick", function(self)
@@ -1270,20 +1002,35 @@ end
 K.RegisterKind("wing", CreateWing, function(w, d)
 	w.sectionId = d.id
 	w.text:SetText(d.text)
+	SetTextColor(w.text, C.gold)
 	w.levels:SetText(d.right or "")
 	local collapsed = d.id and UI:IsCollapsed(d.id)
-	w.open:SetShown(d.id ~= nil and not collapsed)
-	w.closed:SetShown(collapsed and true or false)
+	w.collapsed = collapsed and true or false
+	if d.id then
+		w.icon:SetAtlas(collapsed and "common-button-list-plus" or "common-button-list-minus", true)
+		w.icon:Show()
+	else
+		w.icon:Hide()
+	end
 	w:EnableMouse(d.id ~= nil)
 end)
+
+local QUALITY_BORDER = 2 -- uncommon and up get a colored border, as on the game's item buttons
 
 local function UpdateItemRow(row)
 	local name, quality, typeText, icon = ns.ItemDisplay(row.itemID)
 	local entry = ns.Items[row.itemID]
 	local flag = entry and entry[4]
 	row.icon:SetTexture(icon)
+	local r, g, b = HexToRGB(ns.QUALITY_HEX[quality] or "ffffff")
 	row.name:SetText(name)
-	row.name:SetTextColor(HexToRGB(ns.QUALITY_HEX[quality] or "ffffff"))
+	row.name:SetTextColor(r, g, b)
+	if quality >= QUALITY_BORDER then
+		row.border:SetVertexColor(r, g, b)
+		row.border:Show()
+	else
+		row.border:Hide()
+	end
 	row.type:SetText(typeText or "")
 
 	-- Search results show which boss drops the item where the drop chance normally goes
@@ -1304,11 +1051,10 @@ local function UpdateItemRow(row)
 	local badge = (row.owned and BADGES.owned) or (row.learnedCount and BADGES.seen) or ((flag == 1 or flag == 3) and BADGES.new)
 		or (flag == 2 and BADGES.classic) or nil
 	row.name:ClearAllPoints()
-	row.name:SetPoint("LEFT", row.iconFrame, "RIGHT", 8, 0)
+	row.name:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
 	if badge then
-		row.badge.text:SetText(badge[1])
-		row.badge.bg:SetColorTexture(badge[2][1], badge[2][2], badge[2][3], 1)
-		row.badge:SetWidth(row.badge.text:GetStringWidth() + 10)
+		row.badge:SetText(badge[1])
+		SetTextColor(row.badge, badge[2])
 		row.badge:Show()
 		row.name:SetPoint("RIGHT", row.badge, "LEFT", -6, 0)
 	else
@@ -1320,25 +1066,25 @@ end
 local function AddLootNotes(row, entry, bundled)
 	local flag = entry and entry[4]
 	local notes = {}
-	if row.sourceNote then notes[#notes + 1] = { row.sourceNote, C.light } end
+	if row.sourceNote then notes[#notes + 1] = { row.sourceNote, C.white } end
 	if bundled and flag ~= 2 then
-		notes[#notes + 1] = { "The beta server isn't sending this item's data, so these stats come from Wowhead.", C.mist }
+		notes[#notes + 1] = { "The beta server isn't sending this item's data, so these stats come from Wowhead.", C.silver }
 	end
-	if row.pctValue then notes[#notes + 1] = { "Drop chance (Classic data): " .. FormatPct(row.pctValue), C.mist } end
+	if row.pctValue then notes[#notes + 1] = { "Drop chance (Classic data): " .. FormatPct(row.pctValue), C.silver } end
 	if flag == 1 then
-		notes[#notes + 1] = { "New in Forever.", C.red }
+		notes[#notes + 1] = { "New in Forever.", C.green }
 	elseif flag == 3 then
-		notes[#notes + 1] = { "New in Forever. No site has confirmed which boss drops it yet.", C.red }
+		notes[#notes + 1] = { "New in Forever. No site has confirmed which boss drops it yet.", C.green }
 	elseif flag == 2 then
-		notes[#notes + 1] = { "Classic loot. Wowhead's Forever database doesn't have this item, so Forever may have replaced it.", C.mist }
+		notes[#notes + 1] = { "Classic loot. Wowhead's Forever database doesn't have this item, so Forever may have replaced it.", C.grey }
 	end
-	if row.hint then notes[#notes + 1] = { "Its name points to " .. row.hint .. ".", C.mist } end
+	if row.hint then notes[#notes + 1] = { "Its name points to " .. row.hint .. ".", C.silver } end
 	if row.learnedCount then
-		notes[#notes + 1] = { "Recorded from your loot (" .. row.learnedCount .. "x).", C.mist }
+		notes[#notes + 1] = { "Recorded from your loot (" .. row.learnedCount .. "x).", C.blue }
 	elseif entry and entry[5] then
-		notes[#notes + 1] = { "Listed by " .. entry[5] .. ".", C.mist }
+		notes[#notes + 1] = { "Listed by " .. entry[5] .. ".", C.silver }
 	end
-	if row.owned then notes[#notes + 1] = { "You have it: it's in your bags, bank or worn.", C.light } end
+	if row.owned then notes[#notes + 1] = { "You have it: it's in your bags, bank or worn.", C.blue } end
 	notes[#notes + 1] = K.WishlistNote(row.itemID)
 	K.AddNotes(notes)
 end
@@ -1349,51 +1095,42 @@ local function CreateItem(parent, width)
 	r.isForeverLootRow = true
 	r.isForeverLootItem = true
 	r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	r.hover = Tex(r, "BACKGROUND", C.blue, 0.22)
-	r.hover:SetAllPoints()
-	r.hover:Hide()
-	-- Red bar on the left: it's on your wishlist
-	r.wanted = Tex(r, "ARTWORK", C.red, 1)
-	r.wanted:SetPoint("TOPLEFT")
-	r.wanted:SetPoint("BOTTOMLEFT")
-	r.wanted:SetWidth(3)
+	RowHighlight(r)
+	-- A star, like the auction house's favorites: it's on your wishlist
+	r.wanted = Atlas(r, "OVERLAY", "auctionhouse-icon-favorite")
+	r.wanted:SetSize(13, 12)
+	r.wanted:SetPoint("LEFT", 2, 0)
 	r.wanted:Hide()
-	local iconFrame = CreateFrame("Frame", nil, r)
-	iconFrame:SetSize(22, 22)
-	iconFrame:SetPoint("LEFT", 12, 0)
-	Tex(iconFrame, "BACKGROUND", C.black, 1):SetAllPoints()
-	r.icon = iconFrame:CreateTexture(nil, "ARTWORK")
-	r.icon:SetPoint("TOPLEFT", 1, -1)
-	r.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-	r.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-	r.iconFrame = iconFrame
-	r.pct = Text(r, Font("item_pct", GameFontHighlightSmall, C.mist, 11), "RIGHT")
+	-- The icon with the quality border of the game's item buttons
+	r.icon = r:CreateTexture(nil, "ARTWORK")
+	r.icon:SetSize(24, 24)
+	r.icon:SetPoint("LEFT", 18, 0)
+	r.border = r:CreateTexture(nil, "OVERLAY")
+	r.border:SetTexture("Interface\\Common\\WhiteIconFrame")
+	r.border:SetAllPoints(r.icon)
+	r.pct = Text(r, "GameFontHighlightSmall", "RIGHT")
 	r.pct:SetPoint("RIGHT", -8, 0)
 	r.pct:SetWidth(40)
-	r.source = Text(r, Font("item_source", GameFontHighlightSmall, C.mist, 11), "RIGHT")
+	SetTextColor(r.pct, C.silver)
+	r.source = Text(r, "GameFontHighlightSmall", "RIGHT")
 	r.source:SetPoint("RIGHT", -8, 0)
 	r.source:SetWidth(SOURCE_W)
+	SetTextColor(r.source, C.silver)
 	r.source:Hide()
-	r.type = Text(r, Font("item_type", GameFontHighlightSmall, C.mist, 11), "RIGHT")
+	r.type = Text(r, "GameFontHighlightSmall", "RIGHT")
 	r.type:SetPoint("RIGHT", r.pct, "LEFT", -6, 0)
-	r.badge = CreateFrame("Frame", nil, r)
-	r.badge:SetSize(40, 14)
+	SetTextColor(r.type, C.silver)
+	r.badge = Text(r, "GameFontHighlightSmall", "RIGHT")
 	r.badge:SetPoint("RIGHT", r.type, "LEFT", -8, 0)
-	r.badge.bg = Tex(r.badge, "BACKGROUND", C.blue, 1)
-	r.badge.bg:SetAllPoints()
-	r.badge.text = Text(r.badge, Font("badge", GameFontHighlightSmall, C.light, 9), "CENTER")
-	r.badge.text:SetPoint("CENTER")
-	r.name = Text(r, Font("item_name", GameFontHighlight, C.light, 12))
+	r.name = Text(r, "GameFontHighlight")
 
 	r:SetScript("OnEnter", function(self)
-		self.hover:Show()
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 		local bundled = K.ItemTooltip(self.itemID)
 		AddLootNotes(self, ns.Items[self.itemID], bundled)
 		GameTooltip:Show()
 	end)
-	r:SetScript("OnLeave", function(self)
-		self.hover:Hide()
+	r:SetScript("OnLeave", function()
 		GameTooltip:Hide()
 	end)
 	r:SetScript("OnClick", function(self, button)
@@ -1427,9 +1164,10 @@ end, true)
 local function CreateNote(parent, width)
 	local n = CreateFrame("Frame", nil, parent)
 	n:SetSize(width, NOTE_H)
-	n.text = Text(n, Font("note", GameFontHighlightSmall, C.mist, 11))
+	n.text = Text(n, "GameFontHighlightSmall")
 	n.text:SetPoint("LEFT", 14, 0)
 	n.text:SetPoint("RIGHT", -10, 0)
+	SetTextColor(n.text, C.silver)
 	return n
 end
 
@@ -1878,10 +1616,11 @@ function UI:SetSearchText(text)
 	self:FilterChanged()
 end
 
-function UI:SetFilter(which, value)
+-- `fromMenu`: the choice was picked in the dropdown itself, which updates its own label
+function UI:SetFilter(which, value, fromMenu)
 	if self.filter[which] == value then return end
 	self.filter[which] = value
-	self:UpdateFilterButtons()
+	if not fromMenu then self:UpdateFilterButtons() end
 	self:FilterChanged()
 end
 
@@ -1938,7 +1677,7 @@ function UI:Refresh()
 	else
 		return
 	end
-	self.loot.bar:SetValue(scroll)
+	self.loot:ScrollTo(scroll)
 end
 
 -- `quiet` switches without drawing, for a caller that opens something right after
@@ -2103,23 +1842,25 @@ local function LearnedFor(dungeon, keys, known)
 	return items, counts
 end
 
+-- Boss bar: the name in gold over a gold rule, like the dividers in the game's recipe list
 local function CreateBoss(parent, width)
 	local b = CreateFrame("Button", nil, parent)
 	b:SetSize(width, BOSS_H)
-	b.bg = Tex(b, "BACKGROUND", C.navy, 0.95)
-	b.bg:SetAllPoints()
-	local accent = Tex(b, "ARTWORK", C.red, 1)
-	accent:SetPoint("TOPLEFT"); accent:SetPoint("BOTTOMLEFT"); accent:SetWidth(3)
-	b.name = Text(b, Font("boss", GameFontNormal, C.light, 13))
-	b.name:SetPoint("LEFT", 12, 0)
-	b.tag = Text(b, Font("boss_tag", GameFontHighlightSmall, C.mist, 10), "RIGHT")
-	b.tag:SetPoint("RIGHT", -10, 0)
+	RowHighlight(b, 0.3)
+	b.rule = Atlas(b, "ARTWORK", "Options_HorizontalDivider")
+	b.rule:SetPoint("BOTTOMLEFT", 4, 1)
+	b.rule:SetPoint("BOTTOMRIGHT", -4, 1)
+	b.rule:SetHeight(2)
+	b.rule:SetVertexColor(C.gold[1], C.gold[2], C.gold[3])
+	b.name = Text(b, "GameFontNormalLarge")
+	b.name:SetPoint("LEFT", 8, 1)
+	b.tag = Text(b, "GameFontHighlightSmall", "RIGHT")
+	b.tag:SetPoint("RIGHT", -8, 1)
+	SetTextColor(b.tag, C.silver)
 	b:SetScript("OnEnter", function(self)
-		self.bg:SetColorTexture(C.steel[1], C.steel[2], C.steel[3], 1)
 		if self.url then ShowHint(self, self.boss.name, "Click for this boss's Wowhead link.") end
 	end)
-	b:SetScript("OnLeave", function(self)
-		self.bg:SetColorTexture(C.navy[1], C.navy[2], C.navy[3], 0.95)
+	b:SetScript("OnLeave", function()
 		GameTooltip:Hide()
 	end)
 	b:SetScript("OnClick", function(self)
@@ -2129,7 +1870,6 @@ local function CreateBoss(parent, width)
 end
 
 K.RegisterKind("boss", CreateBoss, function(b, d)
-	b.bg:SetColorTexture(C.navy[1], C.navy[2], C.navy[3], 0.95)
 	b.boss = { name = d.name }
 	b.url = d.url
 	b.name:SetText(d.name)
@@ -2139,7 +1879,7 @@ end)
 -- "Level 22  ·  Alliance  ·  choose 1 of 3"
 local function QuestTag(q)
 	local parts = {}
-	if q.new then parts[#parts + 1] = ns.Colorize(C.red, "NEW") end
+	if q.new then parts[#parts + 1] = ns.Colorize(C.green, "New") end
 	if q.level then parts[#parts + 1] = "Level " .. q.level end
 	local side = ns.QUEST_SIDES[q.side]
 	if side then parts[#parts + 1] = side end
@@ -2153,42 +1893,45 @@ local function QuestTag(q)
 end
 K.QuestTag = QuestTag
 
--- Quest bar: its rewards follow as item rows. Click for the quest's Wowhead link.
+-- Quest bar: the yellow quest mark, and the name colored by how hard the quest is for you,
+-- as in the quest log. Its rewards follow as item rows. Click for the quest's Wowhead link.
+local QUEST_ICON = "Interface\\GossipFrame\\AvailableQuestIcon"
+
 local function CreateQuest(parent, width)
 	local b = CreateFrame("Button", nil, parent)
 	b:SetSize(width, QUEST_H)
 	b.isForeverLootRow = true
-	b.bg = Tex(b, "BACKGROUND", C.graphite, 0.55)
-	b.bg:SetAllPoints()
-	local accent = Tex(b, "ARTWORK", C.blue, 1)
-	accent:SetPoint("TOPLEFT"); accent:SetPoint("BOTTOMLEFT"); accent:SetWidth(3)
-	b.tag = Text(b, Font("quest_tag", GameFontHighlightSmall, C.mist, 10), "RIGHT")
-	b.tag:SetPoint("RIGHT", -10, 0)
-	b.name = Text(b, Font("quest", GameFontNormal, C.light, 12))
-	b.name:SetPoint("LEFT", 12, 0)
+	RowHighlight(b)
+	b.icon = b:CreateTexture(nil, "ARTWORK")
+	b.icon:SetSize(16, 16)
+	b.icon:SetPoint("LEFT", 6, 0)
+	b.icon:SetTexture(QUEST_ICON)
+	b.tag = Text(b, "GameFontHighlightSmall", "RIGHT")
+	b.tag:SetPoint("RIGHT", -8, 0)
+	SetTextColor(b.tag, C.silver)
+	b.name = Text(b, "GameFontNormal")
+	b.name:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
 	b.name:SetPoint("RIGHT", b.tag, "LEFT", -10, 0)
 	b:SetScript("OnEnter", function(self)
-		self.bg:SetColorTexture(C.steel[1], C.steel[2], C.steel[3], 0.8)
 		local q = self.quest
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		GameTooltip:AddLine(q.name, C.light[1], C.light[2], C.light[3])
+		GameTooltip:SetText(q.name, C.white[1], C.white[2], C.white[3])
 		local level = {}
 		if q.level then level[#level + 1] = "Level " .. q.level end
 		if q.req then level[#level + 1] = "requires level " .. q.req end
-		if #level > 0 then GameTooltip:AddLine(table.concat(level, ", "), C.mist[1], C.mist[2], C.mist[3]) end
+		if #level > 0 then GameTooltip:AddLine(table.concat(level, ", "), C.gold[1], C.gold[2], C.gold[3]) end
 		GameTooltip:AddLine(ns.QUEST_SIDES[q.side] and (ns.QUEST_SIDES[q.side] .. " only") or "Alliance and Horde",
-			C.mist[1], C.mist[2], C.mist[3])
+			C.gold[1], C.gold[2], C.gold[3])
 		local choices = #(q.choices or {})
-		if choices > 1 then GameTooltip:AddLine("Choose one of " .. choices .. " rewards.", C.mist[1], C.mist[2], C.mist[3]) end
-		if q.new then GameTooltip:AddLine("New in Forever.", C.red[1], C.red[2], C.red[3]) end
+		if choices > 1 then GameTooltip:AddLine("Choose one of " .. choices .. " rewards.", C.gold[1], C.gold[2], C.gold[3]) end
+		if q.new then GameTooltip:AddLine("New in Forever.", C.green[1], C.green[2], C.green[3]) end
 		for _, change in ipairs(q.changes or {}) do
-			GameTooltip:AddLine("Forever: " .. change, C.red[1], C.red[2], C.red[3], true)
+			GameTooltip:AddLine("Forever: " .. change, C.green[1], C.green[2], C.green[3], true)
 		end
-		if q.id then GameTooltip:AddLine("Click for its Wowhead link.", C.mist[1], C.mist[2], C.mist[3]) end
+		if q.id then GameTooltip:AddLine("Click for its Wowhead link.", C.silver[1], C.silver[2], C.silver[3]) end
 		GameTooltip:Show()
 	end)
-	b:SetScript("OnLeave", function(self)
-		self.bg:SetColorTexture(C.graphite[1], C.graphite[2], C.graphite[3], 0.55)
+	b:SetScript("OnLeave", function()
 		GameTooltip:Hide()
 	end)
 	b:SetScript("OnClick", function(self)
@@ -2199,21 +1942,21 @@ local function CreateQuest(parent, width)
 end
 
 K.RegisterKind("quest", CreateQuest, function(b, d)
-	b.bg:SetColorTexture(C.graphite[1], C.graphite[2], C.graphite[3], 0.55)
 	b.quest = d.quest
 	b.name:SetText(d.quest.name)
+	SetTextColor(b.name, d.quest.level and DifficultyColor(d.quest.level) or C.gold)
 	b.tag:SetText(QuestTag(d.quest))
 end)
 K.QUEST_H = QUEST_H
 
-local FOOTER = "Click: Wowhead link    Shift-click: link in chat    Ctrl-click: preview    Right-click: wishlist    " ..
-	ns.Colorize(C.red, "Red bar") .. ": your level"
+local FOOTER = "Click: Wowhead link    Shift-click: link in chat    Ctrl-click: preview    Right-click: wishlist"
 
 -- A tab over one list of instances. `cfg` gives the list, the labels, and the row and note text.
 local function InstanceMode(cfg)
 	local M = {
 		key = cfg.key,
 		tab = cfg.tab,
+		icon = cfg.icon,
 		listTitle = cfg.listTitle,
 		listRight = cfg.listRight,
 		allLabel = cfg.allLabel,
@@ -2269,7 +2012,7 @@ local function InstanceMode(cfg)
 
 	function M.ShowHeader(ui, h, d)
 		h.name:SetText(d.name)
-		h.badge.text:SetText("NEW IN FOREVER")
+		h.badge.text:SetText("New in Forever")
 		h.badge:SetWidth(h.badge.text:GetStringWidth() + 12)
 		h.badge:SetShown(d.isNew)
 		local bossCount = 0
@@ -2328,7 +2071,7 @@ local function InstanceMode(cfg)
 
 		-- Returns true when the wing is collapsed, so its bosses are left out
 		local function AddWing(label, levels)
-			return ui:AddSection("d:" .. d.key .. ":" .. label, label:upper(),
+			return ui:AddSection("d:" .. d.key .. ":" .. label, label,
 				levels and ("Levels " .. levels[1] .. "-" .. levels[2]) or "")
 		end
 
@@ -2368,7 +2111,7 @@ local function InstanceMode(cfg)
 				if not usedKeys[key] then extra[#extra + 1] = { key = key, name = bucket.name or key } end
 			end
 			table.sort(extra, function(a, b) return a.name < b.name end)
-			if #extra > 0 and not ui:AddSection("d:" .. d.key .. ":recorded", "RECORDED BY YOU") then
+			if #extra > 0 and not ui:AddSection("d:" .. d.key .. ":recorded", "Recorded by you") then
 				for _, e in ipairs(extra) do
 					AddBoss(e.name, "from your loot", nil, {}, { e.key }, "")
 				end
@@ -2395,7 +2138,7 @@ local function InstanceMode(cfg)
 		end
 		if #quests + filtered > 0 then
 			if ui.contentY > 0 then ui:AddGap(SECTION_GAP) end
-			if not ui:AddSection("d:" .. d.key .. ":quests", "QUESTS", Count(#quests, "quest")) then
+			if not ui:AddSection("d:" .. d.key .. ":quests", "Quests", Count(#quests, "quest")) then
 				ui:AddGap(4)
 				for _, q in ipairs(quests) do AddQuest(q) end
 				if otherSide > 0 then
@@ -2491,7 +2234,7 @@ local function InstanceMode(cfg)
 				if ui.contentY > 0 then ui:AddGap(SECTION_GAP) end
 				local levels = r.wing and d.wings and d.wings[r.wing]
 				collapsed = ui:AddSection("s:d:" .. d.key .. ":" .. (r.wing or ""),
-					(r.wing and (d.name .. ": " .. r.wing) or d.name):upper(),
+					r.wing and (d.name .. ": " .. r.wing) or d.name,
 					levels and ("Levels " .. levels[1] .. "-" .. levels[2]) or LevelText(d), true)
 				section = r.wing
 			end
@@ -2505,8 +2248,9 @@ end
 local Dungeons = InstanceMode({
 	key = "dungeons",
 	tab = "Dungeons",
-	listTitle = "DUNGEONS",
-	listRight = "LEVELS",
+	icon = "Interface\\Icons\\INV_Misc_Bone_HumanSkull_01",
+	listTitle = "Dungeons",
+	listRight = "Levels",
 	allLabel = "All dungeons",
 	groupUnit = "dungeon",
 	raids = false,
@@ -2517,23 +2261,26 @@ local Dungeons = InstanceMode({
 		"Try a slot like gloves or ring, a type like dagger or plate, or a stat like agility.",
 	},
 	sorted = SortedDungeons,
-	-- name, right column, tag, whether the red bar shows
+	-- name, levels (colored by how hard the dungeon is for you, as quests are), tag, and
+	-- whether it's at your level
 	rowInfo = function(d)
 		local level = UnitLevel("player") or 0
-		return d.name, d.minLevel .. "-" .. d.maxLevel, d.isNew and "NEW" or "", level >= d.minLevel and level <= d.maxLevel
+		return d.name, d.minLevel .. "-" .. d.maxLevel, d.isNew and "New" or "", level >= d.minLevel and level <= d.maxLevel,
+			nil, K.DifficultyColor(math.floor((d.minLevel + d.maxLevel) / 2))
 	end,
 	defaultNote = function()
 		return "Classic loot plus Forever's new drops, from Wowhead, wowtbc.gg and Mobalytics (" ..
-			(ns.DATA_DATE or "") .. "). " .. ns.Colorize(C.red, "NEW") .. " = added in Forever. " ..
-			ns.Colorize(C.light, "CLASSIC") .. " = not in Forever's game data, so it may have been replaced."
+			(ns.DATA_DATE or "") .. "). " .. ns.Colorize(C.green, "New") .. " = added in Forever. " ..
+			ns.Colorize(C.grey, "Classic") .. " = not in Forever's game data, so it may have been replaced."
 	end,
 })
 
 local Raids = InstanceMode({
 	key = "raids",
 	tab = "Raids",
-	listTitle = "RAIDS",
-	listRight = "PLAYERS",
+	icon = "Interface\\Icons\\INV_Misc_Head_Dragon_01",
+	listTitle = "Raids",
+	listRight = "Players",
 	allLabel = "All raids",
 	groupUnit = "raid",
 	raids = true,
@@ -2544,20 +2291,20 @@ local Raids = InstanceMode({
 		"Try a slot like helm or ring, a type like sword or plate, or a stat like spell power.",
 	},
 	sorted = SortedRaids,
-	-- Forever's new raids say NEW; Classic raids Forever hasn't announced say CLASSIC
+	-- Forever's new raids say New; Classic raids Forever hasn't announced say Classic
 	rowInfo = function(r)
 		local level = UnitLevel("player") or 0
 		local tag, color = "", nil
 		if r.isNew then
-			tag = "NEW"
+			tag = "New"
 		elseif r.status == "classic" then
-			tag, color = "CLASSIC", C.mist
+			tag, color = "Classic", C.grey
 		end
 		return r.name, tostring(r.size or ""), tag, level >= r.minLevel and level <= r.maxLevel, color
 	end,
 	defaultNote = function()
-		return "Loot from Wowhead (" .. (ns.DATA_DATE or "") .. "). " .. ns.Colorize(C.red, "NEW") ..
-			" = added in Forever. " .. ns.Colorize(C.light, "CLASSIC") .. " = not in Forever's game data."
+		return "Loot from Wowhead (" .. (ns.DATA_DATE or "") .. "). " .. ns.Colorize(C.green, "New") ..
+			" = added in Forever. " .. ns.Colorize(C.grey, "Classic") .. " = not in Forever's game data."
 	end,
 })
 

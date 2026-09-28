@@ -578,17 +578,17 @@ def main():
             continue
         level = max(meta[p]["req"] for p in ids)
         ilvl = max(meta[p]["ilvl"] for p in ids)
-        # Some sets list no required level (Forever's tier 0.5); sort those by item level
-        kept.append((level or min(60, ilvl), st["name"], st, ids, level, ilvl))
+        # Some sets list no required level (Forever's tier 0.5); those sort as if it were their item level
+        kept.append((level or min(60, ilvl), st["name"], st, ids, level))
     kept.sort(key=lambda k: (k[0], k[1]))
     L.append("-- Item sets with a piece in the loot or quest rewards above: id (Wowhead item-set), level")
-    L.append("-- (required, when the pieces list one), ilvl (highest), pieces, bonuses { pieces worn, effect }")
+    L.append("-- (required, when the pieces list one), pieces, bonuses { pieces worn, effect }")
     L.append("ns.Sets = {")
-    for _, name, st, ids, level, ilvl in kept:
+    for _, name, st, ids, level in kept:
         used.update(ids)
         bonuses = ", ".join(f"{{ {n}, {lua_str(t)} }}" for n, t in st["bonuses"])
         L.append(f"\t{{ id = {st['id']}, name = {lua_str(name)}, " + (f"level = {level}, " if level else "")
-                 + f"ilvl = {ilvl}, pieces = {id_list(ids)}, bonuses = {{ {bonuses} }} }},")
+                 + f"pieces = {id_list(ids)}, bonuses = {{ {bonuses} }} }},")
     L.append("}")
     L.append("")
 

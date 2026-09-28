@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.2
+
+- **A native look.** The window is now built from the game's own parts, so it matches WoW: Forever's interface: a portrait frame with the title and close button, the icon tabs down the right edge that the Character and Collections windows use, Blizzard's search box, dropdown menus, checkboxes and scroll bars, the recipe list's rows and section headers, item icons with quality borders, and the game's popup for Wowhead links. Text uses the game's gold, white and grey.
+- Dungeon level ranges are colored by how hard the dungeon is for you, and quest names by how hard the quest is, as in the quest log. What's yours (dungeons at your level, your professions, sets your class can wear) has a gold name instead of a red bar, and wishlist items get the auction house's favorite star.
+- Item levels are gone: the addon's item tooltips no longer show them, and neither does the Sets tab.
+
 ## 1.6.1
 
 - **Your profession skills show up now.** The Professions tab's skill colors, the red bar on professions you know, "Your skill" and opening on your own profession never worked on Forever, which keeps the skills list in a different place than Classic. They do now, in any client language, and professions under a collapsed header in your skills panel count too.

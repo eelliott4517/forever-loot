@@ -20,6 +20,7 @@ const KNOWN = new Set(`
   GetSkillLineInfo GetSpellLink ChatEdit_InsertLink GetLootRollItemLink
   C_SkillInfo C_Spell ChatFrameUtil
   UnitClass UnitFactionGroup TooltipDataProcessor Enum ItemRefTooltip
+  GetQuestGreenRange QuestDifficultyColors StaticPopupDialogs StaticPopup_Show CLOSE
   ipairs pairs type tostring tonumber select math table string next error pcall
 `.split(/\s+/).filter(Boolean));
 

@@ -1,5 +1,6 @@
 -- Smoke test: load ForeverLoot into the WoW mock and drive it like a player would.
 dofile(arg_test_dir .. "/wowmock.lua")
+dofile(arg_test_dir .. "/templates.lua")
 
 local passed, failed = 0, 0
 local function check(cond, msg)
@@ -54,6 +55,16 @@ end
 for _, d in ipairs(ns.Dungeons) do CheckInstance(d) end
 for _, r in ipairs(ns.Raids) do CheckInstance(r) end
 
+-- The addon shows no item levels: not in bundled tooltips (loot or crafted items), not on sets
+local levelLines = 0
+for id, e in pairs(ns.Items) do
+	for _, line in ipairs(e[7] or {}) do
+		if line:lower():find("item level", 1, true) then levelLines = levelLines + 1 end
+	end
+end
+check(levelLines == 0, "no Item Level lines in bundled tooltips (" .. levelLines .. ")")
+for _, st in ipairs(ns.Sets) do check(st.ilvl == nil, "no item level on set " .. st.name) end
+
 local R = ns.DungeonByKey
 check(#ns.Raids == 9, "9 raids (" .. #ns.Raids .. ")")
 check(R.BARROW and R.BARROW.isNew and R.BARROW.size == 10 and #R.BARROW.bosses >= 8, "The Barrow Deeps")
@@ -94,8 +105,16 @@ UI:Toggle()
 check(UI.frame:IsShown(), "window opens")
 check(table.concat(UI.modeOrder, ",") == "dungeons,raids,sets,professions,wishlist", "tabs: " .. table.concat(UI.modeOrder, ","))
 local tabLabels = {}
-for _, t in ipairs(UI.tabs) do tabLabels[#tabLabels + 1] = t.label.text end
-check(table.concat(tabLabels, ",") == "DUNGEONS,RAIDS,SETS,PROFESSIONS,WISHLIST", "tab labels " .. table.concat(tabLabels, ","))
+for _, t in ipairs(UI.tabs) do tabLabels[#tabLabels + 1] = t.tooltipText end
+check(table.concat(tabLabels, ",") == "Dungeons,Raids,Sets,Professions,Wishlist", "side tab tooltips " .. table.concat(tabLabels, ","))
+for _, t in ipairs(UI.tabs) do
+	check(t.Icon.texture ~= nil and t.fillToInterior, "side tab " .. t.key .. " has an icon")
+	check(t.checked == (t.key == UI.mode), "only the open tab is checked: " .. t.key)
+end
+-- Built from the game's templates: a portrait frame with the addon's title and icon
+check(UI.frame.TitleContainer.TitleText.text == "Forever Loot" and UI.frame.PortraitContainer.portrait.texture == ns.ICON,
+	"portrait frame title and icon")
+check(UI.left.Bg ~= nil and UI.right.Bg ~= nil and UI.searchBox.Instructions ~= nil, "insets and the search box template")
 
 local function Count(kind)
 	local c = 0
@@ -113,19 +132,19 @@ end
 
 UI:SetMode("raids")
 check(UI.mode == "raids", "Raids tab opens")
-check(UI.listLabel.text == "RAIDS" and UI.listRight.text == "PLAYERS", "raid list headings")
+check(UI.listLabel.text == "Raids" and UI.listRight.text == "Players", "raid list headings")
 local rows = ShownRows()
 check(#rows == 9, "one row per raid (" .. #rows .. ")")
-check(rows[1] and rows[1].entry == R.BARROW and rows[1].tag.text == "NEW", "Barrow Deeps first, tagged NEW")
+check(rows[1] and rows[1].entry == R.BARROW and rows[1].tag.text == "New", "Barrow Deeps first, tagged New")
 check(rows[1] and rows[1].levels.text == "10", "raid size in the list")
 local mcRow, onyRow = RowFor(R.MC), RowFor(R.ONY)
-check(mcRow and mcRow.tag.text == "CLASSIC", "Classic raids tagged CLASSIC")
-check(mcRow and mcRow.tag.tc and math.abs(mcRow.tag.tc[1] - C.mist[1]) < 0.01, "CLASSIC tag is muted, not red")
+check(mcRow and mcRow.tag.text == "Classic", "Classic raids tagged Classic")
+check(mcRow and mcRow.tag.tc and math.abs(mcRow.tag.tc[1] - C.grey[1]) < 0.01, "Classic tag is grey")
 local hyjalRow = RowFor(R.HYJAL)
-check(hyjalRow and not hyjalRow.isSelected and hyjalRow.tag.tc and math.abs(hyjalRow.tag.tc[1] - C.red[1]) < 0.01,
+check(hyjalRow and not hyjalRow.isSelected and hyjalRow.tag.tc and math.abs(hyjalRow.tag.tc[2] - C.green[2]) < 0.01,
 	"NEW tag stays red on a row that isn't selected")
 check(onyRow and onyRow.tag.text == "", "Onyxia has no tag (it's in Forever)")
-check(mcRow and not mcRow.marker.shown, "no red bar for a level 16 character")
+check(mcRow and not mcRow.isMarked and math.abs(mcRow.name.tc[3] - C.white[3]) < 0.01, "a level 16 character's raid names are white, not gold")
 
 for _, r in ipairs(ns.Raids) do
 	UI:Select(r)
@@ -294,7 +313,7 @@ for _, e in ipairs(UI.entries) do
 end
 check(rewardRow, "its reward is an item row")
 check(K.QuestTag(defias):find("Alliance", 1, true) and K.QuestTag(defias):find("choose 1 of", 1, true), "quest tag: " .. K.QuestTag(defias))
-UI.loot.bar:SetValue(bars[1].y) -- scroll the quests into view
+UI.loot:ScrollTo(bars[1].y) -- scroll the quests into view
 local bar
 for i = 1, (UI.used.quest or 0) do if UI.pools.quest[i]:IsShown() then bar = UI.pools.quest[i] break end end
 check(bar ~= nil, "a quest bar is painted")
@@ -303,8 +322,8 @@ if bar then
 	check(GameTooltip.lines[1] == bar.quest.name, "quest bar tooltip")
 	bar.scripts.OnLeave(bar)
 	bar.scripts.OnClick(bar)
-	check(UI.urlPopup and UI.urlPopup.url:find("quest=" .. bar.quest.id, 1, true), "quest bar gives its Wowhead link")
-	UI.urlPopup:Hide()
+	check(MOCK.popup and MOCK.popup.which == "FOREVERLOOT_WOWHEAD_LINK" and MOCK.popup.data.url:find("quest=" .. bar.quest.id, 1, true)
+		and MOCK.popup:GetEditBox():GetText() == MOCK.popup.data.url, "quest bar gives its Wowhead link in the game's popup")
 end
 -- The other faction's quests are left out
 MOCK.faction = "Horde"
@@ -350,7 +369,7 @@ UI:SetMode("raids")
 UI:Select(R.MC)
 local before = #Entries("item")
 UI:ToggleFilter("myClass")
-check(ns.char.filters.myClass == true and UI.toggles.myClass.check:IsShown(), "My class turns on")
+check(ns.char.filters.myClass == true and UI.toggles.myClass:GetChecked(), "My class turns on")
 local after = #Entries("item")
 check(after < before, ("My class hides gear a Mage can't use in Molten Core (%d -> %d)"):format(before, after))
 for _, e in ipairs(Entries("item")) do
@@ -393,10 +412,15 @@ for _, st in ipairs(ns.Sets) do
 end
 check(valor and valor.name == "Battlegear of Valor" and #valor.pieces == 8 and #valor.bonuses > 0, "Battlegear of Valor")
 UI:SetMode("sets")
-check(UI.mode == "sets" and UI.listLabel.text == "ITEM SETS", "Sets tab")
+check(UI.mode == "sets" and UI.listLabel.text == "Item sets", "Sets tab")
 check(#ShownRows() == #ns.Sets, "one row per set (" .. #ShownRows() .. ")")
 UI:Select(valor)
 check(UI.header.name.text == "Battlegear of Valor" and UI.header.meta.text:find("8 pieces", 1, true), "set header: " .. UI.header.meta.text)
+for _, st in ipairs(ns.Sets) do
+	UI:Select(st)
+	check(not UI.header.meta.text:lower():find("item level", 1, true), "no item level in the header of " .. st.name)
+end
+UI:Select(valor)
 check(#Entries("text") == #valor.bonuses and #Entries("item") == 8, "set bonuses and pieces")
 local sourced = 0
 for _, e in ipairs(Entries("item")) do
@@ -405,10 +429,10 @@ end
 check(sourced >= 6, "most Valor pieces say where they drop (" .. sourced .. ")")
 check(select(2, UI:Mode().WowheadLink(valor)):find("item-set=189", 1, true), "set Wowhead link")
 local valorRow = RowFor(valor)
-check(valorRow and valorRow.marker.shown, "red bar: a Warrior can wear Valor")
+check(valorRow and valorRow.isMarked, "gold name: a Warrior can wear Valor")
 MOCK.class = { "Mage", "MAGE", 8 }
 UI:BuildList()
-check(valorRow and not RowFor(valor).marker.shown, "but not a Mage")
+check(valorRow and not RowFor(valor).isMarked, "but not a Mage")
 UI:ToggleFilter("myClass")
 check(RowFor(valor) == nil and #ShownRows() < #ns.Sets, "My class hides sets a Mage can't wear")
 UI:ToggleFilter("myClass")

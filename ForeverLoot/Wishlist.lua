@@ -130,7 +130,7 @@ local function AddGroup(ui, g)
 	if e.minLevel then right = K.LevelText(e) .. "   ·   " .. right end
 	local kind = e.minLevel and "d:" or (e.recipes and "p:" or "")
 	local id = (ui:IsSearching() and "s:w:" or "w:") .. kind .. e.key
-	if ui:AddSection(id, e.name:upper(), right, true) then return end
+	if ui:AddSection(id, e.name, right, true) then return end
 	for _, row in ipairs(g.rows) do
 		if row.recipe then
 			ui:AddEntry("recipe", RECIPE_H, row)
@@ -146,8 +146,9 @@ end
 local Wishlist = {
 	key = "wishlist",
 	tab = "Wishlist",
-	listTitle = "WHERE TO GET IT",
-	listRight = "ITEMS",
+	icon = "Interface\\Icons\\INV_Misc_Note_01",
+	listTitle = "Where to get it",
+	listRight = "Items",
 	allLabel = "Everything",
 	unit = "item",
 	groupUnit = "source",
@@ -158,7 +159,7 @@ local Wishlist = {
 		"Clear the search to see the whole list.",
 	},
 	footer = "Right-click: take it off    Shift-click: link in chat    Ctrl-click: preview    " ..
-		ns.Colorize(C.blue, "OWNED") .. ": in your bags, bank or worn",
+		ns.Colorize(C.blue, "Owned") .. ": in your bags, bank or worn",
 }
 
 function Wishlist.dataDate()
@@ -230,7 +231,7 @@ function Wishlist.ShowHeader(ui, h, entry)
 	end
 	h.note:SetText("Right-click an item on the Dungeons, Raids or Sets tab, or a recipe on the Professions tab, to add it; " ..
 		"right-click it here to take it off. You get a chat alert when one drops or comes up for a roll. " ..
-		ns.Colorize(C.blue, "OWNED") .. " = in your bags, bank or worn.")
+		ns.Colorize(C.blue, "Owned") .. " = in your bags, bank or worn.")
 end
 
 function Wishlist.Render(ui, entry)
@@ -259,7 +260,7 @@ Wishlist.AddResults = AddGroup
 UI:RegisterMode(Wishlist)
 
 ----------------------------------------------------------------------
--- Alerts, and keeping OWNED up to date
+-- Alerts, and keeping Owned up to date
 ----------------------------------------------------------------------
 local alerted = {}
 
@@ -288,7 +289,7 @@ events:SetScript("OnEvent", function(_, event, arg1)
 	elseif event == "START_LOOT_ROLL" then
 		Alert(GetLootRollItemLink and GetLootRollItemLink(arg1), "is up for a roll")
 	elseif UI.mode == "wishlist" and UI.frame and UI.frame:IsShown() and not pending then
-		-- Bags or gear changed: repaint OWNED once things settle
+		-- Bags or gear changed: repaint Owned once things settle
 		pending = true
 		C_Timer.After(0.5, function()
 			pending = false

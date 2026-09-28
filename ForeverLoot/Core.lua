@@ -5,7 +5,8 @@ ns.ICON = "Interface\\Icons\\INV_Box_01"
 ns.WOWHEAD = "https://www.wowhead.com/forever/"
 ns.WOWHEAD_CLASSIC = "https://www.wowhead.com/classic/"
 
--- Standley's brand palette
+-- The game's own text colors, so the window reads like the rest of the interface
+-- (NORMAL_FONT_COLOR, HIGHLIGHT_FONT_COLOR and friends)
 local function rgb(hex)
 	return {
 		tonumber(hex:sub(1, 2), 16) / 255,
@@ -16,18 +17,14 @@ local function rgb(hex)
 end
 
 ns.COLORS = {
-	black    = rgb("000000"),
-	light    = rgb("DFE3E2"),
-	mist     = rgb("BAC5C3"),
-	slate    = rgb("545354"),
-	graphite = rgb("444445"),
-	night    = rgb("24282A"),
-	blue     = rgb("2564AF"),
-	steel    = rgb("264886"),
-	navy     = rgb("22356A"),
-	red      = rgb("EF3942"),
-	crimson  = rgb("DF2236"),
-	garnet   = rgb("B61F36"),
+	gold   = rgb("FFD100"), -- headings and labels
+	white  = rgb("FFFFFF"), -- body text
+	silver = rgb("C0C0C0"), -- secondary text
+	grey   = rgb("808080"), -- disabled, Classic-only
+	green  = rgb("19FF19"), -- new in Forever
+	red    = rgb("FF1919"), -- warnings
+	blue   = rgb("88AAFF"), -- owned, recorded by you
+	black  = rgb("000000"),
 }
 
 -- Standard in-game item quality colors, so rarity reads the same as everywhere else in WoW
@@ -41,7 +38,7 @@ function ns.Colorize(c, text)
 end
 
 function ns:Print(msg)
-	DEFAULT_CHAT_FRAME:AddMessage(ns.Colorize(ns.COLORS.blue, ns.name) .. ": " .. msg)
+	DEFAULT_CHAT_FRAME:AddMessage(ns.Colorize(ns.COLORS.gold, ns.name) .. ": " .. msg)
 end
 
 -- API shims: prefer the C_Item namespace, fall back to the classic globals
@@ -271,12 +268,12 @@ local function CreateMinimapButton()
 	end)
 	b:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-		GameTooltip:AddLine(ns.name, C.light[1], C.light[2], C.light[3])
-		GameTooltip:AddLine("Left-click: open dungeon and raid loot, sets and professions", C.mist[1], C.mist[2], C.mist[3])
+		GameTooltip:SetText(ns.name, C.white[1], C.white[2], C.white[3])
+		GameTooltip:AddLine("Left-click: open dungeon and raid loot, sets and professions", C.gold[1], C.gold[2], C.gold[3])
 		local wanted = ns.Wishlist.Count()
-		GameTooltip:AddLine("Wishlist: " .. wanted .. (wanted == 1 and " item" or " items"), C.mist[1], C.mist[2], C.mist[3])
-		GameTooltip:AddLine("Right-click: commands", C.mist[1], C.mist[2], C.mist[3])
-		GameTooltip:AddLine("Drag: move this button", C.mist[1], C.mist[2], C.mist[3])
+		GameTooltip:AddLine("Wishlist: " .. wanted .. (wanted == 1 and " item" or " items"), C.gold[1], C.gold[2], C.gold[3])
+		GameTooltip:AddLine("Right-click: commands", C.gold[1], C.gold[2], C.gold[3])
+		GameTooltip:AddLine("Drag: move this button", C.gold[1], C.gold[2], C.gold[3])
 		GameTooltip:Show()
 	end)
 	b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -300,13 +297,13 @@ end
 function ns:PrintHelp()
 	local C = ns.COLORS
 	self:Print("commands")
-	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl") .. "  open or close the loot window")
-	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl dungeons") .. ", " .. ns.Colorize(C.light, "/fl raids") .. ", " .. ns.Colorize(C.light, "/fl sets") .. ", " .. ns.Colorize(C.light, "/fl professions") .. " or " .. ns.Colorize(C.light, "/fl wishlist") .. "  open that tab")
-	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl gloves") .. "  search the open tab for an item, slot, type, stat or material")
-	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl tooltip") .. "  turn the \"drops from\" lines on item tooltips on or off")
-	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl minimap") .. "  show or hide the minimap button")
-	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl reset") .. "  reset window and button positions")
-	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.light, "/fl forget") .. "  clear drops recorded from your own loot")
+	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.white, "/fl") .. "  open or close the loot window")
+	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.white, "/fl dungeons") .. ", " .. ns.Colorize(C.white, "/fl raids") .. ", " .. ns.Colorize(C.white, "/fl sets") .. ", " .. ns.Colorize(C.white, "/fl professions") .. " or " .. ns.Colorize(C.white, "/fl wishlist") .. "  open that tab")
+	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.white, "/fl gloves") .. "  search the open tab for an item, slot, type, stat or material")
+	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.white, "/fl tooltip") .. "  turn the \"drops from\" lines on item tooltips on or off")
+	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.white, "/fl minimap") .. "  show or hide the minimap button")
+	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.white, "/fl reset") .. "  reset window and button positions")
+	DEFAULT_CHAT_FRAME:AddMessage("  " .. ns.Colorize(C.white, "/fl forget") .. "  clear drops recorded from your own loot")
 end
 
 SLASH_FOREVERLOOT1 = "/fl"

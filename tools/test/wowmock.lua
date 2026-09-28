@@ -42,6 +42,7 @@ function Region:Hide() self.shown = false end
 function Region:SetShown(v) self.shown = not not v end
 function Region:IsShown() return self.shown end
 function Region:SetAlpha(a) assert(type(a) == "number"); self.alpha = a end
+function Region:GetParent() return self.parent end
 function Region:IsMouseOver() return false end
 function Region:GetPoint(i)
 	local p = (self.points or {})[i or 1]
@@ -63,6 +64,8 @@ local Texture = inherit(Region, {
 	SetTexture = function(self, t) self.texture = t end,
 	SetTexCoord = function(self, ...) self.texCoord = { ... } end,
 	SetVertexColor = function(self, r, g, b, a) assert(type(r) == "number"); self.vertex = { r, g, b, a } end,
+	SetAtlas = function(self, atlas, useAtlasSize) assert(type(atlas) == "string", "SetAtlas needs a name"); self.atlas = atlas; return true end,
+	SetBlendMode = function(self, mode) assert(mode == "ADD" or mode == "BLEND" or mode == "ALPHAKEY" or mode == "DISABLE" or mode == "MOD"); self.blend = mode end,
 })
 local TextureMT = strict("Texture", Texture)
 
@@ -96,7 +99,10 @@ local Frame = inherit(Region, {
 		self.scripts[name] = fn
 	end,
 	GetScript = function(self, name) return self.scripts[name] end,
-	HookScript = function(self, name, fn) self.scripts[name] = fn end,
+	HookScript = function(self, name, fn)
+		local old = self.scripts[name]
+		self.scripts[name] = old and function(...) old(...); fn(...) end or fn
+	end,
 	RegisterEvent = function(self, e) MOCK.events[e] = MOCK.events[e] or {}; MOCK.events[e][self] = true end,
 	UnregisterEvent = function(self, e) if MOCK.events[e] then MOCK.events[e][self] = nil end end,
 	SetFrameStrata = function() end,
@@ -136,8 +142,15 @@ local Button = inherit(Frame, {
 
 local ScrollFrame = inherit(Frame, {
 	SetScrollChild = function(self, c) self.child = c end,
-	SetVerticalScroll = function(self, v) assert(type(v) == "number"); self.scroll = v end,
+	-- Like the game, a scroll change runs OnVerticalScroll
+	SetVerticalScroll = function(self, v)
+		assert(type(v) == "number")
+		self.scroll = v
+		if self.scripts.OnVerticalScroll then self.scripts.OnVerticalScroll(self, v) end
+	end,
 	GetVerticalScroll = function(self) return self.scroll or 0 end,
+	GetVerticalScrollRange = function(self) return math.max(0, (self.child and self.child.h or 0) - self:GetHeight()) end,
+	UpdateScrollChildRect = function() end,
 })
 
 local Slider = inherit(Frame, {
@@ -160,27 +173,38 @@ local EditBox = inherit(Frame, {
 	SetMaxLetters = function(self, n) assert(type(n) == "number") end,
 	SetFontObject = function(self, f) assert(f and f.__isFont) end,
 	SetTextInsets = function() end,
-	SetText = function(self, t) self.text = t end,
-	GetText = function(self) return self.text end,
+	-- Like the game, SetText runs OnTextChanged (userInput false)
+	SetText = function(self, t)
+		assert(type(t) == "string", "EditBox:SetText needs a string")
+		self.text = t
+		if self.scripts.OnTextChanged then self.scripts.OnTextChanged(self, false) end
+	end,
+	GetText = function(self) return self.text or "" end,
 	HighlightText = function() end,
 	SetFocus = function(self) self.focus = true end,
 	ClearFocus = function(self) self.focus = false end,
+	HasFocus = function(self) return self.focus == true end,
 })
 
 local kinds = {
 	Frame = strict("Frame", Frame), Button = strict("Button", Button),
 	ScrollFrame = strict("ScrollFrame", ScrollFrame), Slider = strict("Slider", Slider),
 	EditBox = strict("EditBox", EditBox),
+	-- The templates (templates.lua) add what's particular to these
+	CheckButton = strict("CheckButton", Button), DropdownButton = strict("DropdownButton", Button),
 }
 
 function CreateFrame(kind, name, parent, template)
 	local mt = kinds[kind]
 	if not mt then error("mock: unsupported frame type " .. tostring(kind), 2) end
-	if template then error("mock: templates not expected: " .. tostring(template), 2) end
 	local f = setmetatable({ kind = kind, name = name, parent = parent, scripts = {}, shown = true, children = {} }, mt)
 	if parent and parent.children then table.insert(parent.children, f) end
 	if name then _G[name] = f; MOCK.named[name] = f end
 	table.insert(MOCK.frames, f)
+	if template then
+		if not MOCK.ApplyTemplate then error("mock: templates need templates.lua: " .. tostring(template), 2) end
+		MOCK.ApplyTemplate(f, template)
+	end
 	return f
 end
 
@@ -242,6 +266,7 @@ local function newTooltip(name)
 			for _, fn in ipairs(self.hooks.OnTooltipCleared or {}) do fn(self) end
 		end,
 		GetOwner = function(self) return self.owner end,
+		SetText = function(self, text) assert(type(text) == "string"); self.lines = { text } end,
 		IsShown = function(self) return self.visible end,
 		SetItemByID = function(self, id)
 			assert(type(id) == "number", "SetItemByID needs a number")

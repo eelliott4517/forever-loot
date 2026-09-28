@@ -9,7 +9,7 @@ if not (UI and K and ns.Professions) then return end
 local RECIPE_H = 40
 K.RECIPE_H = RECIPE_H
 local NOTE_H, SECTION_GAP = K.NOTE_H, K.SECTION_GAP
-local Tex, Font, Text, Count, SetTextColor = K.Tex, K.Font, K.Text, K.Count, K.SetTextColor
+local Atlas, Text, Count, SetTextColor = K.Atlas, K.Text, K.Count, K.SetTextColor
 
 -- A profession's recipes are grouped by what they make: gear by slot in character-sheet
 -- order, each enchant right after the slot it goes on, then everything else by kind.
@@ -104,7 +104,7 @@ local function Tint(color, text)
 	return ("|cff%02x%02x%02x%s|r"):format(color[1] * 255, color[2] * 255, color[3] * 255, text)
 end
 
-local CHANGED = { "CHANGED", C.steel }
+local CHANGED = { "Changed", C.blue }
 
 -- Your rank in each profession, by name and by skill line id. Forever keeps the skills list
 -- under C_SkillInfo, one table per line (the Classic globals are only a fallback). A profession
@@ -192,7 +192,7 @@ end
 local function MaterialsText(rec)
 	local parts = {}
 	for i = 1, #rec.mats, 2 do
-		parts[#parts + 1] = ns.Colorize(C.light, rec.mats[i + 1]) .. " " .. ns.ItemDisplay(rec.mats[i])
+		parts[#parts + 1] = ns.Colorize(C.white, rec.mats[i + 1]) .. " " .. ns.ItemDisplay(rec.mats[i])
 	end
 	return table.concat(parts, ", ")
 end
@@ -206,45 +206,38 @@ local function CreateRecipe(parent, width)
 	r.isForeverLootRow = true
 	r.isForeverLootItem = true
 	r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	r.hover = Tex(r, "BACKGROUND", C.blue, 0.22)
-	r.hover:SetAllPoints()
-	r.hover:Hide()
-	-- Red bar on the left: what it makes is on your wishlist
-	r.wanted = Tex(r, "ARTWORK", C.red, 1)
-	r.wanted:SetPoint("TOPLEFT")
-	r.wanted:SetPoint("BOTTOMLEFT")
-	r.wanted:SetWidth(3)
+	K.RowHighlight(r)
+	-- A star: what it makes is on your wishlist
+	r.wanted = Atlas(r, "OVERLAY", "auctionhouse-icon-favorite")
+	r.wanted:SetSize(13, 12)
+	r.wanted:SetPoint("LEFT", 2, 0)
 	r.wanted:Hide()
-	local iconFrame = CreateFrame("Frame", nil, r)
-	iconFrame:SetSize(30, 30)
-	iconFrame:SetPoint("LEFT", 8, 0)
-	Tex(iconFrame, "BACKGROUND", C.black, 1):SetAllPoints()
-	r.icon = iconFrame:CreateTexture(nil, "ARTWORK")
-	r.icon:SetPoint("TOPLEFT", 1, -1)
-	r.icon:SetPoint("BOTTOMRIGHT", -1, 1)
-	r.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-	r.src = Text(r, Font("recipe_src", GameFontHighlightSmall, C.mist, 10), "RIGHT")
+	r.icon = r:CreateTexture(nil, "ARTWORK")
+	r.icon:SetSize(30, 30)
+	r.icon:SetPoint("LEFT", 18, 0)
+	r.border = r:CreateTexture(nil, "OVERLAY")
+	r.border:SetTexture("Interface\\Common\\WhiteIconFrame")
+	r.border:SetAllPoints(r.icon)
+	r.border:Hide()
+	r.src = Text(r, "GameFontHighlightSmall", "RIGHT")
 	r.src:SetPoint("RIGHT", r, "TOPRIGHT", -8, -13)
 	r.src:SetWidth(64)
-	r.skill = Text(r, Font("recipe_skill", GameFontHighlight, C.light, 12), "RIGHT")
+	SetTextColor(r.src, C.silver)
+	r.skill = Text(r, "GameFontHighlight", "RIGHT")
 	r.skill:SetPoint("RIGHT", r.src, "LEFT", -8, 0)
 	r.skill:SetWidth(30)
-	r.type = Text(r, Font("item_type", GameFontHighlightSmall, C.mist, 11), "RIGHT")
+	r.type = Text(r, "GameFontHighlightSmall", "RIGHT")
 	r.type:SetPoint("RIGHT", r.skill, "LEFT", -10, 0)
-	r.badge = CreateFrame("Frame", nil, r)
-	r.badge:SetSize(40, 14)
+	SetTextColor(r.type, C.silver)
+	r.badge = Text(r, "GameFontHighlightSmall", "RIGHT")
 	r.badge:SetPoint("RIGHT", r.type, "LEFT", -8, 0)
-	r.badge.bg = Tex(r.badge, "BACKGROUND", C.red, 1)
-	r.badge.bg:SetAllPoints()
-	r.badge.text = Text(r.badge, Font("badge", GameFontHighlightSmall, C.light, 9), "CENTER")
-	r.badge.text:SetPoint("CENTER")
-	r.name = Text(r, Font("item_name", GameFontHighlight, C.light, 12))
-	r.mats = Text(r, Font("recipe_mats", GameFontHighlightSmall, C.mist, 10))
-	r.mats:SetPoint("LEFT", r, "TOPLEFT", 46, -28)
+	r.name = Text(r, "GameFontHighlight")
+	r.mats = Text(r, "GameFontHighlightSmall")
+	r.mats:SetPoint("LEFT", r, "TOPLEFT", 56, -28)
 	r.mats:SetPoint("RIGHT", r, "TOPRIGHT", -8, -28)
+	SetTextColor(r.mats, C.silver)
 
 	r:SetScript("OnEnter", function(self)
-		self.hover:Show()
 		local d = self.entry
 		if not d then return end
 		local rec, prof = d.recipe, d.prof
@@ -253,30 +246,30 @@ local function CreateRecipe(parent, width)
 		if rec.item then
 			bundled = K.ItemTooltip(rec.item)
 		else
-			GameTooltip:AddLine(rec.name, C.light[1], C.light[2], C.light[3])
+			GameTooltip:SetText(rec.name, C.white[1], C.white[2], C.white[3])
 			if rec.desc then
 				GameTooltip:AddLine(rec.desc, 1, 1, 1, true)
 			elseif not rec.slot then
-				GameTooltip:AddLine("Wowhead doesn't list the item this makes yet.", C.mist[1], C.mist[2], C.mist[3], true)
+				GameTooltip:AddLine("Wowhead doesn't list the item this makes yet.", C.silver[1], C.silver[2], C.silver[3], true)
 			end
 		end
 
 		GameTooltip:AddLine(" ")
-		GameTooltip:AddLine("Materials", C.light[1], C.light[2], C.light[3])
+		GameTooltip:AddLine("Materials", C.gold[1], C.gold[2], C.gold[3])
 		for i = 1, #rec.mats, 2 do
 			local id, n = rec.mats[i], rec.mats[i + 1]
 			local name, quality = ns.ItemDisplay(id)
 			local have = ns.GetItemCount and ns.GetItemCount(id) or 0
 			local qr, qg, qb = K.HexToRGB(ns.QUALITY_HEX[quality] or "ffffff")
 			GameTooltip:AddDoubleLine(n .. " x " .. name, have > 0 and ("you have " .. have) or " ",
-				qr, qg, qb, C.mist[1], C.mist[2], C.mist[3])
+				qr, qg, qb, C.silver[1], C.silver[2], C.silver[3])
 		end
 
 		local notes = {}
 		if rec.item and ns.ItemDisplay(rec.item) ~= rec.name then
-			notes[#notes + 1] = { "Recipe: " .. rec.name, C.light }
+			notes[#notes + 1] = { "Recipe: " .. rec.name, C.white }
 		end
-		if rec.makes then notes[#notes + 1] = { "Makes " .. rec.makes .. " at a time.", C.mist } end
+		if rec.makes then notes[#notes + 1] = { "Makes " .. rec.makes .. " at a time.", C.silver } end
 		if rec.skill then
 			local line = prof.name .. " " .. rec.skill .. " to learn."
 			local c = rec.colors
@@ -285,26 +278,25 @@ local function CreateRecipe(parent, width)
 					Tint(SKILLUP.green, "green") .. " at " .. c[3] .. ", " .. Tint(SKILLUP.grey, "grey") .. " at " .. c[4] .. "."
 			end
 			if d.mine then line = line .. " You're at " .. d.mine.rank .. "." end
-			notes[#notes + 1] = { line, C.mist }
+			notes[#notes + 1] = { line, C.silver }
 		else
-			notes[#notes + 1] = { "The skill it needs isn't known yet.", C.mist }
+			notes[#notes + 1] = { "The skill it needs isn't known yet.", C.silver }
 		end
-		notes[#notes + 1] = { HowToLearn(rec, prof), C.mist }
+		notes[#notes + 1] = { HowToLearn(rec, prof), C.silver }
 		if rec.status == "new" then
-			notes[#notes + 1] = { "New in Forever.", C.red }
+			notes[#notes + 1] = { "New in Forever.", C.green }
 		elseif rec.status == "changed" then
-			notes[#notes + 1] = { "Changed in Forever" .. (rec.changes and (": " .. table.concat(rec.changes, "; ")) or "") .. ".", C.mist }
+			notes[#notes + 1] = { "Changed in Forever" .. (rec.changes and (": " .. table.concat(rec.changes, "; ")) or "") .. ".", C.blue }
 		end
 		if bundled then
-			notes[#notes + 1] = { "The beta server isn't sending this item's data, so these stats come from Wowhead.", C.mist }
+			notes[#notes + 1] = { "The beta server isn't sending this item's data, so these stats come from Wowhead.", C.silver }
 		end
-		if d.owned then notes[#notes + 1] = { "You have it: it's in your bags, bank or worn.", C.light } end
+		if d.owned then notes[#notes + 1] = { "You have it: it's in your bags, bank or worn.", C.blue } end
 		if rec.item then notes[#notes + 1] = K.WishlistNote(rec.item) end
 		K.AddNotes(notes)
 		GameTooltip:Show()
 	end)
-	r:SetScript("OnLeave", function(self)
-		self.hover:Hide()
+	r:SetScript("OnLeave", function()
 		GameTooltip:Hide()
 	end)
 	r:SetScript("OnClick", function(self, button)
@@ -344,30 +336,35 @@ local function FillRecipe(r, d)
 	local rec = d.recipe
 	r.itemID = rec.item
 	local name, quality, typeText, icon
+	r.border:Hide()
 	if rec.item then
 		name, quality, typeText, icon = ns.ItemDisplay(rec.item)
-		r.name:SetTextColor(K.HexToRGB(ns.QUALITY_HEX[quality] or "ffffff"))
+		local qr, qg, qb = K.HexToRGB(ns.QUALITY_HEX[quality] or "ffffff")
+		r.name:SetTextColor(qr, qg, qb)
+		if quality >= 2 then
+			r.border:SetVertexColor(qr, qg, qb)
+			r.border:Show()
+		end
 	else
 		name, typeText = rec.name, rec.slot and "Enchant" or ""
 		icon = rec.icon or "Interface\\Icons\\INV_Misc_QuestionMark"
-		SetTextColor(r.name, C.light)
+		SetTextColor(r.name, C.white)
 	end
-	if rec.makes then name = name .. ns.Colorize(C.mist, "  x" .. rec.makes) end
+	if rec.makes then name = name .. ns.Colorize(C.silver, "  x" .. rec.makes) end
 	r.name:SetText(name)
 	r.icon:SetTexture(icon)
 	r.type:SetText(typeText or "")
 	r.skill:SetText(rec.skill or "?")
-	SetTextColor(r.skill, SkillColor(rec, d.mine) or C.light)
+	SetTextColor(r.skill, SkillColor(rec, d.mine) or C.white)
 	r.src:SetText(rec.src)
 
 	r.wanted:SetShown(rec.item ~= nil and ns.Wishlist.IsWanted(rec.item))
 	local badge = (d.owned and K.BADGES.owned) or (rec.status == "new" and K.BADGES.new) or (rec.status == "changed" and CHANGED) or nil
 	r.name:ClearAllPoints()
-	r.name:SetPoint("LEFT", r, "TOPLEFT", 46, -13)
+	r.name:SetPoint("LEFT", r, "TOPLEFT", 56, -13)
 	if badge then
-		r.badge.text:SetText(badge[1])
-		r.badge.bg:SetColorTexture(badge[2][1], badge[2][2], badge[2][3], 1)
-		r.badge:SetWidth(r.badge.text:GetStringWidth() + 10)
+		r.badge:SetText(badge[1])
+		SetTextColor(r.badge, badge[2])
 		r.badge:Show()
 		r.name:SetPoint("RIGHT", r.badge, "LEFT", -6, 0)
 	else
@@ -414,8 +411,9 @@ local professions = ns.Professions
 local Professions = {
 	key = "professions",
 	tab = "Professions",
-	listTitle = "PROFESSIONS",
-	listRight = "RECIPES",
+	icon = "Interface\\ICONS\\INV_SideTab_Professions_c60",
+	listTitle = "Professions",
+	listRight = "Recipes",
 	allLabel = "All professions",
 	unit = "recipe",
 	groupUnit = "profession",
@@ -425,8 +423,7 @@ local Professions = {
 		"No recipe in any profession matches that.",
 		"Try a material like copper bar, a slot like gloves, a type like leather, or a stat like agility.",
 	},
-	footer = "Click: Wowhead link    Shift-click: link in chat    Right-click: wishlist    " .. ns.Colorize(C.red, "Red bar") ..
-		": your professions    Skill color: skill-up chance",
+	footer = "Click: Wowhead link    Shift-click: link in chat    Right-click: wishlist    Skill color: skill-up chance",
 }
 
 function Professions.dataDate()
@@ -481,7 +478,7 @@ function Professions.ShowHeader(ui, h, p)
 	if mine then parts[#parts + 1] = "Your skill " .. mine.rank .. "/" .. mine.max end
 	h.meta:SetText(table.concat(parts, "   ·   "))
 	h.note:SetText("Forever's recipes, materials and sources from Wowhead (" .. (ns.PROFESSION_DATE or "") .. "). " ..
-		ns.Colorize(C.red, "NEW") .. " = added in Forever. " .. ns.Colorize(C.light, "CHANGED") ..
+		ns.Colorize(C.green, "New") .. " = added in Forever. " .. ns.Colorize(C.blue, "Changed") ..
 		" = different from Classic. " ..
 		(mine and "Skill numbers are colored by your chance of a skill-up." or "Numbers are the skill each recipe needs."))
 end
@@ -507,7 +504,7 @@ function Professions.Render(ui, p)
 	end)
 	for _, section in ipairs(sections) do
 		if ui.contentY > 0 then ui:AddGap(SECTION_GAP) end
-		local collapsed = ui:AddSection("p:" .. p.key .. ":" .. section.group.key, section.group.label:upper(),
+		local collapsed = ui:AddSection("p:" .. p.key .. ":" .. section.group.key, section.group.label,
 			Count(#section.recipes, "recipe"), #sections == 1)
 		if not collapsed then
 			for _, rec in ipairs(section.recipes) do

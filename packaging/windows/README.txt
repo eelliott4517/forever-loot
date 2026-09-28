@@ -16,7 +16,8 @@ Then restart WoW. A /reload won't pick up a new addon. If the AddOns list marks 
 out of date, tick "Load out of date AddOns".
 
 USING IT
-- Click the minimap button, or type /fl. The tabs are Dungeons, Raids, Sets, Professions and Wishlist.
+- Click the minimap button, or type /fl. The tabs down the right edge are Dungeons, Raids, Sets,
+  Professions and Wishlist.
 - Click a dungeon or raid on the left to see its bosses and their drops. Its quests and their
   rewards are in the Quests section at the bottom.
 - Tick "My class" under the search box to see only gear your class can use, and
@@ -32,7 +33,7 @@ USING IT
 ABOUT THE DATA
 WoW addons can't go online, so the loot data is bundled (pulled {DATE}) from Wowhead,
 wowtbc.gg and Mobalytics. Item tags:
-  NEW      added in Forever (a "boss not confirmed" section lists datamined ones)
-  CLASSIC  Classic loot that isn't in Forever's game data, so it may have been replaced
-  SEEN     recorded from your own loot: the addon remembers any blue-or-better item
+  New      added in Forever (a "boss not confirmed" section lists datamined ones)
+  Classic  Classic loot that isn't in Forever's game data, so it may have been replaced
+  Seen     recorded from your own loot: the addon remembers any blue-or-better item
            you loot from a dungeon or raid boss

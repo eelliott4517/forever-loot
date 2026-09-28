@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 HERE = os.path.dirname(os.path.abspath(__file__))
 URL = "https://nether.wowhead.com/tooltip/item/{id}?dataEnv={env}&locale=0"
 ENVS = {"forever": 16, "classic": 4}
-PARSER = 3          # bump when parse() changes; cached HTML gets parsed again
+PARSER = 4          # bump when parse() changes; cached HTML gets parsed again
 WORKERS = 8
 MIN_INTERVAL = 0.2  # seconds between requests across all workers; be polite
 
@@ -86,12 +86,14 @@ GOLD, GREY = "|cffffd100", "|cff9d9d9d"
 SET_HEADER = re.compile(r'<span class="q"><a href="/[a-z]+/item-set=(\d+)[^"]*"[^>]*>(.*?)</a>\s*\((\d+)/(\d+)\)</span>', re.S)
 SET_PIECES = re.compile(r'<div class="q0 indent">(.*?)</div>', re.S)
 SET_BONUS = re.compile(r"^\((\d+)\) Set ?: ?(.*)$")
+ITEM_LEVEL = re.compile(r"^Item Level \d+$")   # left out: the addon shows no item levels
 CLASSES = re.compile(r'<div class="wowhead-tooltip-item-classes">(.*?)</div>', re.S)
 
 
 def tooltip_lines(tip):
     """Wowhead tooltip HTML -> plain lines for an in-game tooltip ('left\\tright' for two columns).
-    Set names are gold and the pieces and bonuses grey, as in game when you wear none of it."""
+    Set names are gold and the pieces and bonuses grey, as in game when you wear none of it.
+    Item levels are left out."""
     t = re.sub(r"<!--nstart-->.*?<!--nend-->", "", tip, count=1, flags=re.S)
     t = re.sub(r'<div class="whtt-sellprice">.*?</div>', "", t, flags=re.S)
     t = SET_HEADER.sub(lambda m: f"\n\x01{strip_tags(m.group(2))} (0/{m.group(4)})\n", t)
@@ -108,6 +110,8 @@ def tooltip_lines(tip):
         if not any(parts):
             continue
         line = "\t".join(p for p in parts if p) if len(parts) > 1 else parts[0]
+        if ITEM_LEVEL.match(line):
+            continue
         line = line.replace("|", "||")
         if line.startswith("\x01"):
             line = GOLD + line[1:] + "|r"

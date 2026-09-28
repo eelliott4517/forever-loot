@@ -77,12 +77,12 @@ local function AddSources(tooltip, itemID)
 	local lines = ns.TooltipLines(itemID)
 	if not lines then return false end
 	tooltip.foreverLootItem = itemID
-	tooltip:AddLine(ns.name, C.red[1], C.red[2], C.red[3])
+	tooltip:AddLine(ns.name, C.gold[1], C.gold[2], C.gold[3])
 	for _, l in ipairs(lines) do
 		if l[2] ~= "" then
-			tooltip:AddDoubleLine(l[1], l[2], C.light[1], C.light[2], C.light[3], C.mist[1], C.mist[2], C.mist[3])
+			tooltip:AddDoubleLine(l[1], l[2], C.white[1], C.white[2], C.white[3], C.silver[1], C.silver[2], C.silver[3])
 		else
-			tooltip:AddLine(l[1], C.light[1], C.light[2], C.light[3])
+			tooltip:AddLine(l[1], C.white[1], C.white[2], C.white[3])
 		end
 	end
 	return true

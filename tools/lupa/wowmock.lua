@@ -49,6 +49,9 @@ function Texture:SetColorTexture(r, g, b, a) self._color = { r, g, b, a } end
 function Texture:SetTexture(path) self._texture = path end
 function Texture:SetTexCoord() end
 function Texture:SetVertexColor(r, g, b) self._vertex = { r, g, b } end
+function Texture:SetAtlas(atlas) assert(type(atlas) == "string", "SetAtlas needs an atlas name"); self._atlas = atlas; return true end
+function Texture:GetAtlas() return self._atlas end
+function Texture:SetBlendMode(mode) self._blend = mode end
 
 local FontString = class(Region)
 function FontString:SetFontObject(f) assert(type(f) == "table", "SetFontObject needs a font object"); self._font = f end
@@ -129,8 +132,14 @@ end
 
 local ScrollFrame = class(Frame)
 function ScrollFrame:SetScrollChild(c) self._child = c end
-function ScrollFrame:SetVerticalScroll(v) self._scroll = v end
+-- Like the game, a scroll change runs OnVerticalScroll
+function ScrollFrame:SetVerticalScroll(v)
+	self._scroll = v
+	local fn = self:GetScript("OnVerticalScroll"); if fn then fn(self, v) end
+end
 function ScrollFrame:GetVerticalScroll() return self._scroll or 0 end
+function ScrollFrame:GetVerticalScrollRange() return math.max(0, (self._child and self._child:GetHeight() or 0) - self:GetHeight()) end
+function ScrollFrame:UpdateScrollChildRect() end
 
 local Slider = class(Frame)
 function Slider:SetOrientation() end
@@ -145,7 +154,10 @@ function Slider:SetValue(v)
 end
 function Slider:GetValue() return self._value or 0 end
 
-local CLASSES = { Frame = Frame, Button = Button, EditBox = EditBox, ScrollFrame = ScrollFrame, Slider = Slider }
+local CheckButton = class(Button)
+local DropdownButton = class(Button)
+local CLASSES = { Frame = Frame, Button = Button, EditBox = EditBox, ScrollFrame = ScrollFrame, Slider = Slider,
+	CheckButton = CheckButton, DropdownButton = DropdownButton }
 -- Extension mocks add widget types and methods through these
 MOCK.classes = CLASSES
 MOCK.class = class
@@ -155,6 +167,8 @@ function CreateFrame(kind, name, parent, template)
 	local f = setmetatable({ _parent = parent, _shown = true, _name = name, _kind = kind }, cls)
 	if name then _G[name] = f end
 	table.insert(MOCK.frames, f)
+	-- Templates come from tools/test/templates.lua, loaded after this file
+	if template then assert(MOCK.ApplyTemplate, "templates.lua isn't loaded")(f, template) end
 	return f
 end
 
@@ -198,6 +212,7 @@ local function MakeTooltip(name)
 	end
 	function t:SetOwner(owner) self._owner = owner; self:ClearLines() end
 	function t:GetOwner() return self._owner end
+	function t:SetText(text) self.lines = { text } end
 	function t:AddLine(text) table.insert(self.lines, text) end
 	function t:AddDoubleLine(l, r) table.insert(self.lines, l .. " | " .. r) end
 	function t:GetItem()

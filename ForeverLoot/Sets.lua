@@ -14,7 +14,7 @@ local CHARS_PER_LINE, LINE_H = 88, 15
 local function CreateTextRow(parent, width)
 	local f = CreateFrame("Frame", nil, parent)
 	f:SetSize(width, NOTE_H)
-	f.text = K.Text(f, K.Font("set_text", GameFontHighlightSmall, C.light, 11))
+	f.text = K.Text(f, "GameFontHighlightSmall")
 	f.text:SetPoint("TOPLEFT", 14, -3)
 	f.text:SetPoint("RIGHT", -10, 0)
 	f.text:SetWordWrap(true)
@@ -24,7 +24,7 @@ end
 K.RegisterKind("text", CreateTextRow, function(f, d)
 	f:SetHeight(d.height)
 	f.text:SetText(d.text)
-	K.SetTextColor(f.text, d.color or C.light)
+	K.SetTextColor(f.text, d.color or C.white)
 end)
 
 local function AddText(ui, text, color)
@@ -146,8 +146,9 @@ end
 local Sets = {
 	key = "sets",
 	tab = "Sets",
-	listTitle = "ITEM SETS",
-	listRight = "LEVEL",
+	icon = "Interface\\Icons\\INV_Chest_Plate03",
+	listTitle = "Item sets",
+	listRight = "Level",
 	allLabel = "All sets",
 	unit = "piece",
 	groupUnit = "set",
@@ -158,7 +159,7 @@ local Sets = {
 		"Try a set name like valor, a slot like gloves, or a stat like agility.",
 	},
 	footer = "Click: Wowhead link    Shift-click: link in chat    Ctrl-click: preview    Right-click: wishlist    " ..
-		ns.Colorize(C.red, "Red bar") .. ": for your class",
+		ns.Colorize(C.gold, "Gold") .. ": your class can wear it",
 	filters = true,
 }
 
@@ -174,14 +175,14 @@ function Sets.Entries()
 	return list
 end
 
--- NEW when Forever added a piece; CLASSIC when Forever's data has none of them
+-- New when Forever added a piece; Classic when Forever's data has none of them
 function Sets.RowInfo(st)
 	local new, classic = Flag(st)
 	local tag, color = "", nil
 	if new then
-		tag = "NEW"
+		tag = "New"
 	elseif classic then
-		tag, color = "CLASSIC", C.mist
+		tag, color = "Classic", C.grey
 	end
 	return st.name, st.level and tostring(st.level) or "", tag, ForMe(st), color
 end
@@ -212,15 +213,11 @@ end
 function Sets.ShowHeader(ui, h, st)
 	local new, classic = Flag(st)
 	h.name:SetText(st.name)
-	h.badge.text:SetText("NEW IN FOREVER")
+	h.badge.text:SetText("New in Forever")
 	h.badge:SetWidth(h.badge.text:GetStringWidth() + 12)
 	h.badge:SetShown(new)
 	local parts = { Count(#st.pieces, "piece") }
-	if st.level then
-		parts[#parts + 1] = "Level " .. st.level
-	elseif st.ilvl then
-		parts[#parts + 1] = "Item level " .. st.ilvl
-	end
+	if st.level then parts[#parts + 1] = "Level " .. st.level end
 	parts[#parts + 1] = ArmorText(st)
 	local classes = ClassText(st)
 	if classes then parts[#parts + 1] = classes end
@@ -236,14 +233,14 @@ end
 
 function Sets.Render(ui, st)
 	local bonuses = #st.bonuses == 1 and "1 bonus" or (#st.bonuses .. " bonuses")
-	ui:AddEntry("wing", WING_H, { text = "SET BONUSES", right = bonuses })
+	ui:AddEntry("wing", WING_H, { text = "Set bonuses", right = bonuses })
 	ui:AddGap(4)
 	for _, b in ipairs(st.bonuses) do
-		AddText(ui, "(" .. b[1] .. ") " .. b[2], C.light)
+		AddText(ui, "(" .. b[1] .. ") " .. b[2], C.white)
 	end
 	if #st.bonuses == 0 then ui:AddEntry("note", NOTE_H, { text = "Wowhead lists no bonuses for this set." }) end
 	ui:AddGap(SECTION_GAP)
-	ui:AddEntry("wing", WING_H, { text = "PIECES", right = Count(#st.pieces, "piece") })
+	ui:AddEntry("wing", WING_H, { text = "Pieces", right = Count(#st.pieces, "piece") })
 	ui:AddGap(4)
 	for _, id in ipairs(st.pieces) do
 		local source, from = PieceSource(id)
@@ -274,7 +271,7 @@ end
 function Sets.AddResults(ui, g)
 	if ui.contentY > 0 then ui:AddGap(SECTION_GAP) end
 	local st = g.entry
-	if ui:AddSection("s:set:" .. st.id, st.name:upper(), st.level and ("Level " .. st.level) or "", true) then
+	if ui:AddSection("s:set:" .. st.id, st.name, st.level and ("Level " .. st.level) or "", true) then
 		return
 	end
 	for _, r in ipairs(g.rows) do ui:AddEntry("item", ITEM_H, r) end
