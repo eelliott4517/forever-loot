@@ -6,6 +6,7 @@ ADDITIONS: confirmed boss drops (checked 2026-09-23)
   ROL    Boss/loot table comment by Sammyx3 on wowhead.com zone=16611 (2026-09-22)
   DM     Wowhead news "WoW: Forever Introduces New Item Sets" (First Mate Band, Mr. Smite)
   RFC    Mobalytics "Rage Fire Chasm - Bosses, Loot & Quests" (Satyrskin Cloak, Bazzalan)
+  STOCKS Mobalytics "The Stockade Dungeon Guide" (Nightskulker Ring, Targorr; Repurposed Rack, Hamhock)
 
 UNCONFIRMED: new Forever items that no site has tied to a boss yet. Wowhead's Forever
 database has them (datamined from the client), and Blizzard created each dungeon's new
@@ -37,15 +38,20 @@ ADDITIONS = {
     "RFC": [
         dict(boss="Bazzalan", items=[273005], source=MOBA),
     ],
+    # Mobalytics "The Stockade Dungeon Guide" (2026-09-29): two of the datamined Stockade items
+    "STOCKS": [
+        dict(boss="Targorr the Dread", items=[273820], source=MOBA),   # Nightskulker Ring
+        dict(boss="Hamhock", items=[273811], source=MOBA),             # Repurposed Rack
+    ],
 }
 
 # dungeon key -> [(item id, boss the name points at or None)]
 UNCONFIRMED = {
     "DM": [(273102, "Cookie")],                                   # Blueprint: Cookie's Feast
-    "STOCKS": [(273807, None), (273811, None), (273817, None), (273819, None), (273820, None)],
-    "BFD": [(273839, "Ghamoo-ra"), (273840, "Gelihast"), (273841, "Twilight Lord Kelris")],   # 273842-3: Lorgus Jett
+    "STOCKS": [(273807, None), (273817, None), (273819, None)],   # 273811 Hamhock, 273820 Targorr (Mobalytics)
+    "BFD": [(273839, "Ghamoo-ra")],   # 273840 Gelihast, 273841-3 Lorgus Jett (wowtbc.gg)
     "GNOMER": [(274042, None), (274043, None)],
-    "RFK": [(274149, None), (274155, None), (274158, None), (274161, None)],   # 274152: Roogug
+    "RFK": [(274149, None), (274155, None), (274161, None)],   # 274152 Roogug, 274158 Agathelos (wowtbc.gg)
     "SM": [(274290, None), (274291, None), (274292, "Houndmaster Loksey"), (274293, None), (274295, None)],
     "RFD": [(274380, None), (274381, "Amnennar the Coldbringer")],
     "ZF": [(274638, None), (274639, None), (274641, "Theka the Martyr"), (274642, None), (274643, None),
@@ -63,13 +69,15 @@ RAID_DEC9 = "Unlocks Dec 9, 2026. Boss names are datamined; Blizzard hasn't show
 CLASSIC_RAID = "Classic raid. Forever hasn't announced it yet (as of Sep 2026), so this is its Classic loot from Wowhead Classic."
 
 LATER_BETA = "Opens in the level 30 beta phase. No site has boss or loot data yet."
+LATER_BETA_BOSSES = ("Opens in the level 30 beta phase. The boss names come from the game client (wowclassicforever.info, "
+                     "MaxDPS); no loot is known until players get in. Kill its bosses and loot them to record drops here.")
 AT_LAUNCH = "Opens at launch (Nov 4). No site has boss or loot data yet."
 
 NOTES = {
     "HOT": "Loot from Wowhead's Hall of Thanes guide and wowtbc.gg. Anything else you loot gets added here.",
     "ROL": "Loot from Wowhead community reports and wowtbc.gg. Anything else you loot gets added here.",
-    "EXC": LATER_BETA,
-    "DAL": LATER_BETA,
+    "EXC": LATER_BETA_BOSSES,
+    "DAL": LATER_BETA_BOSSES,
     "DROWN": AT_LAUNCH,
     "KROL": AT_LAUNCH,
     "ALCAZ": AT_LAUNCH,

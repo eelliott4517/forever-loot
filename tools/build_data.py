@@ -14,7 +14,8 @@ Inputs (see README; tools/refresh.py fetches them):
 
 Quests come from each instance's Wowhead zone page plus the dungeon quests wowtbc.gg
 lists (looked up on Wowhead by name). Item sets come from the item tooltips: every set
-with a piece in the loot or quest rewards is listed with all its pieces.
+with a piece in the loot, the quest rewards or what the recipes in ProfessionData.lua make
+is listed with all its pieces.
 
 Each item is then looked up in Wowhead's Forever database. Items Forever still has
 use their Forever name, type and tooltip text. Items it doesn't have (Forever
@@ -38,11 +39,12 @@ import item_info
 HERE = os.path.dirname(os.path.abspath(__file__))
 RAW = os.environ.get("FL_RAW", os.path.join(HERE, "raw"))
 OUT = os.path.join(HERE, "..", "ForeverLoot", "Data.lua")
-DATA_DATE = os.environ.get("FL_DATE", "2026-09-25")
+DATA_DATE = os.environ.get("FL_DATE", "2026-09-29")
 
 SOD_RANGE = range(200000, 260000)  # Season of Discovery item ids; not part of Forever's loot
 SOD_NPCS = range(200000, 250000)   # Season of Discovery NPC ids (Forever's own NPCs start around 250000)
 FOREVER_IDS = 260000               # items at or above this id were added in Forever
+ORIGINAL_IDS = 200000              # items below this id are the original game's, even ones Forever reworked
 MIN_BOSS_QUALITY = 2
 MIN_TRASH_QUALITY = 3              # Wowhead trash lists; wowtbc.gg trash lists keep their greens
 QUEST_LEVELS_BELOW, QUEST_LEVELS_ABOVE = 15, 5   # a zone's quests outside this band aren't its own
@@ -113,6 +115,23 @@ def load_tbc(slug):
 
 
 SIDES = {"Alliance": 1, "Horde": 2}   # Wowhead quest sides: 1 Alliance, 2 Horde, 3 both
+
+
+PROFESSION_DATA = os.path.join(HERE, "..", "ForeverLoot", "ProfessionData.lua")
+
+
+def profession_items():
+    """The items recipes make, and the ones ProfessionData.lua bundles itself."""
+    src = open(PROFESSION_DATA, encoding="utf-8").read()
+    made = {int(i) for i in re.findall(r"[,{] item = (\d+)", src)}
+    table = src[src.index("local items = {"):]
+    bundled = {int(i) for i in re.findall(r"^\t\[(\d+)\] = \{", table, re.M)}
+    return made, bundled
+
+
+def quest_name_parts(name):
+    """wowtbc.gg writes some quest chains as one name joined by slashes."""
+    return [p.strip() for p in name.split("/") if p.strip()] or [name]
 
 
 def pick_quest(candidates, side, zones):
@@ -280,7 +299,7 @@ class Build:
                         trash.add(iid, TBC)
                     else:
                         target["loot"].add(iid, TBC, pct)
-                    if iid in news:
+                    if iid in news and iid >= ORIGINAL_IDS:   # wowtbc.gg also calls reworked items new
                         self.new_ids.add(iid)
                     elif not d.get("new"):
                         self.era_listed.add(iid)
@@ -339,7 +358,7 @@ class Build:
         for q in quests:
             for iid in q["choices"] + q["rewards"]:
                 self.quest_ids.add(iid)
-                self.sources[iid].add(WH if q.get("id") else TBC)
+                self.sources[iid].add(WH if q.get("id") and iid not in q["tbc_items"] else TBC)
         return (d, bosses, trash, extra, hints, quests)
 
     def quests(self, d):
@@ -361,25 +380,50 @@ class Build:
         for slug in (d.get("tbc") or {}):
             loot, _ = load_tbc(slug)
             for tq in loot.get("quests") or []:
-                n, side = norm(tq["name"]), SIDES.get(tq.get("faction"))
-                self.new_ids.update(i for i in tq.get("new", []) if i not in SOD_RANGE)
-                q = pick_quest(by_name.get(n, []), side, zones)
-                if not q:
-                    q = pick_quest([x for x in self.quest_searches.get(n, []) if norm(x["name"]) == n], side, zones)
-                    if q and q["id"] not in found:
-                        found[q["id"]] = q
-                        by_name[n].append(q)
-                if not q:
+                side = SIDES.get(tq.get("faction"))
+                self.new_ids.update(i for i in tq.get("new", []) if i >= ORIGINAL_IDS)
+                # wowtbc.gg lists some chains as one quest ("Abominable Creatures/Unending Torment")
+                matched = []
+                for part in quest_name_parts(tq["name"]):
+                    n = norm(part)
+                    q = pick_quest(by_name.get(n, []), side, zones)
+                    if not q:
+                        q = pick_quest([x for x in self.quest_searches.get(n, []) if norm(x["name"]) == n], side, zones)
+                        if q and q["id"] not in found:
+                            found[q["id"]] = q
+                            by_name[n].append(q)
+                    if q:
+                        matched.append(q)
+                if matched:
+                    # Rewards wowtbc.gg lists that Wowhead's quest data doesn't have yet (new Forever
+                    # rewards, or a chain's last step) go on the chain's last quest, as choices. An
+                    # entry naming an Alliance and a Horde quest ("Abominable Creatures/Unending
+                    # Torment") is one quest per faction, and each gets the rewards.
+                    by_side = defaultdict(list)
+                    for q in matched:
+                        by_side[q.get("side") if q.get("side") in (1, 2) else 3].append(q)
+                    chains = [by_side[1], by_side[2]] if by_side[1] and by_side[2] else [matched]
+                    for chain in chains:
+                        have = {i for q in chain for i, _ in q.get("choices", []) + q.get("rewards", [])}
+                        missing = [i for i in tq.get("items", []) if i not in have]
+                        if missing:
+                            last = chain[-1]
+                            last["choices"] = list(last.get("choices", [])) + [[i, 1] for i in missing]
+                            last.setdefault("tbc_items", set()).update(missing)
+                else:
                     extra.append(dict(id=None, name=tq["name"], side=side or 3, level=None, req=None,
                                       choices=[[i, 1] for i in tq["items"]], rewards=[]))
-                    by_name[n].append(extra[-1])
+                    by_name[norm(tq["name"])].append(extra[-1])
                     self.report.append(f"   {d['name']}: quest only on wowtbc.gg: {tq['name']}")
         out = []
         for q in list(found.values()) + extra:
-            choices = [(i, c) for i, c in q.get("choices", []) if i not in SOD_RANGE]
-            rewards = [(i, c) for i, c in q.get("rewards", []) if i not in SOD_RANGE]
+            # Quest rewards aren't held to the Season of Discovery id band: Forever's own quests reward
+            # items numbered 240000-259999 too. resolve() drops any that Forever's database lacks.
+            choices = list(q.get("choices", []))
+            rewards = list(q.get("rewards", []))
             env = q.get("env") or {}
-            out.append(dict(id=q["id"], name=q["name"], level=q.get("level") if (q.get("level") or 0) > 0 else None,
+            out.append(dict(id=q["id"], name=q["name"], tbc_items=set(q.get("tbc_items", ())),
+                            level=q.get("level") if (q.get("level") or 0) > 0 else None,
                             req=q.get("req") if (q.get("req") or 0) > 0 else None, side=q.get("side") or 3,
                             choices=[i for i, _ in choices], rewards=[i for i, _ in rewards],
                             counts={i: c for i, c in choices + rewards if c and c > 1},
@@ -388,6 +432,9 @@ class Build:
                             changes=[l for l in env.get("lines", [])
                                      if not l.startswith("Rewards:") and not l.endswith("reworded")]))
         out.sort(key=lambda q: (q["level"] or 99, q["name"]))
+        if d.get("new"):
+            # A new dungeon's quests are new too, and so are their rewards past Classic's ids
+            self.new_ids.update(i for q in out for i in q["choices"] + q["rewards"] if i >= ORIGINAL_IDS)
         return out
 
 
@@ -438,12 +485,27 @@ def main():
     meta = {}
     resolve(build, set(sources), meta, report)
 
-    # Item sets with a piece in the loot or quest rewards, with every piece
-    sets = {}
+    # What the profession recipes make: their sets belong on the Sets tab too (Forever's tier
+    # sets are partly crafted), and a crafted item ProfessionData.lua doesn't bundle gets bundled here
+    crafted, crafted_bundled = profession_items()
+    resolve(build, crafted - set(meta), meta, report)
+    for i in crafted:
+        if i in meta and i not in sources:
+            sources[i] = {WH}
+
+    # Item sets with a piece in the loot, the quest rewards or the recipes, with every piece.
+    # A set's tooltip lists its pieces; other items can belong to it too (Forever's crafted
+    # versions of its tier pieces), so members are gathered from every item that names the set.
+    sets, members, relevant = {}, defaultdict(set), set()
     for iid in sorted(meta):
         st = meta[iid].get("set")
-        if st and st["id"] not in sets and st["pieces"]:
+        if not st:
+            continue
+        if st["id"] not in sets or (st["pieces"] and not sets[st["id"]]["pieces"]):
             sets[st["id"]] = st
+        members[st["id"]].add(iid)
+        if iid in sources or iid in crafted:
+            relevant.add(st["id"])
     pieces = {p for st in sets.values() for p in st["pieces"]}
     resolve(build, pieces - set(meta), meta, report, keep_sod=True)
     for p in pieces:
@@ -467,7 +529,22 @@ def main():
     L = []
 
     def emit_quests(quests):
-        quests = [q for q in quests if q["id"] or any(i in meta for i in q["choices"] + q["rewards"])]
+        def has_loot(q):
+            return any(i in meta for i in q["choices"] + q["rewards"])
+
+        # A name one faction sees more than once (a chain's steps: Unending Torment has four) is
+        # listed once: the versions with rewards, or else the first
+        same = defaultdict(list)
+        for q in quests:
+            same[(q["name"], q["side"])].append(q)
+
+        def listed(q):
+            group = same[(q["name"], q["side"])]
+            if any(has_loot(o) for o in group):
+                return has_loot(q)
+            return q is group[0] and q["id"]
+
+        quests = [q for q in quests if listed(q)]
         if not quests:
             return
         L.append("\t\tquests = {")
@@ -573,8 +650,12 @@ def main():
     # Sets, easiest first: by the level their pieces need, then name
     kept = []
     for st in sets.values():
+        if st["id"] not in relevant:
+            continue
+        # the listed pieces, then any other member (a crafted version of a piece)
         ids = [p for p in st["pieces"] if p in meta]
-        if not any(p in used for p in ids):
+        ids += sorted((m for m in members[st["id"]] if m not in ids and m in meta), key=lambda m: meta[m]["name"])
+        if not ids:
             continue
         level = max(meta[p]["req"] for p in ids)
         ilvl = max(meta[p]["ilvl"] for p in ids)
@@ -592,6 +673,7 @@ def main():
     L.append("}")
     L.append("")
 
+    used.update(i for i in crafted if i in meta and i not in crafted_bundled)
     L.append("-- [itemID] = { name, quality, type, flag, sources, icon, tooltip lines, classes (Wowhead class ids) }")
     L.append("-- flag: 0 in Forever, 1 new in Forever, 2 Classic only (not in Forever's data), 3 new, boss unconfirmed")
     L.append("ns.Items = {")

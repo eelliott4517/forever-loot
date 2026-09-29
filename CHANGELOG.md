@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.6.3
+
+- **Crafted sets on the Sets tab.** Forever's Artisan's Tier sets (Battlegear of Glory, the Grovekeeper and Spiritcaller sets, Justice, Conviction and the rest) and the Classic crafted sets (Devilsaur Armor, Black Dragon Mail, Imperial Plate and more) are listed now: 32 more sets. A tier set shows its pieces and the crafted versions of them, with the profession that makes each.
+- 68 new Forever recipes now show the item they make, with its stats, on the Professions tab and in item tooltips.
+- 61 new patterns say where to get them: Vayn Moongaze on Zephras Isle, and Mishta and Vargus in Silithus.
+- Excavation Site and Dalaran list their bosses, taken from the game client. No loot is known there yet.
+- New drops confirmed by wowtbc.gg and Mobalytics: Cursed Murloc Eye (Gelihast) and Twilight Maul (Lorgus Jett) in Blackfathom Deeps, Death Prophet Spine (Agathelos the Raging) in Razorfen Kraul, and Nightskulker Ring (Targorr the Dread) and Repurposed Rack (Hamhock) in The Stockade.
+- More quest rewards: Unending Torment (the Horde side of Abominable Creatures), A Frightened Request, The Wrath of Rath'mael and Remember That I Love You in Ruins of Lordaeron, Hidden Enemies in Ragefire Chasm, and The Test of Righteousness and The Orb of Soran'ruk in Shadowfang Keep.
+- A quest chain whose steps share a name is listed once.
+- Fenrus' Hide, Beetle Clasps and Prelacy Cape are no longer marked New. They're original items that Forever reworked.
+- Data refreshed from Wowhead and wowtbc.gg (September 29).
+
 ## 1.6.2
 
 - **A native look.** The window is now built from the game's own parts, so it matches WoW: Forever's interface: a portrait frame with the title and close button, the icon tabs down the right edge that the Character and Collections windows use, Blizzard's search box, dropdown menus, checkboxes and scroll bars, the recipe list's rows and section headers, item icons with quality borders, and the game's popup for Wowhead links. Text uses the game's gold, white and grey.

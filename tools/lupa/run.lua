@@ -997,6 +997,30 @@ check(pick ~= plateSet, "a mage with My class on doesn't reopen " .. plateSet.na
 ns.char.filters.myClass = false
 MOCK.classFile = "ROGUE"
 
+---------------------------------------------------------------- 1.6.3: crafted sets, quest chains
+-- Forever's tier sets are partly crafted: the recipes' versions of the pieces are listed too
+local glory
+for _, st in ipairs(ns.Sets) do if st.name == "Battlegear of Glory" then glory = st end end
+check(glory, "a Forever tier set with crafted pieces is on the Sets tab")
+if glory then
+	SlashCmdList.FOREVERLOOT("sets")
+	UI:Select(glory)
+	local made = 0
+	for _, e in ipairs(entries("item")) do if (e.data.from or ""):find("Made by ", 1, true) then made = made + 1 end end
+	check(made > 0, "and its crafted pieces say which profession makes them", made)
+end
+-- wowtbc.gg's "Abominable Creatures/Unending Torment" is one quest per faction; Unending Torment's
+-- four steps share its name and are listed once
+local rol, torment = nil, {}
+for _, d in ipairs(ns.Dungeons) do if d.key == "ROL" then rol = d end end
+for _, q in ipairs(rol and rol.quests or {}) do if q.name == "Unending Torment" then torment[#torment + 1] = q end end
+check(#torment == 1 and torment[1].choices and #torment[1].choices > 0, "a chain whose steps share a name is one quest, with its rewards", #torment)
+MOCK.faction = "Horde"
+local hordeLines = torment[1] and torment[1].choices and ns.TooltipLines(torment[1].choices[1])
+MOCK.faction = "Alliance"
+check(hordeLines ~= nil, "and a Horde character's tooltip lists that reward")
+check(ns.Items[6340] and ns.Items[6340][4] == 0, "an original item Forever reworked (Fenrus' Hide) isn't marked new")
+
 -- The window shares Blizzard's panels' layer, so the dressing room opens in front of it
 check(UI.frame:GetFrameStrata() == "MEDIUM", "the window is on Blizzard's panel layer")
 

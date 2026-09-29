@@ -13,7 +13,8 @@ Steps
      It takes about 15 minutes, then downloads forever-loot-wowhead.json. As soon as that
      lands in your Downloads folder the refresh carries on by itself.
      (Or run the script yourself and pass the file with --wowhead PATH.)
-  3. build_data.py: item tooltips from Wowhead's tooltip API (cached in tools/cache), Data.lua.
+  3. link_recipes.py links new recipes to the items Wowhead says they make, then build_data.py:
+     item tooltips from Wowhead's tooltip API (cached in tools/cache), Data.lua.
   4. The tests (npm test in tools/), when Node is installed.
   5. package.py: the release zips in dist/.
 """
@@ -70,7 +71,8 @@ def wowtbc_quest_names():
         with open(path) as f:
             loot = json.load(f)["result"]["pageContext"].get("loot") or []
         for q in (loot[0].get("quests") or []) if loot else []:
-            names.add(q["name"])
+            # a chain written as one ("Abominable Creatures/Unending Torment") is looked up quest by quest
+            names.update(p.strip() for p in q["name"].split("/") if p.strip())
     return sorted(names)
 
 
@@ -102,6 +104,7 @@ def scrape_config():
         bosses=bosses,
         questNames=wowtbc_quest_names(),
         newItemRanges=[[a, a + 2000, q] for q in (3, 4) for a in range(lo, hi, 2000)],
+        recipeRanges=[[260000, hi]],   # Forever's recipes start below its loot ids
     )
 
 
@@ -215,6 +218,7 @@ def main():
 
     step("3/5 Data.lua")
     env = dict(os.environ, FL_DATE=time.strftime("%Y-%m-%d"), FL_ITEM_AGE=str(args.item_age))
+    run([sys.executable, "link_recipes.py"], HERE)
     run([sys.executable, "build_data.py"], HERE, env)
 
     step("4/5 tests")

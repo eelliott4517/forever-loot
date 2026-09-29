@@ -50,13 +50,17 @@ DUNGEONS = [
              dict(name="The Abandoned", npc=[250631], tag="Event boss"),
              dict(name="Bjork", npc=[256097]),
              dict(name="Rath'mael", npc=[250657]),
-             dict(name="Lordaeron Captain", npc=[255699], tag=RARE),
+             # wowtbc.gg calls it the Deathsworn Captain (SFK's rare, with the same two drops)
+             dict(name="Lordaeron Captain", npc=[255699], tag=RARE, aliases=["Deathsworn Captain"]),
          ]),
+    # Boss names from the game client's encounter list (wowclassicforever.info and MaxDPS, Sep 19-20);
+    # no loot is known until players get in
     dict(key="EXC", name="Excavation Site: Wetlands", zones=[16732], new=True, levels=(24, 29), tbc={"excavation-site-wetlands": None},
          location="Wetlands", territory="Contested", aliases=["Excavation Site", "Whelgar's Excavation Site"],
-         bosses=[]),
+         bosses=["Saltspine", "Shadetooth", "Highland Horror", "Relic Guardian"]),
     dict(key="DAL", name="City of Dalaran", zones=[16544, 16560], new=True, levels=(28, 33), tbc={"city-of-dalaran": None},
-         location="Alterac Mountains", territory="Contested", aliases=["Dalaran"], bosses=[]),
+         location="Alterac Mountains", territory="Contested", aliases=["Dalaran"], bosses=["Arcane Anomaly", "Fel Ancient", "Mana Devourer", "Mana Elemental", "Unstable Sentinel",
+                 "Shade of the Archmage", "Lyn the Ignored", "Atrexis the Grave Knight", "Mana Wraith"]),
     dict(key="DROWN", name="The Drowned City", zones=[], new=True, levels=(35, 40), tbc={"the-drowned-city": None},
          location="Stranglethorn Vale coast", territory="Contested", bosses=[]),
     dict(key="KROL", name="Krol'dok Stronghold", zones=[], new=True, levels=(40, 45), tbc={"krol-dok-stronghold": None},

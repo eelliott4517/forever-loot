@@ -47,6 +47,13 @@
       if (!id || d < 0) continue;
       try { out[id[1]] = literal(balanced(obj, obj.indexOf("[", d), "[", "]")); } catch (e) { /* skip */ }
     }
+    // List pages (all zones, say) put theirs in one JSON script instead
+    const listPage = html.match(/<script type="application\/json" id="data\.page\.listPage\.listviews">([\s\S]*?)<\/script>/);
+    if (listPage) {
+      try {
+        for (const v of JSON.parse(listPage[1])) if (v && v.id && Array.isArray(v.data) && !out[v.id]) out[v.id] = v.data;
+      } catch (e) { /* skip */ }
+    }
     const items = html.search(/var listviewitems\s*=\s*\[/);
     if (items >= 0 && !out.items) {
       try { out.items = literal(balanced(html, html.indexOf("[", items), "[", "]")); } catch (e) { /* skip */ }
@@ -92,8 +99,11 @@
   };
   const readQuests = (lv) => ({ quests: (lv.quests || []).map(slimQuest) });
   const readItems = (lv) => ({
-    items: (lv.items || []).map((x) => ({ id: x.id, name: x.name, q: x.quality, lvl: x.level, req: x.reqlevel, slot: x.slot, sm: sm(x) })),
+    items: (lv.items || []).map((x) => ({
+      id: x.id, name: x.name, q: x.quality, lvl: x.level, req: x.reqlevel, slot: x.slot, src: x.source || [], sm: sm(x),
+    })),
   });
+  const readZoneNames = (lv) => ({ zones: (lv.zones || []).map((x) => ({ id: x.id, name: x.name })) });
 
   const result = { version: 2, scraped: new Date().toISOString(), pages: {}, errors: [] };
   window.__foreverLootScrape = result;
@@ -171,6 +181,14 @@
   // 4) Rare and epic items added in Forever (to spot new loot that isn't placed yet)
   await run(CONFIG.newItemRanges.map(([lo, hi, q]) =>
     [`new_items_${q}_${lo}`, `/forever/items/quality:${q}?filter=151:151;2:5;${lo}:${hi}`, readItems]), "new items");
+
+  // 5) Recipes added in Forever, with who sells them or which quest gives them, and every zone's
+  //    name (Wowhead lists a vendor's zone by id)
+  await run([
+    ...(CONFIG.recipeRanges || []).map(([lo, hi]) =>
+      [`new_recipes_${lo}`, `/forever/items/recipes?filter=151:151;2:5;${lo}:${hi}`, readItems]),
+    ["forever_zones", "/forever/zones", readZoneNames],
+  ], "recipes");
 
   result.seconds = Math.round((Date.now() - started) / 1000);
   result.progress = "done";

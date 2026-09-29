@@ -13,11 +13,11 @@ A WoW: Forever addon with dungeon and raid loot tables, dungeon quests, item set
 
 ## Where the data comes from
 
-WoW addons can't go online, so the loot data is bundled in `ForeverLoot/Data.lua` (pulled 2026-09-25) from three sites:
+WoW addons can't go online, so the loot data is bundled in `ForeverLoot/Data.lua` (pulled 2026-09-29) from three sites:
 
 1. **Wowhead**: Forever and Classic drop tables, Forever level ranges, each dungeon's and raid's quests, the Hall of Thanes guide, a Ruins of Lordaeron boss/loot comment, and the First Mate Band news post.
 2. **wowtbc.gg**: Forever loot tables for every original dungeon. These have the Classic Era boss tables, the new Forever drops players have found so far, Classic drop chances, and more dungeon quests. The wing level ranges (Scarlet Monastery, Dire Maul, Blackrock Spire) also come from here.
-3. **Mobalytics**: one extra Ragefire Chasm drop (Satyrskin Cloak, Bazzalan).
+3. **Mobalytics**: a few Forever drops the other sites don't have yet (Satyrskin Cloak from Bazzalan in Ragefire Chasm; Nightskulker Ring from Targorr the Dread and Repurposed Rack from Hamhock in The Stockade).
 
 Every item is checked against Wowhead's Forever database, and the item rows are tagged to match:
 
@@ -26,18 +26,18 @@ Every item is checked against Wowhead's Forever database, and the item rows are 
 - **Seen** (blue): recorded from your own loot (see below).
 - No tag: Classic loot that's still in Forever. The percentage is its Classic drop chance.
 
-Item sets come from the item tooltips: a set is listed when one of its pieces is in the loot or quest rewards, and every piece of it is bundled. Set bonuses are Forever's where Wowhead's Forever database has the set.
+Item sets come from the item tooltips: a set is listed when one of its pieces is in the loot or quest rewards or a profession makes it, and every piece of it is bundled. Forever's tier sets list their pieces and the crafted Artisan's Tier versions of them. Set bonuses are Forever's where Wowhead's Forever database has the set.
 
 Every item's stats are bundled from Wowhead too (Forever stats where Wowhead has them, Classic stats otherwise). The beta server doesn't send data for many dungeon items, so the addon shows the bundled stats until the game provides its own, then switches to the game's tooltip.
 
-### Raids (pulled 2026-09-25)
+### Raids (pulled 2026-09-29)
 
 - **The Barrow Deeps** (10 players), **Hyjal Summit** (20) and **Onyxia's Lair** (40) unlock on December 9, 2026. The two new raids' boss names are datamined (Blizzard Watch, matching wowclassicforever.info), and nobody has published their loot yet. The Barrow Deeps lists five datamined shards named after its bosses.
 - **Onyxia's Lair** shows Onyxia's Classic loot until her Forever loot is known.
 - **The Classic raids** use Wowhead Classic's drop tables plus each boss's page, which gives drop chances from recorded kills. Chest loot is credited to its boss (Majordomo Executus and the Four Horsemen). The random world blues that Onyxia, Ragnaros and Nefarian also roll are left out.
 - Items Forever's game data doesn't have are tagged CLASSIC, as with dungeons. A few say Wowhead only has Season of Discovery's version of their stats.
 
-Only the dungeons reachable at the beta's level cap have confirmed new drops so far. The ones that open later (Excavation Site, Dalaran, and everything past level 30) have no loot data on any site yet.
+Only the dungeons reachable at the beta's level cap have confirmed new drops so far. Excavation Site and Dalaran, which open in the level 30 beta phase, list their bosses from the game client's encounter list; they and everything past level 30 have no loot data on any site yet.
 
 To fill gaps, the addon records any rare-or-better item you loot from a dungeon or raid boss and shows it under that boss marked Seen. Bosses it doesn't know yet are picked up from the boss-kill event and listed under "Recorded by you". `/fl forget` clears this.
 
@@ -62,6 +62,7 @@ tools/dungeons.py   curated dungeon + boss list
 tools/raids.py      curated raid + boss list (sizes, Forever status, chests credited to bosses)
 tools/forever_additions.py  Forever drops documented on Wowhead and Mobalytics, plus datamined new items
 tools/build_data.py builds Data.lua from tools/raw/ and verifies items with Wowhead's Forever tooltip API
+tools/link_recipes.py  links ProfessionData.lua's new recipes to the items they make (refresh.py runs it)
 tools/item_info.py  Wowhead tooltip API client; caches raw tooltips in tools/cache/
 tools/scrape_template.js  the browser scrape of Wowhead (refresh.py fills in the pages to fetch)
 tools/raw/wowhead.json    its output: zone loot and quests, raid boss pages, quest lookups, new items
