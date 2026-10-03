@@ -47,9 +47,6 @@ ADDITIONS = {
 
 # dungeon key -> [(item id, boss the name points at or None)]
 UNCONFIRMED = {
-    "DM": [(273102, "Cookie")],                                   # Blueprint: Cookie's Feast
-    "STOCKS": [(273807, None), (273817, None), (273819, None)],   # 273811 Hamhock, 273820 Targorr (Mobalytics)
-    "BFD": [(273839, "Ghamoo-ra")],   # 273840 Gelihast, 273841-3 Lorgus Jett (wowtbc.gg)
     "GNOMER": [(274042, None), (274043, None)],
     "RFK": [(274149, None), (274155, None), (274161, None)],   # 274152 Roogug, 274158 Agathelos (wowtbc.gg)
     "SM": [(274290, None), (274291, None), (274292, "Houndmaster Loksey"), (274293, None), (274295, None)],

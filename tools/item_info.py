@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 HERE = os.path.dirname(os.path.abspath(__file__))
 URL = "https://nether.wowhead.com/tooltip/item/{id}?dataEnv={env}&locale=0"
 ENVS = {"forever": 16, "classic": 4}
-PARSER = 4          # bump when parse() changes; cached HTML gets parsed again
+PARSER = 5          # bump when parse() changes; cached HTML gets parsed again
 WORKERS = 8
 MIN_INTERVAL = 0.2  # seconds between requests across all workers; be polite
 
@@ -96,6 +96,8 @@ def tooltip_lines(tip):
     Item levels are left out."""
     t = re.sub(r"<!--nstart-->.*?<!--nend-->", "", tip, count=1, flags=re.S)
     t = re.sub(r'<div class="whtt-sellprice">.*?</div>', "", t, flags=re.S)
+    # Wowhead's own extras ("Dropped by", "Drop Chance"), not part of the game's tooltip
+    t = re.sub(r'<div class="whtt-extra[^"]*">.*?</div>', "", t, flags=re.S)
     t = SET_HEADER.sub(lambda m: f"\n\x01{strip_tags(m.group(2))} (0/{m.group(4)})\n", t)
     t = SET_PIECES.sub(lambda m: "".join(f"\n\x02{strip_tags(p)}\n" for p in re.findall(r"<span>(.*?)</span>", m.group(1), re.S)), t)
     t = re.sub(r"<table width=\"100%\"><tr><td>(.*?)</td><th>(.*?)</th></tr></table>",

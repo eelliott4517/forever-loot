@@ -2,7 +2,7 @@
 ## Title: Forever Loot
 ## Notes: Dungeon and raid loot, quests, item sets and profession recipes for WoW: Forever, with class filters, a search across all of them, a wishlist, and where-it-drops lines on every item tooltip. Built from Wowhead, wowtbc.gg and Mobalytics.
 ## Author: Ethan Elliott
-## Version: 1.6.3
+## Version: 1.6.4
 ## SavedVariables: ForeverLootDB
 ## SavedVariablesPerCharacter: ForeverLootCharDB
 ## IconTexture: Interface\Icons\INV_Box_01

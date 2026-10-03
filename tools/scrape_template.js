@@ -83,7 +83,8 @@
   function readZone(lv, html) {
     const level = html.match(/Level: (\d+)\s*-\s*(\d+)/);
     const quests = new Map();
-    for (const key of ["quests", "starts-quest"]) for (const q of lv[key] || []) if (!quests.has(q.id)) quests.set(q.id, slimQuest(q));
+    // (A zone page's "starts-quest" list holds items that start quests, not quests.)
+    for (const q of lv.quests || []) if (!quests.has(q.id)) quests.set(q.id, slimQuest(q));
     return {
       level: level ? [+level[1], +level[2]] : null,
       drops: (lv.drops || []).map((x) => slimItem(x, false)),

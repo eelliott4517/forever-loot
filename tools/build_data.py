@@ -39,7 +39,7 @@ import item_info
 HERE = os.path.dirname(os.path.abspath(__file__))
 RAW = os.environ.get("FL_RAW", os.path.join(HERE, "raw"))
 OUT = os.path.join(HERE, "..", "ForeverLoot", "Data.lua")
-DATA_DATE = os.environ.get("FL_DATE", "2026-09-29")
+DATA_DATE = os.environ.get("FL_DATE", "2026-10-02")
 
 SOD_RANGE = range(200000, 260000)  # Season of Discovery item ids; not part of Forever's loot
 SOD_NPCS = range(200000, 250000)   # Season of Discovery NPC ids (Forever's own NPCs start around 250000)
@@ -129,9 +129,14 @@ def profession_items():
     return made, bundled
 
 
+# wowtbc.gg names that differ from the game's (Wowhead's) for the same quest
+QUEST_NAME_FIXES = {"Horrors in the Highlands": "Horrors in the Highland"}
+
+
 def quest_name_parts(name):
     """wowtbc.gg writes some quest chains as one name joined by slashes."""
-    return [p.strip() for p in name.split("/") if p.strip()] or [name]
+    parts = [p.strip() for p in name.split("/") if p.strip()] or [name]
+    return [QUEST_NAME_FIXES.get(p, p) for p in parts]
 
 
 def pick_quest(candidates, side, zones):
@@ -369,7 +374,13 @@ class Build:
         found, by_name = {}, defaultdict(list)
         for z in d["zones"]:
             for q in (self.pages.get(f"forever_zone_{z}") or {}).get("quests", []):
-                if q["id"] in found or (q.get("env") or {}).get("status") == "removed":
+                # Wowhead marks quests Forever dropped "removed", and ones it hasn't seen in Forever
+                # (Season of Discovery's leak into its Forever pages) "unconfirmed"
+                if q["id"] in found or (q.get("env") or {}).get("status") in ("removed", "unconfirmed"):
+                    continue
+                # Items that start a quest (the zone page's "Starts quest" list in older scrapes) aren't
+                # quests; they're the entries with neither a faction nor a quest category
+                if q.get("side") is None and q.get("cat") is None:
                     continue
                 # Placeholders ("<UNUSED>", "<TXT> ..."), and holiday quests Wowhead files under the zone
                 if q["name"].startswith("<") or not lo <= (q.get("level") or lo) <= hi:

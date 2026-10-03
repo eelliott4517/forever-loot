@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.6.4
+
+- **Item tooltips use Forever's own wording.** Hit, critical strike, dodge, block, defense and attack power now read as the game shows them, such as "Equip: Improves your chance to get a critical strike by 1.0%." instead of "Increases your critical strike by 14." Set bonuses changed the same way. Wowhead's "Dropped by" and "Drop Chance" notes no longer show up in them.
+- Excavation Site: Saltspine, Shadetooth and the Relic Guardian list their loot (8 items), and its 14 quests are listed with their rewards.
+- City of Dalaran lists its quests (A Green Sample, Power Overwhelming, Source of Power, The Grave Knight and Opportunistic Education) and the Arcanic Enigma. The Drowned City lists Zun'Alai, Gill and Zin'aka. No loot is known for those bosses yet.
+- Drops confirmed on their bosses: Demolition Girdle (Kam Deepfury), Boneslicer and Graverobber's Shovel (Dextren Ward) in The Stockade, Spiked Shell Band (Ghamoo-ra) in Blackfathom Deeps, and the Deadmines blueprints (Repair Bot from Sneed, Anvil from Gilnid, Cookie's Feast from Cookie).
+- New quest rewards: Dreamer's Chestguard (Baron Aquanis), Boar Signet (Willix the Importer) and Nail Spitter (An Unholy Alliance).
+- 33 Classic items Forever kept now show their Forever versions, among them Agamaggan's Clutch, Vibroblade and Forcestone Buckler. 15 items are rare now instead of uncommon. Rotmender's Robes is Rotmender's Garb, and Rotmender's Raiment has its Forever set bonuses.
+- Items that start a quest are no longer listed as quests: Glowing Shard, Pendant of Myzrael, Heart of Hakkar, Eye of C'Thun, the Dire Maul class books and 8 others.
+- A Season of Discovery quest that Wowhead files under Blackfathom Deeps (The Heart of the Void) is left out.
+- Data refreshed from Wowhead and wowtbc.gg (October 2).
+
 ## 1.6.3
 
 - **Crafted sets on the Sets tab.** Forever's Artisan's Tier sets (Battlegear of Glory, the Grovekeeper and Spiritcaller sets, Justice, Conviction and the rest) and the Classic crafted sets (Devilsaur Armor, Black Dragon Mail, Imperial Plate and more) are listed now: 32 more sets. A tier set shows its pieces and the crafted versions of them, with the profession that makes each.
