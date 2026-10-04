@@ -41,7 +41,7 @@ MOCK.Fire("ADDON_LOADED", "ForeverLoot")
 MOCK.Fire("PLAYER_LOGIN")
 local UI = ns.UI
 check(ns.db and ns.minimapButton, "boots and makes the minimap button")
-check(table.concat(UI.modeOrder, ",") == "dungeons,raids,sets,professions,wishlist", "all five tabs registered in order", table.concat(UI.modeOrder, ","))
+check(table.concat(UI.modeOrder, ",") == "dungeons,raids,quests,sets,professions,wishlist", "all six tabs registered in order", table.concat(UI.modeOrder, ","))
 local function tab(key)
 	for _, t in ipairs(UI.tabs or {}) do if t.key == key then return t end end
 end
@@ -90,8 +90,23 @@ local function listRows()
 	for _, r in ipairs(UI.listRows) do if r:IsShown() then out[#out + 1] = r end end
 	return out
 end
+-- Every section starts collapsed. This opens them level by level (a wing, then its bosses),
+-- leaving a dungeon's quests closed unless `quests` is set.
+local function openAll(quests)
+	for _ = 1, 5 do
+		local n = #UI.sectionIds
+		for _, id in ipairs(UI.sectionIds) do
+			-- (a dungeon's Quests section is d:<key>:quests, each quest in it d:<key>:q:<id>)
+			if quests or not (id:find("^d:[^:]+:quests$") or id:find("^d:[^:]+:q:")) then UI:SectionState()[id] = true end
+		end
+		UI:Refresh()
+		if #UI.sectionIds == n then break end
+	end
+end
+-- Search results start collapsed too: the count is of the rows they hold once opened
 local function search(text)
 	UI.searchBox:Type(text)
+	openAll()
 	return #entries(UI.mode == "professions" and "recipe" or "item")
 end
 
@@ -109,7 +124,9 @@ check(UI.frame:IsShown() and UI.mode == "dungeons", "/fl opens the Dungeons tab"
 check(UI.current and UI.current.key == "RFC", "opens on a dungeon for your level", UI.current and UI.current.key)
 check(#listRows() == #ns.Dungeons, "list shows every dungeon", #listRows())
 check(UI.header.wowhead:IsShown() and not UI.header.clear:IsShown(), "dungeon view shows the Wowhead button")
-check(#entries("item") == 12 and #painted("item") == 12, "RFC renders its 12 drops", #entries("item"))
+check(#entries("item") == 0 and #entries("boss") == #UI.current.bosses, "RFC lists its bosses, collapsed", #entries("item"))
+openAll()
+check(#entries("item") == 12 and #painted("item") == 12, "opened, RFC shows its 12 drops", #entries("item"))
 check(tab("dungeons").checked and not tab("raids").checked, "Dungeons tab is highlighted")
 check(UI.listLabel:GetText() == "Dungeons" and UI.listRight:GetText() == "Levels", "list labels for dungeons")
 
@@ -133,6 +150,8 @@ check(search("glove") == gloves and search("GLOVES") == gloves and search("hands
 
 search("gloves")
 UI:SetFilter("kind", "leather")
+check(#entries("item") == 0 and #entries("wing") > 0, "a filtered search starts collapsed too")
+openAll()
 check(#entries("item") == leatherHands, "Type: Leather narrows gloves to leather", #entries("item") .. " vs " .. leatherHands)
 check(search("leather gloves") == leatherHands, "\"leather gloves\" text matches too")
 local slotMenu = UI.filterButtons.slot
@@ -148,6 +167,7 @@ check(#entries("note") == 2, "no-match notes shown")
 UI.filterButtons.kind:MockPick("All types")
 check(UI.filterButtons.kind.Text:GetText() == "All types", "All types clears the Type filter")
 UI.searchBox:Type("")
+openAll()
 check(UI:IsSearching() and #entries("item") == fingers, "Slot: Finger alone lists every ring", #entries("item") .. " vs " .. fingers)
 UI:SetFilter("slot", nil)
 
@@ -206,8 +226,9 @@ sectionWidget("Graveyard"):Click()
 local graveyard = 0
 for _, b in ipairs(ns.DungeonByKey.SM.bosses) do if b.wing == "Graveyard" then graveyard = graveyard + 1 end end
 check(#entries("boss") == graveyard, "clicking Graveyard shows its bosses", #entries("boss") .. " vs " .. graveyard)
-for _, d in ipairs(ns.Dungeons) do UI:Select(d) end
-check(true, "every dungeon view renders")
+for _, d in ipairs(ns.Dungeons) do UI:Select(d); openAll(true) end
+check(true, "every dungeon view renders, every section open")
+wipe(UI.sections)   -- back to everything collapsed
 
 ---------------------------------------------------------------- professions tab
 tab("professions"):MockClick()
@@ -410,9 +431,11 @@ check(UI.searchTotal == consumables and consumables > 100, "Slot: Consumable lis
 -- Switching tabs keeps the search words but drops a filter the other tab lacks
 search("gloves")
 tab("dungeons"):MockClick()
+openAll()
 check(UI.mode == "dungeons" and UI.filter.slot == nil and UI.searchBox:GetText() == "gloves" and #entries("item") == gloves,
 	"back on Dungeons the Consumable filter drops and gloves still search")
 tab("professions"):MockClick()
+openAll()
 local craftGloves = #entries("recipe")
 check(UI.mode == "professions" and craftGloves > 0, "and on Professions \"gloves\" lists craftable gloves", craftGloves)
 local agiGloves = search("agility gloves")
@@ -439,26 +462,26 @@ MOCK.Fire("GET_ITEM_INFO_RECEIVED", (painted("recipe")[1] or {}).itemID or 2318,
 MOCK.RunTimers()
 check(true, "item-data refresh runs over recipe rows")
 
--- A profession with a single group shows it open
+-- A profession with a single group starts collapsed like the rest, and opens on click
 UI:Select(ns.ProfessionByKey.SKIN)
-check(#entries("wing") == 1 and #entries("recipe") == #ns.ProfessionByKey.SKIN.recipes, "a profession with one group opens it")
+check(#entries("wing") == 1 and #entries("recipe") == 0, "a profession with one group starts collapsed too")
+openAll()
+check(#entries("recipe") == #ns.ProfessionByKey.SKIN.recipes, "and opens to every recipe")
 
 -- Every profession renders
-for _, p in ipairs(ns.Professions) do UI:Select(p) end
-check(true, "every profession view renders")
+for _, p in ipairs(ns.Professions) do UI:Select(p); openAll(true) end
+check(true, "every profession view renders, every section open")
+wipe(UI.sections)   -- back to everything collapsed
 
 ---------------------------------------------------------------- wishlist
-local function openAll()
-	for _, id in ipairs(UI.sectionIds) do UI:SectionState()[id] = true end
-	UI:Refresh()
-end
 local function chatHas(text) return (MOCK.chat[#MOCK.chat] or ""):find(text, 1, true) ~= nil end
-check(#UI.tabs == 5 and tab("wishlist").tooltipText == "Wishlist", "there's a Wishlist tab")
+check(#UI.tabs == 6 and tab("wishlist").tooltipText == "Wishlist", "there's a Wishlist tab")
 
 -- Right-click a dungeon drop
 tab("dungeons"):MockClick()
 UI:ClearSearch()
 UI:Select(ns.DungeonByKey.DM)
+openAll()
 local dmRow = painted("item")[1]
 local wantedID = dmRow.itemID
 dmRow:GetScript("OnEnter")(dmRow)
@@ -501,7 +524,9 @@ check(not UI.header.wowhead:IsShown(), "no Wowhead button for the whole list")
 local wrows = listRows()
 check(wrows[1].name:GetText() == "Everything" and wrows[1].levels:GetText() == "2", "list starts with Everything")
 check(wrows[2].entry == ns.DungeonByKey.DM and wrows[3].entry == lw and #wrows == 3, "then each source, dungeons first")
-check(#entries("item") == 1 and #entries("recipe") == 1, "one drop row and one recipe row")
+check(#entries("item") == 0 and #entries("recipe") == 0 and #entries("wing") == 2, "its groups start collapsed")
+openAll()
+check(#entries("item") == 1 and #entries("recipe") == 1, "opened: one drop row and one recipe row")
 local wishItem = painted("item")[1]
 check(wishItem.sourceText and wishItem.source:IsShown(), "drops show which boss has them")
 check(painted("recipe")[1].mats:GetText() ~= "", "recipes show their materials")
@@ -522,6 +547,7 @@ listRows()[2]:Click()
 check(UI.current == ns.DungeonByKey.DM and #entries("item") == 1 and #entries("recipe") == 0 and UI.header.wowhead:IsShown(),
 	"clicking a source shows just its items")
 UI.searchBox:Type(ns.Items[craftedID][1])
+openAll()
 check(UI.searchTotal == 1 and #entries("recipe") == 1, "the search box searches the wishlist")
 UI:ClearSearch()
 
@@ -617,8 +643,9 @@ UI:SetFilter("slot", "trinket")
 local raidTrinkets = rowsWhere(function(e) return e[3] == "Trinket" end, ns.Raids)
 check(UI.searchTotal == raidTrinkets and raidTrinkets > 20, "Slot: Trinket lists every raid trinket", UI.searchTotal .. " vs " .. raidTrinkets)
 UI:SetFilter("slot", nil)
-for _, r in ipairs(ns.Raids) do UI:Select(r) end
-check(true, "every raid view renders")
+for _, r in ipairs(ns.Raids) do UI:Select(r); openAll(true) end
+check(true, "every raid view renders, every section open")
+wipe(UI.sections)   -- back to everything collapsed
 
 ---------------------------------------------------------------- 1.6.0: dungeon quests and your faction
 local qd, sideCount
@@ -650,9 +677,18 @@ local qTip = MOCK.TooltipText()
 check(qTip:find(qEntry.data.quest.name, 1, true) and (qTip:find("Alliance only", 1, true) or qTip:find("Alliance and Horde", 1, true)),
 	"a quest's tooltip names it and its side")
 qRow:GetScript("OnLeave")(qRow)
-qRow:Click()
-check(MOCK.popup and MOCK.popup.data.url == ns.WOWHEAD .. "quest=" .. qEntry.data.quest.id, "clicking a quest gives its Wowhead link")
+check(qTip:find("Click to see where it starts and its rewards.", 1, true) and qTip:find("Right-click for its Wowhead link.", 1, true),
+	"its tooltip says a click opens it and a right-click gives the link")
+qRow:Click("RightButton")
+check(MOCK.popup and MOCK.popup.data.url == ns.WOWHEAD .. "quest=" .. qEntry.data.quest.id, "right-clicking a quest gives its Wowhead link")
 MOCK.popup = nil
+local qRewards = #(qEntry.data.quest.choices or {}) + #(qEntry.data.quest.rewards or {})
+check(#entries("item") == 0, "each quest starts collapsed")
+qRow:Click()
+check(not UI:IsCollapsed(qEntry.data.id) and #entries("item") == qRewards and qRow.toggle:GetAtlas() == "common-button-list-minus",
+	"clicking a quest opens it to its rewards", #entries("item") .. " vs " .. qRewards)
+qRow:Click()
+check(UI:IsCollapsed(qEntry.data.id) and #entries("item") == 0, "and clicking again closes it")
 MOCK.faction = "Horde"
 UI:Refresh()
 check(#entries("quest") == sideCount[2] + sideCount[3], "a Horde character sees the Horde ones instead")
@@ -669,6 +705,7 @@ local function rogueCant(e)
 end
 local dm = ns.DungeonByKey.DM
 UI:Select(dm)
+openAll()
 local allItems = #entries("item")
 MOCK.classFile = "ROGUE"
 UI.toggles.myClass:Click()
@@ -695,6 +732,7 @@ for _, d in ipairs(ns.Dungeons) do
 end
 if blocked then
 	UI:Select(blocked.d)
+	openAll()
 	local noted = false
 	for _, e in ipairs(entries("note")) do
 		if e.data.text:find("hidden by the My class / Hide Classic filters", 1, true) then noted = true end
@@ -729,6 +767,8 @@ check(UI.current == defias and UI.header.name:GetText() == defias.name, "a rogue
 local meta = UI.header.meta:GetText()
 check(meta:find(#defias.pieces .. " pieces", 1, true) and meta:find("Level " .. defias.level, 1, true) and meta:find("Leather", 1, true),
 	"the header gives pieces, level and armor", meta)
+check(#entries("text") == 0 and #entries("item") == 0 and #entries("wing") == 2, "a set's bonuses and pieces start collapsed")
+openAll()
 check(#entries("text") == #defias.bonuses and #entries("item") == #defias.pieces, "set bonuses, then one row per piece")
 local sourced = 0
 for _, e in ipairs(entries("item")) do if e.data.source and e.data.source ~= "No known source" then sourced = sourced + 1 end end
@@ -762,8 +802,9 @@ UI.toggles.myClass:Click()
 local rogueSets = #listRows()
 check(rogueSets < #ns.Sets and rogueSets > 0, "My class keeps only the sets a rogue can wear", rogueSets .. " of " .. #ns.Sets)
 UI.toggles.myClass:Click()
-for _, st in ipairs(ns.Sets) do UI:Select(st) end
-check(true, "every set view renders")
+for _, st in ipairs(ns.Sets) do UI:Select(st); openAll(true) end
+check(true, "every set view renders, every section open")
+wipe(UI.sections)   -- back to everything collapsed
 
 ---------------------------------------------------------------- 1.6.0: where-it-comes-from lines on item tooltips
 local bossDrop = dm.bosses[1].loot[1]
@@ -823,6 +864,7 @@ SlashCmdList.FOREVERLOOT("tooltip")
 check(ns.db.tooltip, "and back on")
 SlashCmdList.FOREVERLOOT("dungeons")
 UI:Select(dm)
+openAll()
 local ownRow = painted("item")[1]
 GameTooltip:SetOwner(ownRow)
 GameTooltip:SetItemByID(ownRow.itemID)
@@ -837,6 +879,7 @@ ns.Wishlist.Toggle(raidDrop)
 if rewardQuest then ns.Wishlist.Toggle(rewardQuest.choices[1]) end
 SlashCmdList.FOREVERLOOT("wishlist")
 UI:Select(listRows()[1].entry)
+openAll()
 local sources, rewardRow = {}, nil
 for _, r in ipairs(listRows()) do if r.entry then sources[r.entry] = true end end
 for _, e in ipairs(entries("item")) do if e.data.source == "Quest reward" then rewardRow = e end end
@@ -860,9 +903,17 @@ for _, key in ipairs(UI.modeOrder) do
 			MOCK.classFile = class
 			UI:ClearSearch()
 			try(key .. " list", UI.BuildList, UI)
-			for _, entry in ipairs(UI:Mode().Entries()) do try(key .. " " .. tostring(entry.name), UI.Select, UI, entry) end
+			-- every section open (they start collapsed), drawn at the top and the bottom
+			local function openAndScroll()
+				openAll(true)
+				UI.loot:ScrollTo(UI.loot:GetVerticalScrollRange())
+				UI:Paint()
+			end
+			for _, entry in ipairs(UI:Mode().Entries()) do
+				try(key .. " " .. tostring(entry.name), function() UI:Select(entry); openAndScroll() end)
+			end
 			for _, q in ipairs({ "gloves", "new", "classic", "agility", "a", "zzzz", "leather", "2h sword" }) do
-				try(key .. " search " .. q, function() UI.searchBox:Type(q) end)
+				try(key .. " search " .. q, function() UI.searchBox:Type(q); openAndScroll() end)
 			end
 			try(key .. " slot filter", UI.SetFilter, UI, "slot", "finger")
 			try(key .. " kind filter", UI.SetFilter, UI, "kind", "leather")
@@ -873,6 +924,7 @@ for _, key in ipairs(UI.modeOrder) do
 	end
 end
 wipeFilters()
+wipe(UI.sections)
 MOCK.classFile = "ROGUE"
 check(#errors == 0 and tries > 2500, "every tab, entry, filter and search renders for five classes (" .. tries .. " tries)", errors[1])
 
@@ -958,6 +1010,7 @@ wipe(ns.char.wishlist)
 ns.Wishlist.Toggle(multi)
 SlashCmdList.FOREVERLOOT("wishlist")
 UI:Select(listRows()[1].entry)
+openAll()
 local wrow
 for _, r in ipairs(listRows()) do if r.entry == multiIn then wrow = r end end
 check(#entries("item") == 1 and wrow and wrow.levels:GetText() == "1", "an item " .. multiBosses .. " bosses drop is one wishlist row, counted once")
@@ -1005,6 +1058,7 @@ check(glory, "a Forever tier set with crafted pieces is on the Sets tab")
 if glory then
 	SlashCmdList.FOREVERLOOT("sets")
 	UI:Select(glory)
+	openAll()
 	local made = 0
 	for _, e in ipairs(entries("item")) do if (e.data.from or ""):find("Made by ", 1, true) then made = made + 1 end end
 	check(made > 0, "and its crafted pieces say which profession makes them", made)
@@ -1023,6 +1077,487 @@ check(ns.Items[6340] and ns.Items[6340][4] == 0, "an original item Forever rewor
 
 -- The window shares Blizzard's panels' layer, so the dressing room opens in front of it
 check(UI.frame:GetFrameStrata() == "MEDIUM", "the window is on Blizzard's panel layer")
+
+-- (in a function of its own: Lua 5.1 allows 200 locals in a function)
+;(function()
+---------------------------------------------------------------- 1.7.0: quest status, chains and quest givers
+local QI = ns.QuestInfo
+local function resetQuests()
+	MOCK.questsDone, MOCK.questLog, MOCK.level, MOCK.faction, MOCK.classFile = {}, {}, 25, "Alliance", "ROGUE"
+	MOCK.race, MOCK.noPins, MOCK.waypoint, MOCK.superTracked = { "Human", "Human", 1 }, {}, nil, nil
+end
+resetQuests()
+-- The data: every listed quest has chain data, and every quest a chain names is in it too
+local listedIDs, missingInfo, missingPrev = 0, {}, {}
+for _, list in ipairs({ ns.Dungeons, ns.Raids }) do
+	for _, d in ipairs(list) do
+		for _, q in ipairs(d.quests or {}) do
+			if q.id then
+				listedIDs = listedIDs + 1
+				if not QI[q.id] then missingInfo[#missingInfo + 1] = q.id end
+			end
+		end
+	end
+end
+for id, info in pairs(QI) do
+	for _, alt in ipairs(info.prev or {}) do
+		for _, p in ipairs(type(alt) == "table" and alt or { alt }) do
+			if not QI[math.abs(p)] then missingPrev[#missingPrev + 1] = id .. "->" .. p end
+		end
+	end
+	for _, p in ipairs(info.lead or {}) do if not QI[p] then missingPrev[#missingPrev + 1] = id .. "->" .. p end end
+end
+check(listedIDs > 500 and #missingInfo == 0, "every dungeon and raid quest has chain data", table.concat(missingInfo, ", "))
+check(#missingPrev == 0, "every earlier quest a chain names has its own entry", table.concat(missingPrev, ", "))
+-- No quest is listed that's really an item that starts one (the Head of Nefarian), or a Classic
+-- leftover no one can pick up (Waking Naralex)
+local fake = {}
+for _, list in ipairs({ ns.Dungeons, ns.Raids }) do
+	for _, d in ipairs(list) do
+		for _, q in ipairs(d.quests or {}) do
+			if q.id == 19002 or q.id == 19003 or q.id == 16782 or q.id == 1500 or q.id == 999 or q.id == 909 then fake[#fake + 1] = q.id end
+		end
+	end
+end
+check(#fake == 0, "no quest-starting items or unobtainable leftovers among the quests", table.concat(fake, ", "))
+check(QI[95204] and QI[95204].from and QI[95204].from[1] == "item" and QI[95204].from[2] == "Crest of Lordaeron",
+	"a Forever quest started by an item says which (Crest of Lordaeron)")
+
+-- The Defias Brotherhood: seven quests, from Westfall to Stormwind and back
+local defias = ns.QuestChain(166)
+check(table.concat(defias, ",") == "65,132,135,141,142,155", "The Defias Brotherhood's chain, earliest first", table.concat(defias, ","))
+check(ns.QuestStatus(166) == "locked", "with none of it done the last quest is locked")
+local nextSteps = ns.QuestNextSteps(166)
+check(#nextSteps == 1 and nextSteps[1].id == 65 and nextSteps[1].status == "ready", "and the next step is the first quest")
+for _, id in ipairs({ 65, 132, 135, 141, 142 }) do MOCK.questsDone[id] = true end
+MOCK.questLog[155] = true
+nextSteps = ns.QuestNextSteps(166)
+check(ns.QuestStatus(155) == "active" and #nextSteps == 1 and nextSteps[1].id == 155 and nextSteps[1].status == "active",
+	"a step in your log is the next step")
+MOCK.questLog[155], MOCK.questsDone[155] = nil, true
+check(ns.QuestStatus(166) == "ready", "with the chain done it's available")
+MOCK.level = 10
+check(ns.QuestStatus(166) == "level", "below its level it says so", ns.QuestStatus(166))
+MOCK.level = 25
+MOCK.questLog[166] = true
+check(select(2, ns.QuestStatus(166)) == false, "in your log, not complete")
+MOCK.questLog[166] = "complete"
+local st, complete = ns.QuestStatus(166)
+check(st == "active" and complete == true, "in your log and complete")
+MOCK.questLog[166], MOCK.questsDone[166] = nil, true
+check(ns.QuestStatus(166) == "done", "turned in")
+MOCK.faction = "Horde"
+MOCK.questsDone = {}
+check(ns.QuestStatus(166) == "other", "an Alliance quest isn't for a Horde character")
+resetQuests()
+-- Races and classes: The Tome of Valor is for Human and Dwarf paladins
+check(QI[1649].races == 5 and QI[1649].classes == 2, "the data keeps race and class limits")
+check(ns.QuestStatus(1649) == "other", "a Human rogue can't take a paladin quest")
+MOCK.classFile = "PALADIN"
+check(ns.QuestStatus(1649) == "ready", "a Human paladin can", ns.QuestStatus(1649))
+MOCK.race = { "Night Elf", "NightElf", 4 }
+check(ns.QuestStatus(1649) == "other", "a Night Elf paladin can't (no such thing, but the mask says no)")
+resetQuests()
+-- Taking one quest of a group closes the others; either one opens the next quest
+MOCK.level = 60
+MOCK.questsDone[3481] = true
+check(ns.QuestStatus(4022) == "ready" and ns.QuestStatus(4023) == "ready", "both A Taste of Flame quests are open")
+MOCK.questLog[4023] = true
+local closed, by = ns.QuestStatus(4022)
+check(closed == "closed" and by == 4023, "taking one closes the other")
+MOCK.questLog[4023], MOCK.questsDone[4023] = nil, true
+check(ns.QuestStatus(4024) == "ready" and table.concat(ns.QuestChain(4024), ",") == "4023",
+	"the next quest follows the one you did", table.concat(ns.QuestChain(4024), ","))
+MOCK.questsDone[4023] = nil
+local taste = ns.QuestChain(4024)
+check(taste[#taste] == 4022 and taste[#taste - 1] == 3481 and #taste > 2, "with neither done it follows the first, and the quests before that",
+	table.concat(taste, ","))
+-- A list needs every quest in it; a negative id needs that quest in your log
+check(ns.QuestStatus(5742) == "locked", "Redemption needs all three earlier quests")
+MOCK.questsDone[5542], MOCK.questsDone[5543] = true, true
+check(ns.QuestStatus(5742) == "locked", "two of three isn't enough")
+MOCK.questsDone[5544] = true
+check(ns.QuestStatus(5742) == "ready", "all three opens it")
+MOCK.faction = "Horde"
+check(ns.QuestStatus(2842) == "locked", "Chief Engineer Scooty needs the quest before it in your log")
+MOCK.questLog[2841] = true
+check(ns.QuestStatus(2842) == "ready", "and opens while it is")
+MOCK.questLog[2841], MOCK.questsDone[2841] = nil, true
+check(ns.QuestStatus(2842) == "closed", "turned in without it, it's gone for good", ns.QuestStatus(2842))
+resetQuests()
+
+-- Reputation: the three Naxxramas attunements are one per standing with the Argent Dawn
+MOCK.level = 60
+check(ns.QuestStatus(9121) == "rep" and select(2, ns.QuestStatus(9121))[1] == 529, "a stranger to the Argent Dawn needs Honored first")
+MOCK.rep[529] = 10000
+check(ns.QuestStatus(9121) == "ready" and ns.QuestStatus(9122) == "rep" and ns.QuestStatus(9123) == "rep",
+	"Honored opens the Honored one only")
+MOCK.rep[529] = 25000
+check(ns.QuestStatus(9121) == "closed" and ns.QuestStatus(9122) == "ready", "Revered closes it and opens the next")
+MOCK.questLog[9122] = true
+check(table.concat(ns.QuestChain(9033), ",") == "9122", "Echoes of War follows the attunement in your log", table.concat(ns.QuestChain(9033), ","))
+MOCK.questLog[9122] = nil
+-- the status says which standing and faction
+check(ns.UIKit.QuestStatusText(ns.QuestStatus(9208)) == "Honored with Zandalar Tribe", "and says which standing with whom",
+	ns.UIKit.QuestStatusText(ns.QuestStatus(9208)))
+-- Profession skill: Hot Fiery Death needs Blacksmithing 275
+table.insert(MOCK.hiddenSkills, { "Blacksmithing", false, 200, 300, 164 })
+check(ns.QuestStatus(5103) == "skill" and ns.UIKit.QuestStatusText(ns.QuestStatus(5103)) == "Blacksmithing 275",
+	"a blacksmith at 200 can't take Hot Fiery Death", ns.UIKit.QuestStatusText(ns.QuestStatus(5103)))
+MOCK.hiddenSkills[#MOCK.hiddenSkills][3] = 280
+check(ns.QuestStatus(5103) == "ready", "at 280 they can")
+table.remove(MOCK.hiddenSkills)
+-- Conditions made of quests join the earlier quests: Ramstein needs both, the Librams either
+MOCK.faction = "Horde"
+MOCK.questsDone[6135] = true
+check(ns.QuestStatus(6163) == "locked", "Ramstein needs The Corpulent One too")
+MOCK.questsDone[6136] = true
+check(ns.QuestStatus(6163) == "ready", "with both done it's open")
+MOCK.questsDone[7481] = true
+check(ns.QuestStatus(7483) == "ready", "a Libram opens with either Elven Legends")
+check(ns.QuestStatus(1318) == "special", "a quest that needs a buff says it needs something else")
+resetQuests()
+-- Forever's own level requirement wins over the vanilla one: A Fine Mess needs 20 in Forever, 24 in Classic
+MOCK.level = 22
+local fineMess
+for _, q in ipairs(ns.DungeonByKey.GNOMER.quests) do if q.id == 2904 then fineMess = q end end
+check(fineMess and fineMess.req == 20 and QI[2904].req == 20 and ns.QuestStatus(2904, fineMess) == "ready",
+	"Forever's level 20 counts, not Classic's 24", ns.QuestStatus(2904, fineMess))
+resetQuests()
+-- Of two earlier quests, the chain takes the one you can do now, or the one in your log
+MOCK.level = 60
+local taste = ns.QuestChain(4024)
+check(#taste == 1 and taste[1] == 4023, "A Taste of Flame goes through the one you can take now", table.concat(taste, ","))
+MOCK.questLog[4022] = true
+check(ns.QuestChain(4024)[#ns.QuestChain(4024)] == 4022, "or the one in your log")
+resetQuests()
+-- Wildeyes alone opens the Dreadsteed reagents (cMaNGOS's branch rule)
+MOCK.classFile, MOCK.level = "WARLOCK", 60
+for _, id in ipairs({ 7562, 7563, 7564 }) do MOCK.questsDone[id] = true end
+check(ns.QuestStatus(7626) == "ready", "Bell of Dethmoora opens after Wildeyes")
+resetQuests()
+-- The Valthalak chain: More Components needs its Components variant and I See Alcaz Island
+MOCK.level = 60
+MOCK.questsDone[8961], MOCK.questsDone[8965] = true, true
+local valthalak = ns.QuestChain(8986)
+check(valthalak[#valthalak] == 8970 and ns.QuestStatus(8986) == "locked", "More Components waits for I See Alcaz Island",
+	table.concat(valthalak, ","))
+resetQuests()
+-- Breadcrumbs: a lead-in closes once its quest is taken; its quest waits while the lead-in is in your log
+MOCK.level = 46
+MOCK.questLog[2861] = true
+local tiara, by = ns.QuestStatus(2846)
+check(tiara == "locked" and by == 2861, "Tiara of the Deep waits for Tabetha's Task to be turned in")
+MOCK.questLog[2861] = nil
+MOCK.questsDone[2846] = true
+check(ns.QuestStatus(2861) == "closed", "and Tabetha's Task closes once Tiara of the Deep is done")
+resetQuests()
+-- Quest givers: names from Wowhead's Forever data, zones from the client, map pins
+local gryan = QI[166].from
+check(gryan[1] == "npc" and gryan[2] == "Gryan Stoutmantle" and gryan[3] == 1436, "Gryan Stoutmantle starts it, in Westfall")
+check(ns.QuestGiverText(gryan) == "Gryan Stoutmantle, Westfall", "giver text has the zone", ns.QuestGiverText(gryan))
+MOCK.chat = {}
+check(ns.PinQuestGiver(gryan, "The Defias Brotherhood") and MOCK.waypoint and MOCK.waypoint.uiMapID == 1436 and
+	math.abs(MOCK.waypoint.position.x - gryan[4] / 100) < 1e-9 and math.abs(MOCK.waypoint.position.y - gryan[5] / 100) < 1e-9
+	and MOCK.superTracked == true, "the pin goes on Westfall's map at his spot, tracked")
+check((MOCK.chat[#MOCK.chat] or ""):find("Gryan Stoutmantle, Westfall " .. ("%.1f, %.1f"):format(gryan[4], gryan[5]), 1, true),
+	"and chat says where", MOCK.chat[#MOCK.chat])
+MOCK.waypoint, MOCK.noPins[1436] = nil, true
+check(not ns.PinQuestGiver(gryan) and MOCK.waypoint == nil and (MOCK.chat[#MOCK.chat] or ""):find("doesn't take pins", 1, true),
+	"a map that takes no pins gets none, and chat says where instead")
+MOCK.noPins = {}
+
+-- The Dungeons tab: each quest's mark, status and where it starts, with a pin button
+tab("dungeons"):MockClick()
+UI:ClearSearch()
+UI:Select(dm)
+UI.sections["d:DM:quests"] = true
+UI.sections["d:DM:q:166"] = true
+UI:Refresh()
+local defiasEntry, defiasLine
+for i, e in ipairs(UI.entries) do
+	if e.kind == "quest" and e.data.quest.id == 166 then
+		defiasEntry = e
+		local nxt = UI.entries[i + 1]
+		if nxt and nxt.kind == "qline" then defiasLine = nxt end
+	end
+end
+check(defiasEntry and defiasLine, "a quest bar has its start line under it")
+UI.loot:ScrollTo(defiasEntry.y)
+local bar, line
+for _, w in ipairs(painted("quest")) do if w.entry == defiasEntry.data then bar = w end end
+for _, w in ipairs(painted("qline")) do if w.entry == defiasLine.data then line = w end end
+check(bar and bar.icon._texture == "Interface\\GossipFrame\\AvailableQuestIcon" and bar.icon._desaturated == true,
+	"a locked quest's mark is a grey !")
+check(bar and bar.tag:GetText():find("6 quests first", 1, true), "its tag says how many quests come first", bar and bar.tag:GetText())
+check(line and line.text:GetText() == "Starts: Gryan Stoutmantle, Westfall" and line.right:GetText() == "6 quests before it"
+	and line.pin:IsShown(), "the line says who starts it, where, and how many quests come before it",
+	line and (tostring(line.text:GetText()) .. " | " .. tostring(line.right:GetText())))
+bar:GetScript("OnEnter")(bar)
+local tip = MOCK.TooltipText()
+check(tip:find("Starts: Gryan Stoutmantle, Westfall", 1, true) and tip:find("6 quests before it.", 1, true)
+	and tip:find("Next: The Defias Brotherhood from Gryan Stoutmantle, Westfall", 1, true), "the quest's tooltip says how to get it", tip)
+bar:GetScript("OnLeave")(bar)
+MOCK.waypoint = nil
+line.pin:Click()
+check(MOCK.waypoint and MOCK.waypoint.uiMapID == 1436, "the pin button puts a map pin on the quest giver")
+for _, id in ipairs({ 65, 132, 135, 141, 142, 155 }) do MOCK.questsDone[id] = true end
+UI:Refresh()
+UI.loot:ScrollTo(defiasEntry.y)
+for _, w in ipairs(painted("quest")) do if w.entry.quest and w.entry.quest.id == 166 then bar = w end end
+check(bar.icon._texture == "Interface\\GossipFrame\\AvailableQuestIcon" and bar.icon._desaturated == false and bar.icon._crop == nil,
+	"with the chain done the ! turns yellow")
+MOCK.questsDone[166] = true
+UI:Refresh()
+for _, w in ipairs(painted("quest")) do if w.entry.quest and w.entry.quest.id == 166 then bar = w end end
+check(bar.icon._atlas == "common-icon-checkmark" and bar.tag:GetText():find("Done", 1, true), "a quest you turned in gets a check")
+MOCK.questsDone[166] = nil
+UI:Refresh()
+for _, w in ipairs(painted("quest")) do if w.entry.quest and w.entry.quest.id == 166 then bar = w end end
+check(bar.icon._atlas == nil and bar.icon._crop == nil, "a mark that was a check doesn't keep the check's crop")
+resetQuests()
+
+-- The line opens the Quests tab on the dungeon, the quest open and scrolled to
+for _, w in ipairs(painted("qline")) do if w.entry == defiasLine.data then line = w end end
+UI:Refresh()
+UI.loot:ScrollTo(defiasEntry.y)
+for _, w in ipairs(painted("qline")) do if w.entry.name == "The Defias Brotherhood" and w.entry.click then line = w end end
+line:Click()
+check(UI.mode == "quests" and UI.current == dm and tab("quests").checked, "clicking the line opens the Quests tab on the dungeon")
+check(not UI:IsCollapsed("q:DM:166") and UI.loot:GetVerticalScroll() > 0, "with that quest open and scrolled to")
+
+---------------------------------------------------------------- 1.7.0: the Quests tab
+local qrows = listRows()
+check(#qrows == 1 + #ns.Dungeons + #ns.Raids and qrows[1].entry.isTodo and qrows[1].name:GetText() == "Quests you can do",
+	"the list is the to-do page, then every dungeon and raid", #qrows)
+check(UI.listLabel:GetText() == "Dungeons and raids" and UI.toggles.myClass:IsShown(), "list label, and the loot filters (for rewards)")
+local heads = entries("qhead")
+local allianceQuests = 0
+for _, q in ipairs(dm.quests) do if q.side ~= 2 then allianceQuests = allianceQuests + 1 end end
+check(#heads == allianceQuests, "one header per quest an Alliance rogue can take", #heads .. " vs " .. allianceQuests)
+local defiasDetail = {}
+local inDefias = false
+for _, e in ipairs(UI.entries) do
+	if e.kind == "qhead" then inDefias = e.data.quest.id == 166 elseif inDefias then defiasDetail[#defiasDetail + 1] = e end
+end
+local stepLines, startLine, rewardsLine = 0, nil, nil
+for _, e in ipairs(defiasDetail) do
+	if e.kind == "qline" and e.data.questID and e.data.indent == 18 then stepLines = stepLines + 1 end
+	if e.kind == "qline" and (e.data.text or ""):find("^Starts: ") then startLine = e end
+	if e.kind == "qline" and (e.data.text or ""):find("^Rewards") then rewardsLine = e end
+end
+check(startLine and startLine.data.giver == gryan, "an open quest says where it starts, with the pin")
+check(stepLines == 6, "and lists the six quests before it", stepLines)
+local defiasQuest
+for _, q in ipairs(dm.quests) do if q.id == 166 then defiasQuest = q end end
+local rewardCount = #(defiasQuest.choices or {}) + #(defiasQuest.rewards or {})
+local itemsAfter = 0
+for _, e in ipairs(defiasDetail) do if e.kind == "item" then itemsAfter = itemsAfter + 1 end end
+check(rewardsLine and itemsAfter == rewardCount, "and its rewards", itemsAfter .. " vs " .. rewardCount)
+check(UI.header.meta:GetText():find(allianceQuests .. " quests", 1, true), "the header counts the quests", UI.header.meta:GetText())
+local hordeOnly = 0
+for _, q in ipairs(dm.quests) do if q.side == 2 then hordeOnly = hordeOnly + 1 end end
+local otherNote = false
+for _, e in ipairs(entries("note")) do if (e.data.text or ""):find("for another faction", 1, true) then otherNote = true end end
+check(hordeOnly == 0 or otherNote, "a note counts the quests for others")
+-- A step row's tooltip and click
+local stepEntry
+for _, e in ipairs(defiasDetail) do if e.kind == "qline" and e.data.questID == 141 then stepEntry = e end end
+UI.loot:ScrollTo(stepEntry.y)
+local stepRow
+for _, w in ipairs(painted("qline")) do if w.entry == stepEntry.data then stepRow = w end end
+check(stepRow and stepRow.right:GetText() == "Master Mathias Shaw, Stormwind City" and stepRow.icon:IsShown(),
+	"a step says who starts it and where", stepRow and stepRow.right:GetText())
+stepRow:Click()
+check(MOCK.popup and MOCK.popup.data.url == ns.WOWHEAD .. "quest=141", "clicking a step gives its Wowhead link")
+MOCK.popup = nil
+-- Quest log changes redraw the page (once the burst of events settles)
+MOCK.questLog[65] = true
+MOCK.Fire("QUEST_ACCEPTED", 65)
+MOCK.Fire("QUEST_LOG_UPDATE")
+MOCK.RunTimers()
+local step65
+for _, e in ipairs(UI.entries) do if e.kind == "qline" and e.data.questID == 65 then step65 = e end end
+check(step65 and step65.data.status == "active", "taking a quest updates the page", step65 and step65.data.status)
+check(step65 and step65.data.right == "Turn in: Wiley the Black, Redridge Mountains" and step65.data.giver == QI[65].to,
+	"a step in your log points at who takes it in", step65 and step65.data.right)
+resetQuests()
+
+-- The to-do page: what you can do now, everywhere
+UI:Select(qrows[1].entry)
+check(#entries("qline") == 0 and #entries("wing") > 0, "the to-do page's instances start collapsed")
+openAll()
+local todoLines = entries("qline")
+local nextDefias = false
+for i, e in ipairs(todoLines) do
+	if e.data.questID == 166 and todoLines[i + 1] and todoLines[i + 1].data.questID == 65 and todoLines[i + 1].data.text == "Next: The Defias Brotherhood" then
+		nextDefias = true
+	end
+end
+check(nextDefias, "the to-do page lists The Defias Brotherhood with its next step")
+local step65Line
+for _, e in ipairs(todoLines) do if e.data.questID == 65 then step65Line = e.data end end
+check(step65Line and step65Line.right == "Gryan Stoutmantle, Westfall" and step65Line.giver == QI[65].from,
+	"the next step says who starts it, with the pin", step65Line and step65Line.right)
+-- A quest in your log that's ready to turn in points at who takes it in
+for _, id in ipairs({ 65, 132, 135, 141, 142, 155 }) do MOCK.questsDone[id] = true end
+MOCK.questLog[166] = "complete"
+UI:Select(qrows[1].entry)
+openAll()
+local turnIn
+for _, e in ipairs(entries("qline")) do if e.data.questID == 166 then turnIn = e.data end end
+check(turnIn and turnIn.status == "active" and turnIn.right == "Turn in: Gryan Stoutmantle, Westfall" and turnIn.giver == (QI[166].to or QI[166].from)
+	and type(turnIn.rightColor) == "table" and type(turnIn.rightColor[1]) == "number", "a quest ready to turn in says where", turnIn and turnIn.right)
+MOCK.questLog[166] = true
+UI:Select(qrows[1].entry)
+openAll()
+for _, e in ipairs(entries("qline")) do if e.data.questID == 166 then turnIn = e.data end end
+check(turnIn and turnIn.right == "In your log" and type(turnIn.rightColor) == "table" and type(turnIn.rightColor[1]) == "number",
+	"one still in progress says it's in your log", turnIn and tostring(turnIn.right))
+resetQuests()
+UI:Select(qrows[1].entry)
+openAll()
+check(UI.header.name:GetText() == "Quests you can do" and UI.header.meta:GetText():find(" in ", 1, true) and not UI.header.wowhead:IsShown(),
+	"its header counts them", UI.header.meta:GetText())
+MOCK.level = 60
+UI:Select(qrows[1].entry)
+openAll()
+local rfcListed = false
+for _, e in ipairs(entries("wing")) do if e.data.text == "Ragefire Chasm" then rfcListed = true end end
+check(not rfcListed and UI.header.note:GetText():find("grey quest", 1, true), "at 60 the grey low-level quests are left out, and counted")
+resetQuests()
+
+-- Searching quests: by quest giver, by zone, by reward slot
+UI.searchBox:Type("gryan")
+openAll()
+local found166 = false
+for _, e in ipairs(entries("qline")) do if e.data.questID == 166 then found166 = true end end
+check(UI:IsSearching() and found166 and UI.searchTotal > 0, "searching a quest giver's name finds his quests", UI.searchTotal)
+UI.searchBox:Type("westfall defias")
+openAll()
+check(UI.searchTotal > 0, "zones are searchable too")
+UI.searchBox:Type("")
+ns.char.filters.myClass, ns.char.filters.hideClassic = false, false
+UI:SetFilter("slot", "finger")
+-- the quests an Alliance Human rogue can take
+local ringQuests = 0
+for _, list in ipairs({ ns.Dungeons, ns.Raids }) do
+	for _, d in ipairs(list) do
+		for _, q in ipairs(d.quests or {}) do
+			if ns.QuestStatus(q.id, q) ~= "other" then
+				local has = false
+				for _, r in ipairs({ q.choices or {}, q.rewards or {} }) do
+					for _, id in ipairs(r) do if ns.Items[id] and ns.Items[id][3] == "Finger" then has = true end end
+				end
+				if has then ringQuests = ringQuests + 1 end
+			end
+		end
+	end
+end
+check(UI.searchTotal == ringQuests and ringQuests > 0, "Slot: Finger finds the quests that reward a ring", UI.searchTotal .. " vs " .. ringQuests)
+UI:SetFilter("slot", nil)
+UI:ClearSearch()
+-- Every instance's page renders, with each quest open
+for _, e in ipairs(UI.modes.quests.Entries()) do
+	UI:Select(e)
+	for _, id in ipairs(UI.sectionIds) do UI.sections[id] = true end
+	UI:Refresh()
+end
+check(true, "every page of the Quests tab renders with its quests open")
+-- In a dungeon, the Quests tab opens on it
+UI:Hide()
+MOCK.instance = { "The Deadmines", "party", 1, "Normal", 5, 0, false, 36 }
+UI.lastAutoDungeon = nil
+UI:Show()
+check(UI.mode == "quests" and UI.current == dm, "inside a dungeon the Quests tab opens on its quests", UI.current and UI.current.key)
+MOCK.instance = { "Elwynn Forest", "none", 0, "", 0, 0, false, 0 }
+tab("dungeons"):MockClick()
+
+---------------------------------------------------------------- 1.7.0: one frame's work, and quests two instances list
+-- Within one frame the addon asks the game about each quest once: a level-40 character's to-do
+-- page (with every instance's list) costs a few thousand quest-log calls, not tens of thousands
+resetQuests()
+MOCK.level = 40
+SlashCmdList.FOREVERLOOT("quests")
+local todoEntry = UI.modes.quests.Entries()[1]
+MOCK.frozen = true
+MOCK.clock = MOCK.clock + 1
+MOCK.questCalls = 0
+UI:Select(todoEntry)
+UI:BuildList()
+local calls = MOCK.questCalls
+MOCK.frozen = false
+check(calls > 0 and calls < 6000, "a to-do page refresh asks about each quest once a frame", calls)
+-- The Thorium Brotherhood's Favor quests are in Blackrock Depths and Molten Core: listed once
+MOCK.level, MOCK.rep[59] = 60, 100
+UI:Select(todoEntry)
+openAll(true)
+local favor = 0
+for _, e in ipairs(entries("qline")) do if e.data.questID == 6642 then favor = favor + 1 end end
+check(favor == 1, "a quest two instances list is on the to-do page once", favor)
+resetQuests()
+MOCK.rep = {}
+tab("dungeons"):MockClick()
+
+---------------------------------------------------------------- 1.7.0: everything starts collapsed
+-- Bosses are section headers now: a click opens one to its drops, a right-click gives its
+-- Wowhead link, and shift-click opens every section, the bosses inside wings too
+tab("dungeons"):MockClick()
+UI:ClearSearch()
+wipe(UI.sections)
+local sm = ns.DungeonByKey.SM
+UI:Select(sm)
+check(#entries("boss") == 0 and #entries("item") == 0 and #entries("wing") >= 4, "Scarlet Monastery shows only its closed wings")
+local wing = painted("wing")[1]
+MOCK.shift = true
+wing:Click()
+MOCK.shift = false
+local smBosses, smItems = 0, 0
+for _, b in ipairs(sm.bosses) do smBosses, smItems = smBosses + 1, smItems + #b.loot end
+local openBosses, closed = 0, 0
+for _, e in ipairs(entries("boss")) do if not UI:IsCollapsed(e.data.id) then openBosses = openBosses + 1 end end
+for _, id in ipairs(UI.sectionIds) do if UI:IsCollapsed(id) then closed = closed + 1 end end
+check(#entries("boss") == smBosses and openBosses == smBosses and closed == 0 and #entries("item") >= smItems,
+	"shift-click opens every section: the wings, every boss in them, the quests",
+	#entries("boss") .. " of " .. smBosses .. " bosses (" .. openBosses .. " open), " .. closed .. " closed, " .. #entries("item") .. " items")
+wing = painted("wing")[1]
+MOCK.shift = true
+wing:Click()
+MOCK.shift = false
+check(#entries("boss") == 0 and #entries("item") == 0, "and shift-click again closes them all")
+wing = painted("wing")[1]
+wing:Click()
+local inWing = #entries("boss")
+check(inWing > 0 and #entries("item") == 0, "a click opens one wing to its bosses, still closed", inWing)
+local bossBar = painted("boss")[1]
+check(bossBar.icon:GetAtlas() == "common-button-list-plus", "a closed boss shows a plus")
+bossBar:GetScript("OnEnter")(bossBar)
+local bossTip = MOCK.TooltipText()
+check(bossTip:find("Click to see its loot.", 1, true) and bossTip:find("Right-click for its Wowhead link.", 1, true),
+	"its tooltip says what the clicks do", bossTip)
+bossBar:GetScript("OnLeave")(bossBar)
+local bossID = bossBar.sectionId
+bossBar:Click()
+local bossEntry
+for _, e in ipairs(UI.entries) do if e.kind == "boss" and e.data.id == bossID then bossEntry = e end end
+check(not UI:IsCollapsed(bossID) and #entries("item") > 0, "clicking a boss shows its drops")
+for _, w in ipairs(painted("boss")) do if w.sectionId == bossID then bossBar = w end end
+check(bossBar.icon:GetAtlas() == "common-button-list-minus", "with a minus")
+MOCK.popup = nil
+bossBar:Click("RightButton")
+check(MOCK.popup and MOCK.popup.data.url:find(ns.WOWHEAD .. "npc=", 1, true) and not UI:IsCollapsed(bossID),
+	"right-clicking a boss gives its Wowhead link and leaves it open")
+MOCK.popup = nil
+bossBar:Click()
+check(UI:IsCollapsed(bossID) and #entries("item") == 0, "clicking it again closes it")
+-- Search results start collapsed, each header counting its matches
+UI.searchBox:Type("gloves")
+local firstGroup = entries("wing")[1]
+check(#entries("item") == 0 and firstGroup and firstGroup.data.right:find("item", 1, true), "search results start collapsed, with counts",
+	firstGroup and firstGroup.data.right)
+UI:ClearSearch()
+wipe(UI.sections)
+end)()
 
 ---------------------------------------------------------------- globals
 local allowed = { ForeverLootDB = true, ForeverLootCharDB = true, SLASH_FOREVERLOOT1 = true, SLASH_FOREVERLOOT2 = true }

@@ -1,0 +1,45 @@
+# Atlases Forever Loot and the templates draw with, as WoW: Forever 1.60.1.70205 resolves them (its Camelot
+# "-c60" art where there is one), with the size the game gives each one: name width height. The mock only
+# accepts these names, exactly as written, so a typo can't pass; preview.py checks each against the
+# client's own atlas table (from wago.tools) on every run.
+# Forever Loot's own rows and headers
+Professions_Recipe_Active 267 19
+Professions_Recipe_Hover 309 21
+Options_HorizontalDivider 630 1
+common-button-list-collapseExpand 64 28
+common-button-list-plus 13 13
+common-button-list-minus 13 4
+common-icon-checkmark 25 25
+common-icon-redx 25 25
+Waypoint-MapPin-Untracked 30 30
+Waypoint-MapPin-Tracked 30 30
+auctionhouse-icon-favorite 40 36
+# PortraitFrameTemplate and its close button
+_UI-Frame-TopTileStreaks 256 43
+RedButton-Exit 32 32
+RedButton-Exit-Disabled 32 32
+RedButton-exit-pressed 32 32
+RedButton-Highlight 32 32
+# LargeSideTabButtonTemplate
+common-sidetab 55 60
+common-sidetab-mask 55 60
+common-sidetab-selected 55 60
+common-sidetab-hover 55 60
+# MinimalScrollBar
+minimal-scrollbar-track-top 8 8
+!minimal-scrollbar-track-middle 8 1
+minimal-scrollbar-track-bottom 8 8
+minimal-scrollbar-small-thumb-top 8 8
+minimal-scrollbar-small-thumb-middle 8 715
+minimal-scrollbar-small-thumb-bottom 8 8
+minimal-scrollbar-arrow-top 17 11
+minimal-scrollbar-arrow-bottom 17 11
+# SearchBoxTemplate
+common-search-border-left 16 40
+common-search-border-middle 224 40
+common-search-border-right 16 40
+common-search-magnifyingglass 24 24
+common-search-clearbutton 20 20
+# WowStyle1DropdownTemplate
+common-dropdown-textholder 54 41
+common-dropdown-a-button 27 27

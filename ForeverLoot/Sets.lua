@@ -6,7 +6,7 @@ if not (UI and K and ns.Sets) then return end
 -- The Sets tab: every item set with a piece in the dungeon or raid loot or the quest
 -- rewards, with its set bonuses and where each piece comes from.
 
-local ITEM_H, NOTE_H, SECTION_GAP, WING_H = K.ITEM_H, K.NOTE_H, K.SECTION_GAP, K.WING_H
+local ITEM_H, NOTE_H, SECTION_GAP = K.ITEM_H, K.NOTE_H, K.SECTION_GAP
 local Count = K.Count
 local CHARS_PER_LINE, LINE_H = 88, 15
 
@@ -152,7 +152,7 @@ local Sets = {
 	allLabel = "All sets",
 	unit = "piece",
 	groupUnit = "set",
-	searchHint = "Search every set, e.g. valor",
+	searchHint = "Search sets, e.g. valor",
 	searchAbout = "The search looks at set names and each piece's name, slot, type and stats.",
 	noMatch = {
 		"No set piece matches that.",
@@ -231,20 +231,23 @@ function Sets.ShowHeader(ui, h, st)
 	end
 end
 
+-- Two sections, collapsed until clicked: the set bonuses, then the pieces with where each comes from
 function Sets.Render(ui, st)
 	local bonuses = #st.bonuses == 1 and "1 bonus" or (#st.bonuses .. " bonuses")
-	ui:AddEntry("wing", WING_H, { text = "Set bonuses", right = bonuses })
-	ui:AddGap(4)
-	for _, b in ipairs(st.bonuses) do
-		AddText(ui, "(" .. b[1] .. ") " .. b[2], C.white)
+	if not ui:AddSection("set:" .. st.id .. ":bonuses", "Set bonuses", bonuses) then
+		ui:AddGap(4)
+		for _, b in ipairs(st.bonuses) do
+			AddText(ui, "(" .. b[1] .. ") " .. b[2], C.white)
+		end
+		if #st.bonuses == 0 then ui:AddEntry("note", NOTE_H, { text = "Wowhead lists no bonuses for this set." }) end
 	end
-	if #st.bonuses == 0 then ui:AddEntry("note", NOTE_H, { text = "Wowhead lists no bonuses for this set." }) end
 	ui:AddGap(SECTION_GAP)
-	ui:AddEntry("wing", WING_H, { text = "Pieces", right = Count(#st.pieces, "piece") })
-	ui:AddGap(4)
-	for _, id in ipairs(st.pieces) do
-		local source, from = PieceSource(id)
-		ui:AddEntry("item", ITEM_H, { itemID = id, source = source, from = from })
+	if not ui:AddSection("set:" .. st.id .. ":pieces", "Pieces", Count(#st.pieces, "piece")) then
+		ui:AddGap(4)
+		for _, id in ipairs(st.pieces) do
+			local source, from = PieceSource(id)
+			ui:AddEntry("item", ITEM_H, { itemID = id, source = source, from = from })
+		end
 	end
 end
 
@@ -271,7 +274,7 @@ end
 function Sets.AddResults(ui, g)
 	if ui.contentY > 0 then ui:AddGap(SECTION_GAP) end
 	local st = g.entry
-	if ui:AddSection("s:set:" .. st.id, st.name, st.level and ("Level " .. st.level) or "", true) then
+	if ui:AddSection("s:set:" .. st.id, st.name, Count(#g.rows, "piece") .. (st.level and ("   ·   Level " .. st.level) or "")) then
 		return
 	end
 	for _, r in ipairs(g.rows) do ui:AddEntry("item", ITEM_H, r) end

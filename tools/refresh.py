@@ -6,11 +6,12 @@
 
 Steps
   1. wowtbc.gg loot tables and dungeon quests (fetched directly).
-  2. Wowhead pages: zone loot and quests, raid boss pages, new items. Wowhead blocks
+  2. Wowhead pages: zone loot and quests, raid boss pages, new items, the quest pages of
+     Forever's own quests and the items that start them. Wowhead blocks
      scripted clients, so this step runs in your browser: the script is written to
      tools/scrape_console.js and copied to the clipboard, Wowhead opens, and you paste the
      script into the developer console (F12, or Cmd+Option+J on a Mac) and press Enter.
-     It takes about 15 minutes, then downloads forever-loot-wowhead.json. As soon as that
+     It takes about 20 minutes, then downloads forever-loot-wowhead.json. As soon as that
      lands in your Downloads folder the refresh carries on by itself.
      (Or run the script yourself and pass the file with --wowhead PATH.)
   3. link_recipes.py links new recipes to the items Wowhead says they make, then build_data.py:
@@ -105,7 +106,24 @@ def scrape_config():
         questNames=wowtbc_quest_names(),
         newItemRanges=[[a, a + 2000, q] for q in (3, 4) for a in range(lo, hi, 2000)],
         recipeRanges=[[260000, hi]],   # Forever's recipes start below its loot ids
+        vanillaQuests=vanilla_quests(),   # quest ids cMaNGOS has ([first, last] runs); the scrape fetches the rest
     )
+
+
+def vanilla_quests():
+    """The quest ids cMaNGOS has, as [first, last] runs to keep the script short"""
+    path = os.path.join(RAW, "cmangos_quests.json")
+    if not os.path.exists(path):
+        return []
+    with open(path) as f:
+        ids = sorted(int(q) for q in json.load(f)["quests"])
+    runs = []
+    for i in ids:
+        if runs and i == runs[-1][1] + 1:
+            runs[-1][1] = i
+        else:
+            runs.append([i, i])
+    return runs
 
 
 def write_console_script():
@@ -164,7 +182,7 @@ def wowhead_step(args):
     print("   console: F12, or Cmd+Option+J on a Mac.")
     print(f"2. Paste the script{'' if copied else ' (open tools/scrape_console.js and copy all of it)'} and press Enter.")
     print("   Chrome may ask you to type 'allow pasting' first.")
-    print("3. Leave the tab open for about 15 minutes. It downloads forever-loot-wowhead.json when done.")
+    print("3. Leave the tab open for about 20 minutes. It downloads forever-loot-wowhead.json when done.")
     print(f"Waiting for ~/Downloads/{DOWNLOAD_NAME}.json (Ctrl+C to stop)...", flush=True)
     if not args.no_browser:
         webbrowser.open("https://www.wowhead.com/forever/")

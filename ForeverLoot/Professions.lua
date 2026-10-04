@@ -417,7 +417,7 @@ local Professions = {
 	allLabel = "All professions",
 	unit = "recipe",
 	groupUnit = "profession",
-	searchHint = "Search every recipe, e.g. copper bar",
+	searchHint = "Search recipes, e.g. copper bar",
 	searchAbout = "The search looks at recipe and item names, materials, slots, types and stats.",
 	noMatch = {
 		"No recipe in any profession matches that.",
@@ -505,7 +505,7 @@ function Professions.Render(ui, p)
 	for _, section in ipairs(sections) do
 		if ui.contentY > 0 then ui:AddGap(SECTION_GAP) end
 		local collapsed = ui:AddSection("p:" .. p.key .. ":" .. section.group.key, section.group.label,
-			Count(#section.recipes, "recipe"), #sections == 1)
+			Count(#section.recipes, "recipe"))
 		if not collapsed then
 			for _, rec in ipairs(section.recipes) do
 				ui:AddEntry("recipe", RECIPE_H, { recipe = rec, prof = p, mine = mine })
@@ -538,7 +538,7 @@ end
 
 function Professions.AddResults(ui, g)
 	if ui.contentY > 0 then ui:AddGap(SECTION_GAP) end
-	if ui:AddSection("s:p:" .. g.entry.key, g.entry.name:upper(), Count(#g.rows, "recipe"), true) then return end
+	if ui:AddSection("s:p:" .. g.entry.key, g.entry.name:upper(), Count(#g.rows, "recipe")) then return end
 	for _, row in ipairs(g.rows) do ui:AddEntry("recipe", RECIPE_H, row) end
 end
 

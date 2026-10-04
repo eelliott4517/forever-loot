@@ -46,10 +46,16 @@ function Region:GetParent() return self._parent end
 
 local Texture = class(Region)
 function Texture:SetColorTexture(r, g, b, a) self._color = { r, g, b, a } end
-function Texture:SetTexture(path) self._texture = path end
-function Texture:SetTexCoord() end
+function Texture:SetTexture(path) self._texture = path; self._atlas = nil end
+-- An atlas crops the texture, and the crop stays through a later SetTexture (as in the client)
+-- until SetTexCoord resets it
+function Texture:SetTexCoord(l, r, t, b)
+	if l == 0 and r == 1 and t == 0 and b == 1 then self._crop = nil else self._crop = { l, r, t, b } end
+end
 function Texture:SetVertexColor(r, g, b) self._vertex = { r, g, b } end
-function Texture:SetAtlas(atlas) assert(type(atlas) == "string", "SetAtlas needs an atlas name"); self._atlas = atlas; return true end
+function Texture:SetAtlas(atlas) assert(type(atlas) == "string", "SetAtlas needs an atlas name"); self._atlas = atlas; self._texture = nil; self._crop = atlas; return true end
+function Texture:SetDesaturated(on) assert(type(on) == "boolean", "SetDesaturated needs a boolean"); self._desaturated = on end
+function Texture:GetAlpha() return self._alpha or 1 end
 function Texture:GetAtlas() return self._atlas end
 function Texture:SetBlendMode(mode) self._blend = mode end
 
@@ -265,7 +271,13 @@ MOCK.level = 25
 function UnitLevel() return MOCK.level end
 MOCK.instance = { "Elwynn Forest", "none", 0, "", 0, 0, false, 0 }
 function GetInstanceInfo() return unpack(MOCK.instance) end
-function GetTime() return 1000 end
+-- Each call is a new frame, unless a test freezes the clock (MOCK.frozen) to see what the
+-- addon does within one frame (it caches answers for a frame)
+MOCK.clock = 1000
+function GetTime()
+	if not MOCK.frozen then MOCK.clock = MOCK.clock + 0.001 end
+	return MOCK.clock
+end
 function UnitGUID() return nil end
 -- Loot window and rolls: MOCK.loot = { link, ... }, MOCK.rolls[rollID] = link
 MOCK.loot, MOCK.rolls = {}, {}
@@ -343,6 +355,53 @@ C_Item = {
 	GetItemCount = function(id) return MOCK.bags[id] or 0 end,
 	IsEquippedItem = function(id) return MOCK.equipped[id] == true end,
 }
+
+-- Quests and maps, as Forever has them (C_QuestLog, C_Map, C_SuperTrack; no global
+-- IsQuestFlaggedCompleted). MOCK.questsDone[id] = true once turned in; MOCK.questLog[id] = true
+-- in the log, "complete" when it's ready to turn in.
+MOCK.questsDone, MOCK.questLog = {}, {}
+MOCK.questCalls = 0
+C_QuestLog = {
+	IsQuestFlaggedCompleted = function(id)
+		assert(type(id) == "number", "IsQuestFlaggedCompleted needs a quest id")
+		MOCK.questCalls = MOCK.questCalls + 1
+		return MOCK.questsDone[id] == true
+	end,
+	IsOnQuest = function(id) assert(type(id) == "number", "IsOnQuest needs a quest id"); return MOCK.questLog[id] ~= nil end,
+	IsComplete = function(id) assert(type(id) == "number", "IsComplete needs a quest id"); return MOCK.questLog[id] == "complete" end,
+}
+MOCK.race = { "Human", "Human", 1 }
+function UnitRace(unit) assert(unit == "player", "UnitRace(" .. tostring(unit) .. ")"); return unpack(MOCK.race) end
+-- Every map has a name; MOCK.noPins[id] marks maps that take no user waypoint (instances)
+MOCK.mapNames, MOCK.noPins = { [1436] = "Westfall", [1453] = "Stormwind City", [1433] = "Redridge Mountains" }, {}
+C_Map = {
+	GetMapInfo = function(id)
+		assert(type(id) == "number", "GetMapInfo needs a map id")
+		return { mapID = id, name = MOCK.mapNames[id] or ("Map " .. id), mapType = 3, parentMapID = 0 }
+	end,
+	CanSetUserWaypointOnMap = function(id) assert(type(id) == "number"); return not MOCK.noPins[id] end,
+	SetUserWaypoint = function(point)
+		assert(type(point) == "table" and point.uiMapID and point.position, "SetUserWaypoint needs a UiMapPoint")
+		MOCK.waypoint = point
+	end,
+}
+UiMapPoint = { CreateFromCoordinates = function(mapID, x, y)
+	assert(type(mapID) == "number" and x >= 0 and x <= 1 and y >= 0 and y <= 1, "UiMapPoint coordinates run 0 to 1")
+	return { uiMapID = mapID, position = { x = x, y = y } }
+end }
+C_SuperTrack = { SetSuperTrackedUserWaypoint = function(on) assert(type(on) == "boolean"); MOCK.superTracked = on end }
+SOUNDKIT.UI_MAP_WAYPOINT_CLICK_TO_PLACE = 167092
+-- Reputation: MOCK.rep[factionID] = absolute reputation (0 is the start of Neutral); factions you
+-- haven't met return nothing
+MOCK.rep = {}
+local FACTION_NAMES = { [529] = "Argent Dawn", [270] = "Zandalar Tribe", [59] = "Thorium Brotherhood", [910] = "Brood of Nozdormu" }
+C_Reputation = { GetFactionDataByID = function(id)
+	assert(type(id) == "number", "GetFactionDataByID needs a faction id")
+	local rep = MOCK.rep[id]
+	if rep == nil then return nil end
+	return { factionID = id, name = FACTION_NAMES[id] or ("Faction " .. id), reaction = 4, currentStanding = rep,
+		currentReactionThreshold = 0, nextReactionThreshold = 3000, isHeader = false }
+end }
 
 function MOCK.Fire(event, ...)
 	for f in pairs(MOCK.events[event] or {}) do f:GetScript("OnEvent")(f, event, ...) end

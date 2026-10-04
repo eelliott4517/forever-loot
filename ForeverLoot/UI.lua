@@ -22,9 +22,9 @@ end
 UI.filter = { text = "" }
 -- The entry each tab last had open
 UI.selected = {}
--- Sections the player opened or closed (id -> true open, false closed). Sections in a
--- dungeon or profession start collapsed and this lasts the session; search results
--- start open and forget their state with each new search.
+-- Sections the player opened or closed (id -> true open, false closed). Every section starts
+-- collapsed (bosses, quests, wings, groups, search results) and opens on click. What's open lasts
+-- the session; search results forget it with each new search.
 UI.sections, UI.searchSections = {}, {}
 
 -- The window is built from the game's own templates (portrait frame, insets, side tabs,
@@ -131,15 +131,17 @@ local function GreenRange(level)
 	if level <= 5 then return 5 elseif level <= 39 then return math.floor(level / 10) + 5 end
 	return math.floor(level / 5) + 1
 end
-local function DifficultyColor(level)
+local function DifficultyKey(level)
 	local player = UnitLevel("player") or 1
 	local diff = level - player
-	local key
-	if diff >= 5 then key = "impossible"
-	elseif diff >= 3 then key = "verydifficult"
-	elseif diff >= -2 then key = "difficult"
-	elseif -diff <= GreenRange(player) then key = "standard"
-	else key = "trivial" end
+	if diff >= 5 then return "impossible"
+	elseif diff >= 3 then return "verydifficult"
+	elseif diff >= -2 then return "difficult"
+	elseif -diff <= GreenRange(player) then return "standard" end
+	return "trivial"
+end
+local function DifficultyColor(level)
+	local key = DifficultyKey(level)
 	local c = QuestDifficultyColors and QuestDifficultyColors[key]
 	if c then return { c.r, c.g, c.b } end
 	return DIFFICULTY[key]
@@ -147,7 +149,7 @@ end
 
 K.Tex, K.Atlas, K.Font, K.Text, K.SetTextColor, K.HexToRGB = Tex, Atlas, Font, Text, SetTextColor, HexToRGB
 K.Count, K.Money, K.ShowHint, K.PanelButton, K.RowHighlight = Count, Money, ShowHint, PanelButton, RowHighlight
-K.DifficultyColor = DifficultyColor
+K.DifficultyColor, K.DifficultyKey = DifficultyColor, DifficultyKey
 
 -- A ScrollFrame with the game's minimal scroll bar (ScrollFrameTemplate wires the bar and the
 -- mouse wheel); the bar sits just right of it
@@ -372,6 +374,7 @@ local FILTER_MENUS = {
 			{ "offhand", "Off-hand" }, { "shield", "Shield" }, { "relic", "Relic" } },
 		other = {
 			dungeons = { "Other", { "recipe", "Recipe" }, { "other", "Other" } },
+			quests = { "Other", { "recipe", "Recipe" }, { "other", "Other" } },
 			professions = { "Other", { "consumable", "Consumable" }, { "tradegoods", "Trade Goods" },
 				{ "bag", "Bag" }, { "other", "Other" } },
 		},
@@ -852,7 +855,7 @@ end
 function UI:BeginContent()
 	self.entries = {}
 	self.contentY = 0
-	self.sectionIds, self.sectionOpen = {}, {}
+	self.sectionIds = {}
 end
 
 function UI:AddEntry(kind, height, data)
@@ -871,23 +874,25 @@ end
 
 ----------------------------------------------------------------------
 -- Collapsible sections. A renderer adds a header with AddSection and leaves out the
--- section's rows when it comes back collapsed.
+-- section's rows when it comes back collapsed. Sections can hold sections (a wing's bosses).
 ----------------------------------------------------------------------
 function UI:SectionState()
 	return self:IsSearching() and self.searchSections or self.sections
 end
 
--- `openByDefault` is for search results, and for a view with a single section
+-- Every section starts collapsed until it's clicked
 function UI:IsCollapsed(id)
-	local open = self:SectionState()[id]
-	if open == nil then open = self.sectionOpen[id] or false end
-	return not open
+	return not self:SectionState()[id]
 end
 
-function UI:AddSection(id, text, right, openByDefault)
+-- `kind` and `extra` make the header another row kind with its own data: a boss or quest bar,
+-- the Quests tab's quest headers
+local SECTION_H = { boss = BOSS_H, quest = QUEST_H }
+function UI:AddSection(id, text, right, kind, extra)
 	self.sectionIds[#self.sectionIds + 1] = id
-	self.sectionOpen[id] = openByDefault or false
-	self:AddEntry("wing", WING_H, { id = id, text = text, right = right })
+	local data = extra or {}
+	data.id, data.text, data.right = id, text, right
+	self:AddEntry(kind or "wing", SECTION_H[kind] or WING_H, data)
 	return self:IsCollapsed(id)
 end
 
@@ -896,15 +901,20 @@ function UI:ToggleSection(id)
 	self:Refresh()
 end
 
--- Shift-click: collapse every section if any is open, otherwise open them all
+-- Shift-click: collapse every section if any is open, otherwise open them all, the sections
+-- inside them too (those only show up once the one around them is open)
 function UI:ToggleAllSections()
 	local anyOpen = false
 	for _, id in ipairs(self.sectionIds) do
 		if not self:IsCollapsed(id) then anyOpen = true end
 	end
 	local state = self:SectionState()
-	for _, id in ipairs(self.sectionIds) do state[id] = not anyOpen end
-	self:Refresh()
+	for _ = 1, 5 do
+		local before = #self.sectionIds
+		for _, id in ipairs(self.sectionIds) do state[id] = not anyOpen end
+		self:Refresh()
+		if anyOpen or #self.sectionIds == before then break end
+	end
 end
 
 local function Acquire(self, kind)
@@ -1763,8 +1773,9 @@ function UI:Show()
 	self:Create()
 	self.frame:Show()
 	-- Jump to the dungeon you're standing in, once per visit, so browsing elsewhere isn't undone
+	-- (on the Quests tab, to its quests)
 	local here = ns.CurrentDungeon()
-	local hereMode = here and (here.isRaid and "raids" or "dungeons")
+	local hereMode = here and (self.mode == "quests" and "quests" or (here.isRaid and "raids" or "dungeons"))
 	if here and here ~= self.lastAutoDungeon and self.modes[hereMode] then
 		self.lastAutoDungeon = here
 		self:SetMode(hereMode, true)
@@ -1843,71 +1854,261 @@ local function LearnedFor(dungeon, keys, known)
 end
 
 -- Boss bar: the name in gold over a gold rule, like the dividers in the game's recipe list
+-- A section's plus or minus, at the right end of its header
+local function SetSectionIcon(icon, id)
+	icon:SetAtlas(UI:IsCollapsed(id) and "common-button-list-plus" or "common-button-list-minus", true)
+end
+
+-- What a click on a section header does: open or close it, or with Shift every section;
+-- a right-click runs `onRight` (a boss's or quest's Wowhead link)
+local function SectionClick(self, button)
+	if button == "RightButton" then
+		if self.onRight then self.onRight(self) end
+	elseif IsShiftKeyDown() then
+		UI:ToggleAllSections()
+	else
+		UI:ToggleSection(self.sectionId)
+	end
+end
+K.SectionClick, K.SetSectionIcon = SectionClick, SetSectionIcon
+
+-- "Click to see its loot." and the rest of a header's hint
+local function SectionHint(id, what, right)
+	return (UI:IsCollapsed(id) and ("Click to see " .. what .. ".") or "Click to close it.") ..
+		" Shift-click opens or closes every section." .. (right and (" Right-click for " .. right .. ".") or "")
+end
+K.SectionHint = SectionHint
+
+-- Boss bar: a section header over the boss's loot. Click it to see the drops, right-click for
+-- the boss's Wowhead link.
 local function CreateBoss(parent, width)
 	local b = CreateFrame("Button", nil, parent)
 	b:SetSize(width, BOSS_H)
+	b.isForeverLootRow = true
+	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	RowHighlight(b, 0.3)
 	b.rule = Atlas(b, "ARTWORK", "Options_HorizontalDivider")
 	b.rule:SetPoint("BOTTOMLEFT", 4, 1)
 	b.rule:SetPoint("BOTTOMRIGHT", -4, 1)
 	b.rule:SetHeight(2)
 	b.rule:SetVertexColor(C.gold[1], C.gold[2], C.gold[3])
+	b.icon = b:CreateTexture(nil, "ARTWORK")
+	b.icon:SetPoint("RIGHT", -8, 1)
 	b.name = Text(b, "GameFontNormalLarge")
 	b.name:SetPoint("LEFT", 8, 1)
 	b.tag = Text(b, "GameFontHighlightSmall", "RIGHT")
-	b.tag:SetPoint("RIGHT", -8, 1)
+	b.tag:SetPoint("RIGHT", -32, 1)
 	SetTextColor(b.tag, C.silver)
+	b.onRight = function(self)
+		if self.url then UI:ShowURL(self.boss.name .. " on Wowhead", self.url) end
+	end
 	b:SetScript("OnEnter", function(self)
-		if self.url then ShowHint(self, self.boss.name, "Click for this boss's Wowhead link.") end
+		ShowHint(self, self.boss.name, SectionHint(self.sectionId, "its loot", self.url and "its Wowhead link"))
 	end)
 	b:SetScript("OnLeave", function()
 		GameTooltip:Hide()
 	end)
-	b:SetScript("OnClick", function(self)
-		if self.url then UI:ShowURL(self.boss.name .. " on Wowhead", self.url) end
-	end)
+	b:SetScript("OnClick", SectionClick)
 	return b
 end
 
 K.RegisterKind("boss", CreateBoss, function(b, d)
+	b.sectionId = d.id
 	b.boss = { name = d.name }
 	b.url = d.url
 	b.name:SetText(d.name)
 	b.tag:SetText(d.tag or "")
+	SetSectionIcon(b.icon, d.id)
 end)
 
--- "Level 22  ·  Alliance  ·  choose 1 of 3"
+----------------------------------------------------------------------
+-- Quest rows: a quest's status as the quest log and quest givers show it, and the lines under
+-- it (where it starts, the quests before it)
+----------------------------------------------------------------------
+local QUEST_ICON = "Interface\\GossipFrame\\AvailableQuestIcon"
+local QLINE_H = 20
+
+-- A yellow "!" you can pick up, a grey one you can't yet, a "?" in your log (yellow when it's
+-- ready to turn in), a check when it's done, a cross when it isn't for you
+local function SetQuestIcon(tex, status, complete)
+	tex:SetDesaturated(false)
+	tex:SetAlpha(1)
+	if status == "done" then
+		tex:SetAtlas("common-icon-checkmark")
+	elseif status == "closed" or status == "other" then
+		tex:SetAtlas("common-icon-redx")
+		tex:SetAlpha(0.8)
+	else
+		-- a pooled texture keeps an atlas's crop after SetTexture
+		tex:SetTexture(status == "active" and (complete and "Interface\\GossipFrame\\ActiveQuestIcon"
+			or "Interface\\GossipFrame\\IncompleteQuestIcon") or QUEST_ICON)
+		tex:SetTexCoord(0, 1, 0, 1)
+		if status ~= "ready" and status ~= "active" and status ~= nil then
+			-- not yet: earlier quests, level, reputation, skill
+			tex:SetDesaturated(true)
+			tex:SetAlpha(0.75)
+		end
+	end
+end
+K.SetQuestIcon = SetQuestIcon
+
+-- The quests before one you haven't done yet
+local function StepsLeft(id)
+	local left = 0
+	for _, step in ipairs(id and ns.QuestChain(id) or {}) do
+		if ns.QuestStatus(step) ~= "done" then left = left + 1 end
+	end
+	return left
+end
+
+-- Reputation standings by where they start, and their names in your language
+local STANDINGS = { { 42000, 8 }, { 21000, 7 }, { 9000, 6 }, { 3000, 5 }, { 0, 4 }, { -3000, 3 }, { -6000, 2 } }
+local STANDING_NAMES = { "Hated", "Hostile", "Unfriendly", "Neutral", "Friendly", "Honored", "Revered", "Exalted" }
+local function StandingName(rep)
+	local reaction = 1
+	for _, s in ipairs(STANDINGS) do
+		if rep >= s[1] then reaction = s[2] break end
+	end
+	return _G["FACTION_STANDING_LABEL" .. reaction] or STANDING_NAMES[reaction]
+end
+
+-- The game's name for a faction (in your language), or the bundled one for a faction you haven't met
+local function FactionName(factionID)
+	local d = C_Reputation and C_Reputation.GetFactionDataByID and C_Reputation.GetFactionDataByID(factionID)
+	if d and d.name and d.name ~= "" then return d.name end
+	return ns.QuestFactions and ns.QuestFactions[factionID] or ("faction " .. factionID)
+end
+
+local function SkillName(skillID)
+	local s = C_SkillInfo and C_SkillInfo.GetSkillLineInfoByID and C_SkillInfo.GetSkillLineInfoByID(skillID)
+	return s and s.name and s.name ~= "" and s.name or ("skill " .. skillID)
+end
+
+-- "Available", "In your log", "3 quests first"... and its color
+local function StatusText(status, detail, id, q)
+	local info = id and ns.QuestInfo and ns.QuestInfo[id]
+	if status == "ready" then return "Available", C.gold end
+	if status == "active" then
+		if detail then return "Ready to turn in", C.green end
+		return "In your log", C.blue
+	end
+	if status == "done" then return "Done", C.grey end
+	if status == "level" then
+		return "At level " .. ((q and q.req) or (info and info.req) or "?"), C.red
+	end
+	if status == "rep" then return StandingName(detail[2]) .. " with " .. FactionName(detail[1]), C.red end
+	if status == "skill" then return SkillName(detail[1]) .. " " .. detail[2], C.red end
+	if status == "special" then return "Something else first", C.silver end
+	if status == "locked" then
+		if detail then return "Turn in its lead-in first", C.silver end
+		local left = StepsLeft(id)
+		return left > 0 and (Count(left, "quest") .. " first") or "Earlier quests first", C.silver
+	end
+	if status == "closed" then return "Closed", C.grey end
+	if status == "other" then return "Not for you", C.grey end
+	return nil
+end
+K.QuestStatusText = StatusText
+
+-- A quest's name, by id
+local function QuestName(id)
+	local info = id and ns.QuestInfo and ns.QuestInfo[id]
+	return info and info.name or ("quest " .. tostring(id))
+end
+
+-- Tooltip lines about how to get a quest: its status, where it starts and ends, what comes first
+local function AddQuestHowTo(id, q)
+	local status, detail = ns.QuestStatus(id, q)
+	local text, color = StatusText(status, detail, id, q)
+	if text then GameTooltip:AddLine(text, color[1], color[2], color[3]) end
+	local info = id and ns.QuestInfo and ns.QuestInfo[id]
+	if not info then return end
+	local silver = C.silver
+	if status == "closed" and detail then
+		if info.crumb == detail then
+			GameTooltip:AddLine("It leads to " .. QuestName(detail) .. ", which you've taken or can't take.", silver[1], silver[2], silver[3], true)
+		else
+			GameTooltip:AddLine("You took " .. QuestName(detail) .. " instead.", silver[1], silver[2], silver[3], true)
+		end
+	elseif status == "closed" then
+		GameTooltip:AddLine("You can't take it any more.", silver[1], silver[2], silver[3], true)
+	elseif status == "locked" and detail then
+		GameTooltip:AddLine("Turn in " .. QuestName(detail) .. " first.", silver[1], silver[2], silver[3], true)
+	elseif status == "rep" then
+		GameTooltip:AddLine("Needs " .. text .. ".", silver[1], silver[2], silver[3], true)
+	elseif status == "skill" then
+		GameTooltip:AddLine("Needs " .. text .. ".", silver[1], silver[2], silver[3], true)
+	elseif status == "special" then
+		GameTooltip:AddLine("It needs something the addon can't check, like a buff or an item. Its Wowhead page says what.",
+			silver[1], silver[2], silver[3], true)
+	end
+	if info.from then
+		local line = info.from[1] == "item" and ("Starts from an item: " .. info.from[2]) or ("Starts: " .. ns.QuestGiverText(info.from))
+		GameTooltip:AddLine(line, C.white[1], C.white[2], C.white[3], true)
+	end
+	if info.to then
+		GameTooltip:AddLine("Turn in: " .. ns.QuestGiverText(info.to), C.white[1], C.white[2], C.white[3], true)
+	end
+	if info.crumb and status ~= "done" then
+		GameTooltip:AddLine("A lead-in to " .. QuestName(info.crumb) .. ".", silver[1], silver[2], silver[3], true)
+	end
+	local chain = ns.QuestChain(id)
+	if #chain > 0 and status ~= "done" then
+		local left = StepsLeft(id)
+		GameTooltip:AddLine(Count(#chain, "quest") .. " before it" .. (left < #chain and (", " .. (#chain - left) .. " done") or "") .. ".",
+			silver[1], silver[2], silver[3], true)
+		local nextStep = ns.QuestNextSteps(id, q)[1]
+		if nextStep and nextStep.id ~= id then
+			local s = ns.QuestInfo[nextStep.id]
+			local line
+			if nextStep.status == "active" then
+				local to = s and (s.to or s.from)
+				line = "In your log: " .. QuestName(nextStep.id) .. (to and to[1] ~= "item" and (", turn in to " .. ns.QuestGiverText(to)) or "")
+			else
+				local from = s and s.from
+				line = "Next: " .. QuestName(nextStep.id) .. (from and (from[1] == "item" and (" (from the item " .. from[2] .. ")")
+					or (" from " .. ns.QuestGiverText(from))) or "")
+			end
+			GameTooltip:AddLine(line, C.gold[1], C.gold[2], C.gold[3], true)
+		end
+	end
+end
+K.AddQuestHowTo = AddQuestHowTo
+
+-- "Available  ·  Level 22  ·  choose 1 of 3". It leaves out what the bar shows anyway: the
+-- faction (only yours is listed) and the level when the status already gives it.
 local function QuestTag(q)
 	local parts = {}
+	local status, detail = ns.QuestStatus(q.id, q)
+	local text, color = StatusText(status, detail, q.id, q)
+	if text then parts[#parts + 1] = ns.Colorize(color, text) end
 	if q.new then parts[#parts + 1] = ns.Colorize(C.green, "New") end
-	if q.level then parts[#parts + 1] = "Level " .. q.level end
-	local side = ns.QUEST_SIDES[q.side]
-	if side then parts[#parts + 1] = side end
+	if q.level and status ~= "level" then parts[#parts + 1] = "Level " .. q.level end
 	local choices, rewards = #(q.choices or {}), #(q.rewards or {})
 	if choices > 1 then
 		parts[#parts + 1] = "choose 1 of " .. choices .. (rewards > 0 and (", plus " .. rewards) or "")
-	elseif choices + rewards == 0 then
-		parts[#parts + 1] = "no item reward"
 	end
 	return table.concat(parts, "  ·  ")
 end
 K.QuestTag = QuestTag
 
--- Quest bar: the yellow quest mark, and the name colored by how hard the quest is for you,
--- as in the quest log. Its rewards follow as item rows. Click for the quest's Wowhead link.
-local QUEST_ICON = "Interface\\GossipFrame\\AvailableQuestIcon"
-
+-- Quest bar: its status mark, and the name colored by how hard the quest is for you, as in the
+-- quest log. A section header: click it for where it starts and its rewards (item rows),
+-- right-click for the quest's Wowhead link.
 local function CreateQuest(parent, width)
 	local b = CreateFrame("Button", nil, parent)
 	b:SetSize(width, QUEST_H)
 	b.isForeverLootRow = true
+	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	RowHighlight(b)
 	b.icon = b:CreateTexture(nil, "ARTWORK")
 	b.icon:SetSize(16, 16)
 	b.icon:SetPoint("LEFT", 6, 0)
 	b.icon:SetTexture(QUEST_ICON)
+	b.toggle = b:CreateTexture(nil, "ARTWORK")
+	b.toggle:SetPoint("RIGHT", -8, 0)
 	b.tag = Text(b, "GameFontHighlightSmall", "RIGHT")
-	b.tag:SetPoint("RIGHT", -8, 0)
+	b.tag:SetPoint("RIGHT", -32, 0)
 	SetTextColor(b.tag, C.silver)
 	b.name = Text(b, "GameFontNormal")
 	b.name:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
@@ -1928,28 +2129,143 @@ local function CreateQuest(parent, width)
 		for _, change in ipairs(q.changes or {}) do
 			GameTooltip:AddLine("Forever: " .. change, C.green[1], C.green[2], C.green[3], true)
 		end
-		if q.id then GameTooltip:AddLine("Click for its Wowhead link.", C.silver[1], C.silver[2], C.silver[3]) end
+		AddQuestHowTo(q.id, q)
+		GameTooltip:AddLine(SectionHint(self.sectionId, "where it starts and its rewards", q.id and "its Wowhead link"),
+			C.silver[1], C.silver[2], C.silver[3], true)
 		GameTooltip:Show()
 	end)
 	b:SetScript("OnLeave", function()
 		GameTooltip:Hide()
 	end)
-	b:SetScript("OnClick", function(self)
+	b.onRight = function(self)
 		local q = self.quest
 		if q.id then UI:ShowURL(q.name .. " on Wowhead", ns.WOWHEAD .. "quest=" .. q.id) end
-	end)
+	end
+	b:SetScript("OnClick", SectionClick)
 	return b
 end
 
 K.RegisterKind("quest", CreateQuest, function(b, d)
+	b.sectionId = d.id
 	b.quest = d.quest
 	b.name:SetText(d.quest.name)
 	SetTextColor(b.name, d.quest.level and DifficultyColor(d.quest.level) or C.gold)
 	b.tag:SetText(QuestTag(d.quest))
+	local status, complete = ns.QuestStatus(d.quest.id, d.quest)
+	SetQuestIcon(b.icon, status or "ready", complete)
+	SetSectionIcon(b.toggle, d.id)
 end)
 K.QUEST_H = QUEST_H
 
-local FOOTER = "Click: Wowhead link    Shift-click: link in chat    Ctrl-click: preview    Right-click: wishlist"
+-- A line under a quest: where it starts, or one of the quests that come before it. A status
+-- mark when it's a quest, and the game's map pin button when the spot is known (click it for a
+-- pin on your map). data: text, color, right, rightColor, indent, status, complete, giver,
+-- questID and name (for the tooltip and the Wowhead link), click (instead of the link), hint
+local function CreateQuestLine(parent, width)
+	local b = CreateFrame("Button", nil, parent)
+	b:SetSize(width, QLINE_H)
+	b.isForeverLootRow = true
+	RowHighlight(b)
+	b.icon = b:CreateTexture(nil, "ARTWORK")
+	b.icon:SetSize(14, 14)
+	b.pin = CreateFrame("Button", nil, b)
+	b.pin:SetSize(18, 18)
+	b.pin:SetPoint("RIGHT", -6, 0)
+	b.pin.art = Atlas(b.pin, "ARTWORK", "Waypoint-MapPin-Untracked")
+	b.pin.art:SetAllPoints()
+	b.pin.glow = Atlas(b.pin, "HIGHLIGHT", "Waypoint-MapPin-Tracked")
+	b.pin.glow:SetAllPoints()
+	b.pin:SetScript("OnClick", function(self)
+		local d = self:GetParent().data
+		ns.PinQuestGiver(d.giver, d.name)
+	end)
+	b.pin:SetScript("OnEnter", function(self)
+		local d = self:GetParent().data
+		ShowHint(self, d.giver[2], "Click for a map pin on " .. (ns.QuestGiverText(d.giver) or d.giver[2]) ..
+			(" (%.1f, %.1f)."):format(d.giver[4], d.giver[5]))
+	end)
+	b.pin:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	b.right = Text(b, "GameFontHighlightSmall", "RIGHT")
+	b.right:SetPoint("RIGHT", b.pin, "LEFT", -6, 0)
+	b.text = Text(b, "GameFontHighlightSmall")
+	b.text:SetPoint("RIGHT", b.right, "LEFT", -8, 0)
+	b:SetScript("OnEnter", function(self)
+		local d = self.data
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		if d.questID then
+			local info = ns.QuestInfo and ns.QuestInfo[d.questID]
+			GameTooltip:SetText(d.name or (info and info.name) or "", C.white[1], C.white[2], C.white[3])
+			if info and (info.level or info.req) then
+				local level = {}
+				if info.level then level[#level + 1] = "Level " .. info.level end
+				if info.req then level[#level + 1] = "requires level " .. info.req end
+				GameTooltip:AddLine(table.concat(level, ", "), C.gold[1], C.gold[2], C.gold[3])
+			end
+			AddQuestHowTo(d.questID)
+		else
+			GameTooltip:SetText(d.tipTitle or self.text:GetText() or "", C.white[1], C.white[2], C.white[3])
+		end
+		if d.hint then GameTooltip:AddLine(d.hint, C.silver[1], C.silver[2], C.silver[3], true) end
+		GameTooltip:Show()
+	end)
+	b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	b:SetScript("OnClick", function(self)
+		local d = self.data
+		if d.click then
+			d.click()
+		elseif d.questID then
+			UI:ShowURL((d.name or "Quest") .. " on Wowhead", ns.WOWHEAD .. "quest=" .. d.questID)
+		end
+	end)
+	return b
+end
+
+K.RegisterKind("qline", CreateQuestLine, function(b, d)
+	b.data = d
+	local x = 14 + (d.indent or 0)
+	b.icon:ClearAllPoints()
+	b.text:ClearAllPoints()
+	if d.status then
+		b.icon:SetPoint("LEFT", x, 0)
+		SetQuestIcon(b.icon, d.status, d.complete)
+		b.icon:Show()
+		b.text:SetPoint("LEFT", b.icon, "RIGHT", 5, 0)
+	else
+		b.icon:Hide()
+		b.text:SetPoint("LEFT", x, 0)
+	end
+	b.text:SetPoint("RIGHT", b.right, "LEFT", -8, 0)
+	b.text:SetText(d.text)
+	SetTextColor(b.text, d.color or C.white)
+	b.right:SetText(d.right or "")
+	SetTextColor(b.right, d.rightColor or C.silver)
+	b.pin:SetShown(ns.QuestGiverSpot(d.giver) ~= nil)
+end)
+K.QLINE_H = QLINE_H
+
+-- The line under a quest: where it starts, and how many quests come before it. `click` makes
+-- the line open the quest in the Quests tab.
+function K.QuestStartLine(q, click)
+	local info = q.id and ns.QuestInfo and ns.QuestInfo[q.id]
+	if not info then return nil end
+	local giver, text = info.from, nil
+	if giver then
+		text = giver[1] == "item" and ("Starts from an item: " .. giver[2]) or ("Starts: " .. ns.QuestGiverText(giver))
+	end
+	local chain = ns.QuestChain(q.id)
+	local right
+	if #chain > 0 then
+		local left = StepsLeft(q.id)
+		right = left == 0 and (Count(#chain, "quest") .. " before it, all done") or
+			(Count(#chain, "quest") .. " before it" .. (left < #chain and (", " .. (#chain - left) .. " done") or ""))
+	end
+	if not (text or right) then return nil end
+	return { text = text or "Where it starts isn't on Wowhead yet.", color = text and C.white or C.grey, right = right,
+		giver = giver, name = q.name, click = click,
+		tipTitle = q.name, hint = click and "Click to see the quests before it, and where each starts, in the Quests tab." }
+end
+
+local FOOTER = "Click a boss or quest to open it    Item: click for Wowhead, Shift-click to link, Ctrl-click to preview, right-click for the wishlist"
 
 -- A tab over one list of instances. `cfg` gives the list, the labels, and the row and note text.
 local function InstanceMode(cfg)
@@ -2043,8 +2359,12 @@ local function InstanceMode(cfg)
 			ui:AddEntry("note", NOTE_H, { text = text })
 		end
 
-		local function AddBoss(name, tag, url, loot, learnedKeys, emptyText, pct, hints)
-			ui:AddEntry("boss", BOSS_H, { name = name, tag = tag, url = url })
+		-- A boss bar over its drops (a section of its own: the drops show once it's opened)
+		local function AddBoss(key, name, tag, url, loot, learnedKeys, emptyText, pct, hints)
+			if ui:AddSection("d:" .. d.key .. ":b:" .. key, name, tag, "boss", { name = name, tag = tag, url = url }) then
+				ui:AddGap(2)
+				return
+			end
 			ui:AddGap(2)
 			local known = {}
 			for _, itemID in ipairs(loot) do known[itemID] = true end
@@ -2060,9 +2380,15 @@ local function InstanceMode(cfg)
 			ui:AddGap(SECTION_GAP)
 		end
 
-		-- A quest bar, then its rewards: the ones to choose from, then the ones it always gives
+		-- A quest bar, then (once it's opened) where it starts and its rewards: the ones to choose
+		-- from, then the ones it always gives
 		local function AddQuest(q)
-			ui:AddEntry("quest", QUEST_H, { quest = q })
+			if ui:AddSection("d:" .. d.key .. ":q:" .. (q.id or q.name), q.name, nil, "quest", { quest = q }) then
+				ui:AddGap(2)
+				return
+			end
+			local line = K.QuestStartLine(q, UI.OpenQuest and ns.QuestStatus(q.id, q) ~= "other" and function() UI:OpenQuest(d, q.id) end)
+			if line then ui:AddEntry("qline", QLINE_H, line) end
 			ui:AddGap(2)
 			AddItems((K.VisibleItems(q.choices or {})))
 			AddItems((K.VisibleItems(q.rewards or {})))
@@ -2089,15 +2415,13 @@ local function InstanceMode(cfg)
 			for _, k in ipairs(keys) do usedKeys[k] = true end
 			if not collapsed then
 				local url = boss.npc and boss.npc[1] and (ns.WOWHEAD .. "npc=" .. boss.npc[1]) or nil
-				local tag = boss.tag
-				if not boss.trash then
-					local count, visible = #boss.loot, #(K.VisibleItems(boss.loot))
-					local countText = visible < count and (visible .. " of " .. count .. " items")
-						or (count .. (count == 1 and " item" or " items"))
-					tag = (tag and (tag .. "  ·  ") or "") .. countText
-				end
+				-- how many drops, so a closed boss still says what it has
+				local count, visible = #boss.loot, #(K.VisibleItems(boss.loot))
+				local countText = visible < count and (visible .. " of " .. count .. " items")
+					or (count .. (count == 1 and " item" or " items"))
+				local tag = (boss.tag and (boss.tag .. "  ·  ") or "") .. countText
 				local plain = boss.trash or boss.unconfirmed
-				AddBoss(boss.name, tag, url, boss.loot, plain and {} or keys,
+				AddBoss((boss.wing and (boss.wing .. ":") or "") .. boss.name, boss.name, tag, url, boss.loot, plain and {} or keys,
 					boss.trash and "No trash drops listed." or "No drops listed yet. Kill it and loot to record them here.",
 					boss.pct, boss.hints)
 			end
@@ -2113,7 +2437,7 @@ local function InstanceMode(cfg)
 			table.sort(extra, function(a, b) return a.name < b.name end)
 			if #extra > 0 and not ui:AddSection("d:" .. d.key .. ":recorded", "Recorded by you") then
 				for _, e in ipairs(extra) do
-					AddBoss(e.name, "from your loot", nil, {}, { e.key }, "")
+					AddBoss("recorded:" .. e.key, e.name, "from your loot", nil, {}, { e.key }, "")
 				end
 			end
 		end
@@ -2125,11 +2449,13 @@ local function InstanceMode(cfg)
 
 		-- Its quests for your faction, in a section of their own. A quest whose rewards the
 		-- filters all hide (another class's tier token, say) is left out too.
-		local quests, otherSide, filtered = {}, 0, 0
+		local quests, otherSide, otherClass, filtered = {}, 0, 0, 0
 		for _, q in ipairs(d.quests or {}) do
 			local rewards = #(q.choices or {}) + #(q.rewards or {})
 			if not ns.QuestForPlayer(q) then
 				otherSide = otherSide + 1
+			elseif ns.QuestStatus(q.id, q) == "other" then
+				otherClass = otherClass + 1   -- another race's or class's
 			elseif rewards > 0 and #(K.VisibleItems(q.choices or {})) + #(K.VisibleItems(q.rewards or {})) == 0 then
 				filtered = filtered + 1
 			else
@@ -2145,6 +2471,9 @@ local function InstanceMode(cfg)
 					local faction = UnitFactionGroup and UnitFactionGroup("player")
 					AddNote(Count(otherSide, "quest") .. " for the " .. (faction == "Alliance" and "Horde" or "Alliance") ..
 						(otherSide == 1 and " isn't" or " aren't") .. " shown.")
+				end
+				if otherClass > 0 then
+					AddNote(Count(otherClass, "quest") .. " for another race or class " .. (otherClass == 1 and "isn't" or "aren't") .. " shown.")
 				end
 				if filtered > 0 then
 					AddNote(Count(filtered, "quest") .. " with only rewards the My class / Hide Classic filters hide " ..
@@ -2225,20 +2554,26 @@ local function InstanceMode(cfg)
 		return groups, total
 	end
 
-	-- A header per instance, and per wing where it has them
+	-- A header per instance, and per wing where it has them, with how many matches it holds
 	function M.AddResults(ui, g)
 		local d = g.entry
-		local section, collapsed = false, false
+		local runs = {}
 		for _, r in ipairs(g.rows) do
-			if r.wing ~= section then
-				if ui.contentY > 0 then ui:AddGap(SECTION_GAP) end
-				local levels = r.wing and d.wings and d.wings[r.wing]
-				collapsed = ui:AddSection("s:d:" .. d.key .. ":" .. (r.wing or ""),
-					r.wing and (d.name .. ": " .. r.wing) or d.name,
-					levels and ("Levels " .. levels[1] .. "-" .. levels[2]) or LevelText(d), true)
-				section = r.wing
+			local last = runs[#runs]
+			if not last or last.wing ~= r.wing then
+				last = { wing = r.wing, rows = {} }
+				runs[#runs + 1] = last
 			end
-			if not collapsed then ui:AddEntry("item", ITEM_H, r) end
+			last.rows[#last.rows + 1] = r
+		end
+		for _, run in ipairs(runs) do
+			if ui.contentY > 0 then ui:AddGap(SECTION_GAP) end
+			local levels = run.wing and d.wings and d.wings[run.wing]
+			local right = Count(#run.rows, "item") .. "   ·   " ..
+				(levels and ("Levels " .. levels[1] .. "-" .. levels[2]) or LevelText(d))
+			if not ui:AddSection("s:d:" .. d.key .. ":" .. (run.wing or ""), run.wing and (d.name .. ": " .. run.wing) or d.name, right) then
+				for _, r in ipairs(run.rows) do ui:AddEntry("item", ITEM_H, r) end
+			end
 		end
 	end
 
@@ -2255,7 +2590,7 @@ local Dungeons = InstanceMode({
 	groupUnit = "dungeon",
 	raids = false,
 	remember = "lastDungeon",
-	searchHint = "Search every dungeon, e.g. gloves",
+	searchHint = "Search dungeons, e.g. gloves",
 	noMatch = {
 		"Nothing in any dungeon matches that.",
 		"Try a slot like gloves or ring, a type like dagger or plate, or a stat like agility.",
@@ -2285,7 +2620,7 @@ local Raids = InstanceMode({
 	groupUnit = "raid",
 	raids = true,
 	remember = "lastRaid",
-	searchHint = "Search every raid, e.g. trinket",
+	searchHint = "Search raids, e.g. trinket",
 	noMatch = {
 		"Nothing in any raid matches that.",
 		"Try a slot like helm or ring, a type like sword or plate, or a stat like spell power.",

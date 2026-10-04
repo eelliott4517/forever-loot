@@ -7,3 +7,6 @@ __pycache__/
 tools/cache/
 # The generated console script (python3 tools/refresh.py --script-only writes it)
 tools/scrape_console.js
+# The preview's cache of the game's art and font (tools/preview/art.py) and the images it draws
+tools/preview/.art/
+tools/preview/preview-*.png

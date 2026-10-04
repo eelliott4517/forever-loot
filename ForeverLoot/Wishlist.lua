@@ -122,7 +122,7 @@ local function Gather(filter)
 	return groups, total
 end
 
--- One collapsible section per source, open by default: it's your own short list
+-- One collapsible section per source, collapsed like every other section
 local function AddGroup(ui, g)
 	local e = g.entry
 	if ui.contentY > 0 then ui:AddGap(SECTION_GAP) end
@@ -130,7 +130,7 @@ local function AddGroup(ui, g)
 	if e.minLevel then right = K.LevelText(e) .. "   ·   " .. right end
 	local kind = e.minLevel and "d:" or (e.recipes and "p:" or "")
 	local id = (ui:IsSearching() and "s:w:" or "w:") .. kind .. e.key
-	if ui:AddSection(id, e.name, right, true) then return end
+	if ui:AddSection(id, e.name, right) then return end
 	for _, row in ipairs(g.rows) do
 		if row.recipe then
 			ui:AddEntry("recipe", RECIPE_H, row)

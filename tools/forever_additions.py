@@ -48,8 +48,8 @@ ADDITIONS = {
 # dungeon key -> [(item id, boss the name points at or None)]
 UNCONFIRMED = {
     "GNOMER": [(274042, None), (274043, None)],
-    "RFK": [(274149, None), (274155, None), (274161, None)],   # 274152 Roogug, 274158 Agathelos (wowtbc.gg)
-    "SM": [(274290, None), (274291, None), (274292, "Houndmaster Loksey"), (274293, None), (274295, None)],
+    # (wowtbc.gg confirmed RFK's 274149, 274155 and 274161 and SM's 274290, 274291 and 274293 by 2026-10-04)
+    "SM": [(274292, "Houndmaster Loksey"), (274295, None)],
     "RFD": [(274380, None), (274381, "Amnennar the Coldbringer")],
     "ZF": [(274638, None), (274639, None), (274641, "Theka the Martyr"), (274642, None), (274643, None),
            (274644, None), (274645, None), (274647, None), (274648, None), (274651, None),

@@ -2,7 +2,7 @@
 //
 // Wowhead blocks scripted clients, so this runs in a normal browser tab: open any
 // https://www.wowhead.com/forever/ page, open the developer console, paste the whole
-// script and press Enter. It fetches one page every few seconds (about 15 minutes in all),
+// script and press Enter. It fetches one page every few seconds (about 20 minutes in all),
 // shows progress in the console, then downloads forever-loot-wowhead.json.
 (async () => {
   const CONFIG = /*CONFIG*/ {};
@@ -126,13 +126,15 @@
     }
   }
 
+  // A job's fourth field keeps a 404 as { missing: true } (an id Wowhead has no page for)
   async function run(jobs, phase) {
-    for (const [key, url, read] of jobs) {
+    for (const [key, url, read, keepMissing] of jobs) {
       if (done > 0) await sleep(DELAY_MS);
       done++;
       try {
         const [status, html] = await get(url);
-        if (status !== 200) result.errors.push([key, status]);
+        if (status === 404 && keepMissing) result.pages[key] = { missing: true };
+        else if (status !== 200) result.errors.push([key, status]);
         else result.pages[key] = read(listviews(html), html);
       } catch (e) {
         result.errors.push([key, String(e)]);
@@ -190,6 +192,61 @@
       [`new_recipes_${lo}`, `/forever/items/recipes?filter=151:151;2:5;${lo}:${hi}`, readItems]),
     ["forever_zones", "/forever/zones", readZoneNames],
   ], "recipes");
+
+  // 6) Quest pages for the instance quests the vanilla database (cMaNGOS) doesn't have, Forever's
+  //    own mostly: where each starts and ends, and its series, whose other steps are fetched too
+  const decode = (s) => { const t = document.createElement("textarea"); t.innerHTML = s; return t.value; };
+  const ref = (s) => {
+    const m = s && s.match(/\[url=\/forever\/(npc|object|item)=(\d+)[^\]]*\]([^\[]*)\[\/url\]/);
+    return m ? [m[1], +m[2], decode(m[3])] : null;
+  };
+  const readQuestPage = (id) => (lv, html) => {
+    const title = html.match(/<title>([^<]*?) - Quest - Forever/);
+    const facts = html.match(/WH\.markup\.printHtml\("(\[ul\]\[li\][\s\S]*?\[\\\/ul\])"/);
+    const qf = facts ? facts[1].replace(/\\\//g, "/") : "";
+    const fact = (re) => { const m = qf.match(re); return m ? m[1] : null; };
+    const page = {
+      title: title ? decode(title[1]) : null,
+      level: +fact(/\[li\]Level: (\d+)/) || null,
+      req: +fact(/\[li\]Requires level (\d+)/) || null,
+      side: fact(/Side: (?:\[span class=icon-(\w+)\])?/),
+      type: fact(/\[li\]Type: ([^\[]+)/),
+      start: ref((qf.match(/Start: (\[url=[^\]]+\][^\[]*\[\/url\])/) || [])[1]),
+      end: ref((qf.match(/End: (\[url=[^\]]+\][^\[]*\[\/url\])/) || [])[1]),
+    };
+    const at = html.indexOf('class="series"');
+    if (at >= 0) {
+      const table = html.slice(at, html.indexOf("</table>", at));
+      const rows = [...table.matchAll(/<tr><th>(\d+)\.<\/th><td><div>(?:<a href="\/forever\/quest=(\d+)[^"]*">([^<]*)<\/a>|<b>([^<]*)<\/b>)/g)];
+      page.series = rows.map((m) => (m[2] ? [+m[2], decode(m[3])] : [id, decode(m[4])]));
+    }
+    return page;
+  };
+  const vanilla = new Set();
+  for (const [first, last] of CONFIG.vanillaQuests || []) for (let i = first; i <= last; i++) vanilla.add(i);
+  const questQueue = [], queued = new Set();
+  const want = (id) => { if (!vanilla.has(id) && !queued.has(id)) { queued.add(id); questQueue.push(id); } };
+  for (const [key, page] of Object.entries(result.pages)) {
+    if (!key.startsWith("forever_zone_") && !key.startsWith("quest_search_")) continue;
+    for (const q of page.quests) {
+      const status = q.env && q.env.status;
+      // entries without a quest category are items that start quests
+      if (q.cat == null || status === "removed" || status === "unconfirmed") continue;
+      want(q.id);
+    }
+  }
+  while (questQueue.length && queued.size < 400) {
+    const batch = questQueue.splice(0);
+    await run(batch.map((id) => [`quest_${id}`, `/forever/quest=${id}`, readQuestPage(id), true]), "quest pages");
+    for (const id of batch) for (const [sid] of (result.pages[`quest_${id}`] || {}).series || []) want(sid);
+  }
+
+  // 7) Items Forever added that start a quest (Wowhead's quest pages don't always name them), each
+  //    with the quests it starts. Craftsman's Writs (profession orders) are left out.
+  await run([["forever_quest_items", "/forever/items?filter=6:151;1:2;0:260000", readItems]], "quest items");
+  const questItems = ((result.pages.forever_quest_items || {}).items || []).filter((x) => !/^Craftsman's Writ/.test(x.name));
+  await run(questItems.map((x) => [`item_starts_${x.id}`, `/forever/item=${x.id}`,
+    (lv) => ({ name: x.name, quests: (lv.starts || []).map((q) => q.id) })]), "quest items");
 
   result.seconds = Math.round((Date.now() - started) / 1000);
   result.progress = "done";

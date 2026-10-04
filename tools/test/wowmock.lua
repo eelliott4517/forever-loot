@@ -65,6 +65,8 @@ local Texture = inherit(Region, {
 	SetTexCoord = function(self, ...) self.texCoord = { ... } end,
 	SetVertexColor = function(self, r, g, b, a) assert(type(r) == "number"); self.vertex = { r, g, b, a } end,
 	SetAtlas = function(self, atlas, useAtlasSize) assert(type(atlas) == "string", "SetAtlas needs a name"); self.atlas = atlas; return true end,
+	GetAtlas = function(self) return self.atlas end,
+	SetDesaturated = function(self, on) assert(type(on) == "boolean", "SetDesaturated needs a boolean"); self.desaturated = on end,
 	SetBlendMode = function(self, mode) assert(mode == "ADD" or mode == "BLEND" or mode == "ALPHAKEY" or mode == "DISABLE" or mode == "MOD"); self.blend = mode end,
 })
 local TextureMT = strict("Texture", Texture)
@@ -322,7 +324,8 @@ MOCK.clicked = {}
 function UnitGUID(unit) return MOCK.targetGUID end
 function UnitLevel(unit) assert(unit == "player"); return MOCK.level end
 function GetInstanceInfo() return unpack(MOCK.instance) end
-function GetTime() return MOCK.time end
+-- Each call is a new frame (the addon caches answers for a frame); tests move MOCK.time on too
+function GetTime() MOCK.time = MOCK.time + 0.0001; return MOCK.time end
 function GetCursorPosition() return 600, 450 end
 function IsModifierKeyDown() return MOCK.modifier end
 function HandleModifiedItemClick(link) assert(type(link) == "string"); table.insert(MOCK.clicked, link); return true end
@@ -385,5 +388,43 @@ C_SkillInfo = {
 	GetSkillLineInfoByID = function(id) return nil end,
 }
 C_Spell = { GetSpellLink = function(id) return nil end }
+
+-- Quests and maps, as Forever has them (C_QuestLog, C_Map, C_SuperTrack; no global
+-- IsQuestFlaggedCompleted). MOCK.questsDone[id] = true once turned in; MOCK.questLog[id] = true
+-- in the log, "complete" when it's ready to turn in.
+MOCK.questsDone, MOCK.questLog = {}, {}
+C_QuestLog = {
+	IsQuestFlaggedCompleted = function(id) assert(type(id) == "number", "IsQuestFlaggedCompleted needs a quest id"); return MOCK.questsDone[id] == true end,
+	IsOnQuest = function(id) assert(type(id) == "number", "IsOnQuest needs a quest id"); return MOCK.questLog[id] ~= nil end,
+	IsComplete = function(id) assert(type(id) == "number", "IsComplete needs a quest id"); return MOCK.questLog[id] == "complete" end,
+}
+MOCK.race = { "Human", "Human", 1 }
+function UnitRace(unit) assert(unit == "player"); return unpack(MOCK.race) end
+-- Every map has a name; MOCK.noPins[id] marks maps that take no user waypoint (instances)
+MOCK.mapNames, MOCK.noPins = { [1436] = "Westfall", [1453] = "Stormwind City", [1433] = "Redridge Mountains" }, {}
+C_Map = {
+	GetMapInfo = function(id)
+		assert(type(id) == "number", "GetMapInfo needs a map id")
+		return { mapID = id, name = MOCK.mapNames[id] or ("Map " .. id), mapType = 3, parentMapID = 0 }
+	end,
+	CanSetUserWaypointOnMap = function(id) assert(type(id) == "number"); return not MOCK.noPins[id] end,
+	SetUserWaypoint = function(point)
+		assert(type(point) == "table" and point.uiMapID and point.position, "SetUserWaypoint needs a UiMapPoint")
+		MOCK.waypoint = point
+	end,
+}
+UiMapPoint = { CreateFromCoordinates = function(mapID, x, y)
+	assert(type(mapID) == "number" and x >= 0 and x <= 1 and y >= 0 and y <= 1, "UiMapPoint coordinates run 0 to 1")
+	return { uiMapID = mapID, position = { x = x, y = y } }
+end }
+C_SuperTrack = { SetSuperTrackedUserWaypoint = function(on) assert(type(on) == "boolean"); MOCK.superTracked = on end }
+SOUNDKIT.UI_MAP_WAYPOINT_CLICK_TO_PLACE = 167092
+MOCK.rep = {}
+C_Reputation = { GetFactionDataByID = function(id)
+	assert(type(id) == "number", "GetFactionDataByID needs a faction id")
+	local rep = MOCK.rep[id]
+	if rep == nil then return nil end
+	return { factionID = id, name = "Faction " .. id, reaction = 4, currentStanding = rep, isHeader = false }
+end }
 ChatFrameUtil = { InsertLink = function(link) return false end }
 function GetLootRollItemLink(rollID) return nil end

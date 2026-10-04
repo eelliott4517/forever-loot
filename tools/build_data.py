@@ -13,7 +13,8 @@ Inputs (see README; tools/refresh.py fetches them):
                                         plus datamined new items not tied to a boss yet
 
 Quests come from each instance's Wowhead zone page plus the dungeon quests wowtbc.gg
-lists (looked up on Wowhead by name). Item sets come from the item tooltips: every set
+lists (looked up on Wowhead by name). quest_chains.py adds what comes before each one and
+where every quest starts (ns.QuestInfo). Item sets come from the item tooltips: every set
 with a piece in the loot, the quest rewards or what the recipes in ProfessionData.lua make
 is listed with all its pieces.
 
@@ -35,6 +36,7 @@ from dungeons import DUNGEONS
 from raids import RAIDS
 from forever_additions import ADDITIONS, NOTES, UNCONFIRMED
 import item_info
+import quest_chains
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RAW = os.environ.get("FL_RAW", os.path.join(HERE, "raw"))
@@ -44,6 +46,7 @@ DATA_DATE = os.environ.get("FL_DATE", "2026-10-02")
 SOD_RANGE = range(200000, 260000)  # Season of Discovery item ids; not part of Forever's loot
 SOD_NPCS = range(200000, 250000)   # Season of Discovery NPC ids (Forever's own NPCs start around 250000)
 FOREVER_IDS = 260000               # items at or above this id were added in Forever
+FOREVER_QUESTS = 90000             # quests at or above this id were added in Forever
 ORIGINAL_IDS = 200000              # items below this id are the original game's, even ones Forever reworked
 MIN_BOSS_QUALITY = 2
 MIN_TRASH_QUALITY = 3              # Wowhead trash lists; wowtbc.gg trash lists keep their greens
@@ -180,6 +183,10 @@ class Build:
     def __init__(self):
         self.pages, self.boss_pages, self.quest_searches, self.new_items = load_pages()
         self.report = []
+        # What comes before each quest and where it starts: cMaNGOS's vanilla quest graph, and the
+        # scrape's quest pages for Forever's own quests
+        self.chains = quest_chains.Chains(load_json("wowhead.json").get("pages") or {})
+        self.tbc_quest_rewards = defaultdict(list)   # wowtbc.gg quest rewards filed as a boss, by dungeon key
         self.quest_ids = set()        # quest reward items
         self.new_ids = set()          # confirmed new in Forever
         self.unconfirmed_ids = set()
@@ -283,10 +290,19 @@ class Build:
                                 self.era_listed.add(iid)
 
         # 3) wowtbc.gg boss tables (dungeons)
+        zone_quests = {norm(q["name"]) for z in d["zones"] for q in (self.pages.get(f"forever_zone_{z}") or {}).get("quests", [])
+                       if q.get("cat") is not None}
         for slug, wing in (d.get("tbc") or {}).items():
             loot, gear = load_tbc(slug)
+            quest_names = zone_quests | {norm(p) for tq in loot.get("quests") or [] for p in quest_name_parts(tq["name"])}
             for tb in loot.get("bosses", []):
                 news = set(tb.get("new", []))
+                # wowtbc.gg files some quests' rewards as a boss ("Earthen Echo/Prehistoric Prism"):
+                # those go with the quests
+                parts = quest_name_parts(tb["name"])
+                if norm(tb["name"]) not in by_name and all(norm(p) in quest_names for p in parts):
+                    self.tbc_quest_rewards[d["key"]].append(dict(name=tb["name"], items=tb["items"], new=tb.get("new", [])))
+                    continue
                 if tb["name"] == "Trash":
                     target = None
                 else:
@@ -366,31 +382,53 @@ class Build:
                 self.sources[iid].add(WH if q.get("id") and iid not in q["tbc_items"] else TBC)
         return (d, bosses, trash, extra, hints, quests)
 
+    def real_quest(self, q, d):
+        """Whether a Wowhead quest entry is one players can get in Forever"""
+        status = (q.get("env") or {}).get("status")
+        # Wowhead marks quests Forever dropped "removed", and ones it hasn't seen in Forever
+        # (Season of Discovery's leak into its Forever pages) "unconfirmed"
+        if status in ("removed", "unconfirmed"):
+            return False
+        # Wowhead doesn't mark every quest Forever added as new (Dalaran's aren't)
+        new = status == "new" or d.get("new") or q["id"] >= FOREVER_QUESTS
+        if self.chains.unobtainable(q["id"], new=new):
+            line = f"   {d['name']}: no quest giver in Forever, left out: {q['name']} ({q['id']})"
+            if line not in self.report:
+                self.report.append(line)
+            return False
+        return True
+
     def quests(self, d):
         """The instance's quests: those Wowhead files under its zones, plus the ones wowtbc.gg
         lists for it (found on Wowhead by name, or kept as wowtbc.gg has them)."""
         zones = set(d["zones"])
         lo, hi = d["levels"][0] - QUEST_LEVELS_BELOW, d["levels"][1] + QUEST_LEVELS_ABOVE
-        found, by_name = {}, defaultdict(list)
+        found, by_name, items = {}, defaultdict(list), {}
         for z in d["zones"]:
             for q in (self.pages.get(f"forever_zone_{z}") or {}).get("quests", []):
-                # Wowhead marks quests Forever dropped "removed", and ones it hasn't seen in Forever
-                # (Season of Discovery's leak into its Forever pages) "unconfirmed"
-                if q["id"] in found or (q.get("env") or {}).get("status") in ("removed", "unconfirmed"):
-                    continue
-                # Items that start a quest (the zone page's "Starts quest" list in older scrapes) aren't
-                # quests; they're the entries with neither a faction nor a quest category
-                if q.get("side") is None and q.get("cat") is None:
+                # Items that start a quest (the zone page's "Starts quest" list) aren't quests; they're
+                # the entries without a quest category, some with a faction (the Strange Water Globe).
+                # Kept by name: a quest of the same name starts from the item.
+                if q.get("cat") is None:
+                    items.setdefault(norm(q["name"]), q)
                     continue
                 # Placeholders ("<UNUSED>", "<TXT> ..."), and holiday quests Wowhead files under the zone
-                if q["name"].startswith("<") or not lo <= (q.get("level") or lo) <= hi:
+                if q["id"] in found or q["name"].startswith("<") or not lo <= (q.get("level") or lo) <= hi:
+                    continue
+                if not self.real_quest(q, d):
                     continue
                 found[q["id"]] = q
                 by_name[norm(q["name"])].append(q)
+        # A quest the dungeon's items start, when Wowhead names no quest giver
+        for q in found.values():
+            item = items.get(norm(q["name"]))
+            if item and q["id"] not in self.chains.starts and q["id"] not in self.chains.item_pages \
+                    and not (self.chains.wh.get(q["id"]) or {}).get("start"):
+                self.chains.item_starts[q["id"]] = ["item", item["id"], item["name"]]
         extra = []
         for slug in (d.get("tbc") or {}):
             loot, _ = load_tbc(slug)
-            for tq in loot.get("quests") or []:
+            for tq in (loot.get("quests") or []) + self.tbc_quest_rewards.pop(d["key"], []):
                 side = SIDES.get(tq.get("faction"))
                 self.new_ids.update(i for i in tq.get("new", []) if i >= ORIGINAL_IDS)
                 # wowtbc.gg lists some chains as one quest ("Abominable Creatures/Unending Torment")
@@ -399,7 +437,9 @@ class Build:
                     n = norm(part)
                     q = pick_quest(by_name.get(n, []), side, zones)
                     if not q:
-                        q = pick_quest([x for x in self.quest_searches.get(n, []) if norm(x["name"]) == n], side, zones)
+                        q = pick_quest([x for x in self.quest_searches.get(n, [])
+                                        if norm(x["name"]) == n and x.get("cat") is not None and self.real_quest(x, d)],
+                                       side, zones)
                         if q and q["id"] not in found:
                             found[q["id"]] = q
                             by_name[n].append(q)
@@ -487,6 +527,86 @@ def class_list(e):
     return sorted(set(e.get("classes") or []))
 
 
+def giver_lua(g):
+    """{ kind, name, uiMapID, x, y } for who starts or takes in a quest (the map and spot when they're known)"""
+    parts = [lua_str(g[0]), lua_str(g[2] or "")]
+    if len(g) > 3:
+        parts.append(str(g[3]))
+    if len(g) > 5:
+        parts += [f"{g[4]:g}", f"{g[5]:g}"]
+    return "{ " + ", ".join(parts) + " }"
+
+
+def emit_quest_info(build, listed, forever_levels, L):
+    """ns.QuestInfo: every listed quest and each quest before it, with where it starts"""
+    infos = build.chains.Build(listed)
+    build.chains.Places(infos)
+    for qid, (level, req) in forever_levels.items():
+        if qid in infos:
+            infos[qid]["level"] = level or infos[qid]["level"]
+            infos[qid]["req"] = req or infos[qid]["req"]
+    listed = set(listed)
+
+    def alt_lua(a):
+        return ("{ " + ", ".join(str(x) for x in a) + " }") if isinstance(a, list) else str(a)
+
+    def same_place(a, b):
+        return a and b and a[0] == b[0] and a[1] == b[1]
+
+    L.append("-- Quest chains, from cMaNGOS's vanilla quest data and Wowhead's Forever quest pages:")
+    L.append("-- [questID] = { name, level, req (level needed; Forever's, from Wowhead, for the instance quests),")
+    L.append("-- side (1 Alliance, 2 Horde), races and classes (bit masks, when it's limited), prev (earlier")
+    L.append("-- quests: any one will do; a list inside needs all of its quests; a negative id must be in your")
+    L.append("-- log), group (taking one of these closes it), lead (optional lead-in quests), crumb (the quest")
+    L.append("-- this one leads to), rep and repMax ({ factionID, reputation }: at least, below), skill")
+    L.append("-- ({ skillLineID, rank }), special (needs something else, like a buff or an item), from and to")
+    L.append("-- (who starts it, who takes it in when that's someone else: kind, name, then uiMapID, x, y) }")
+    L.append("ns.QuestInfo = {")
+    missing_from = []
+    for qid in sorted(infos):
+        i = infos[qid]
+        parts = [f"name = {lua_str(i['name'] or '')}"]
+        for key in ("level", "req", "side", "races", "classes"):
+            if i[key]:
+                parts.append(f"{key} = {i[key]}")
+        if i["prev"]:
+            parts.append("prev = { " + ", ".join(alt_lua(a) for a in i["prev"]) + " }")
+        for key in ("group", "lead"):
+            if i[key]:
+                parts.append(f"{key} = {{ " + ", ".join(str(x) for x in i[key]) + " }")
+        if i.get("crumb"):
+            parts.append(f"crumb = {i['crumb']}")
+        for key in ("rep", "repMax", "skill"):
+            if i.get(key):
+                parts.append(f"{key} = {{ {i[key][0]}, {i[key][1]} }}")
+        if i.get("special"):
+            parts.append("special = true")
+        if i["from"]:
+            parts.append("from = " + giver_lua(i["from"]))
+        elif qid in listed:
+            missing_from.append(f"{i['name']} ({qid})")
+        if i["to"] and not same_place(i["to"], i["from"]):
+            parts.append("to = " + giver_lua(i["to"]))
+        L.append(f"\t[{qid}] = {{ " + ", ".join(parts) + " },")
+    L.append("}")
+    L.append("")
+    # The factions those quests need standing with, named (the game only names factions you've met)
+    factions = sorted({i[k][0] for i in infos.values() for k in ("rep", "repMax") if i.get(k)})
+    if factions:
+        import csv
+        with open(os.path.join(RAW, "db2", "Faction.csv"), newline="") as f:
+            names = {int(r["ID"]): r["Name_lang"] for r in csv.DictReader(f)}
+        L.append("-- Factions the quests above need standing with (Forever's Faction table), for factions you haven't met")
+        L.append("ns.QuestFactions = { " + ", ".join(f"[{fid}] = {lua_str(names.get(fid, 'Faction ' + str(fid)))}" for fid in factions) + " }")
+        L.append("")
+    chained = sum(1 for q in listed if infos.get(q, {}).get("prev"))
+    pinned = sum(1 for i in infos.values() if i["from"] and len(i["from"]) > 5)
+    print(f"quest chains: {len(listed)} instance quests ({chained} with earlier quests), {len(infos)} quests in all, "
+          f"{pinned} with a map pin", file=sys.stderr)
+    if missing_from:
+        print(f"   no quest giver known for {len(missing_from)}: " + ", ".join(missing_from[:40]), file=sys.stderr)
+
+
 def main():
     build = Build()
     dungeon_plan = [build.collect(d) for d in DUNGEONS]
@@ -537,6 +657,7 @@ def main():
         return "{ " + ", ".join(str(i) for i in ids) + " }"
 
     used = set()
+    listed_quests, forever_levels = [], {}
     L = []
 
     def emit_quests(quests):
@@ -558,6 +679,11 @@ def main():
         quests = [q for q in quests if listed(q)]
         if not quests:
             return
+        listed_quests.extend(q["id"] for q in quests if q["id"])
+        # Forever's own levels (Wowhead's zone listing) win over cMaNGOS's vanilla ones
+        for q in quests:
+            if q["id"]:
+                forever_levels[q["id"]] = (q["level"], q["req"])
         L.append("\t\tquests = {")
         for q in quests:
             choices = [i for i in q["choices"] if i in meta]
@@ -657,6 +783,7 @@ def main():
     L.append("-- Raids in Data.lua order: Forever's (new, then Onyxia), then the Classic ones by release.")
     L.append("-- status: \"new\" in Forever, \"forever\" a Classic raid that's in Forever, \"classic\" not announced")
     emit("ns.Raids", raid_plan, raid=True)
+    emit_quest_info(build, listed_quests, forever_levels, L)
 
     # Sets, easiest first: by the level their pieces need, then name
     kept = []

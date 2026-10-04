@@ -103,10 +103,10 @@ check(total > 800, "raid loot entries (" .. total .. ")")
 local UI, K, C = ns.UI, ns.UIKit, ns.COLORS
 UI:Toggle()
 check(UI.frame:IsShown(), "window opens")
-check(table.concat(UI.modeOrder, ",") == "dungeons,raids,sets,professions,wishlist", "tabs: " .. table.concat(UI.modeOrder, ","))
+check(table.concat(UI.modeOrder, ",") == "dungeons,raids,quests,sets,professions,wishlist", "tabs: " .. table.concat(UI.modeOrder, ","))
 local tabLabels = {}
 for _, t in ipairs(UI.tabs) do tabLabels[#tabLabels + 1] = t.tooltipText end
-check(table.concat(tabLabels, ",") == "Dungeons,Raids,Sets,Professions,Wishlist", "side tab tooltips " .. table.concat(tabLabels, ","))
+check(table.concat(tabLabels, ",") == "Dungeons,Raids,Quests,Sets,Professions,Wishlist", "side tab tooltips " .. table.concat(tabLabels, ","))
 for _, t in ipairs(UI.tabs) do
 	check(t.Icon.texture ~= nil and t.fillToInterior, "side tab " .. t.key .. " has an icon")
 	check(t.checked == (t.key == UI.mode), "only the open tab is checked: " .. t.key)
@@ -128,6 +128,19 @@ local function ShownRows()
 end
 local function RowFor(entry)
 	for _, row in ipairs(ShownRows()) do if row.entry == entry then return row end end
+end
+-- Every section starts collapsed. This opens them level by level (a wing, then its bosses),
+-- leaving the quests closed unless `quests` is set.
+local function OpenAll(quests)
+	for _ = 1, 5 do
+		local n = #UI.sectionIds
+		for _, id in ipairs(UI.sectionIds) do
+			-- (a dungeon's Quests section is d:<key>:quests, each quest in it d:<key>:q:<id>)
+			if quests or not (id:find("^d:[^:]+:quests$") or id:find("^d:[^:]+:q:")) then UI:SectionState()[id] = true end
+		end
+		UI:Refresh()
+		if #UI.sectionIds == n then break end
+	end
 end
 
 UI:SetMode("raids")
@@ -152,13 +165,16 @@ for _, r in ipairs(ns.Raids) do
 	local meta = UI.header.meta.text
 	check(meta:find("Level 60", 1, true) and meta:find(r.size .. " players", 1, true), "raid header " .. r.name .. ": " .. meta)
 	check(UI.header.note.text ~= "" and UI.header.note.text ~= nil, "raid note " .. r.name)
-	-- Raids without wings: every boss and its loot shows (the Quests section starts collapsed)
+	-- Raids without wings: every boss is listed, collapsed; opened, each shows its loot (the Quests
+	-- section stays closed)
 	local wings = 0
 	for _, e in ipairs(UI.entries) do
 		if e.kind == "wing" and e.data.id ~= "d:" .. r.key .. ":quests" then wings = wings + 1 end
 	end
 	if wings == 0 then
 		check(Count("boss") == #r.bosses, ("boss rows %s: %d vs %d"):format(r.name, Count("boss"), #r.bosses))
+		check(Count("item") == 0, "bosses start collapsed in " .. r.name)
+		OpenAll()
 		local items = 0
 		for _, b in ipairs(r.bosses) do items = items + #b.loot end
 		check(Count("item") == items, ("item rows %s: %d vs %d"):format(r.name, Count("item"), items))
@@ -171,6 +187,7 @@ UI:ToggleSection("d:NAXX:Arachnid Quarter")
 check(Count("boss") == 3, "opening a quarter shows its 3 bosses (" .. Count("boss") .. ")")
 
 UI:Select(R.HYJAL)
+OpenAll()
 check(not UI.header.wowhead:IsShown(), "no Wowhead link for a raid Wowhead has no page for")
 check(UI.header.badge:IsShown(), "NEW IN FOREVER badge on Hyjal Summit")
 check(Count("note") == 13, "each Hyjal boss says it has no drops yet (" .. Count("note") .. ")")
@@ -178,6 +195,7 @@ UI:Select(R.MC)
 check(UI.header.wowhead:IsShown() and not UI.header.badge:IsShown(), "Molten Core: Wowhead link, no NEW badge")
 
 UI:Select(R.BARROW)
+OpenAll()
 local shard
 for _, e in ipairs(UI.entries) do
 	if e.kind == "item" and e.data.itemID == 277174 then shard = e.data end
@@ -230,6 +248,7 @@ check(bucket and bucket.items[299002] == 1, "loot recorded under Ragnaros")
 UI:SetMode("dungeons")
 UI:Toggle()
 check(UI.mode == "raids" and UI.current == R.MC, "opening inside Molten Core jumps to its raid page")
+OpenAll()
 local seen = false
 for _, e in ipairs(UI.entries) do
 	if e.kind == "item" and e.data.itemID == 299002 and e.data.learnedCount == 1 then seen = true end
@@ -253,6 +272,7 @@ MOCK.Fire("LOOT_OPENED")
 local hb = ns.db.learned.HYJAL and ns.db.learned.HYJAL["enc:bandalar"]
 check(hb and hb.items[299003] == 1, "Hyjal loot recorded by encounter name")
 UI:Select(R.HYJAL)
+OpenAll()
 local under = false
 for _, e in ipairs(UI.entries) do
 	if e.kind == "item" and e.data.itemID == 299003 then under = true end
@@ -307,12 +327,16 @@ check(#bars > 3, "opening it lists the quests (" .. #bars .. ")")
 local sawDefias = false
 for _, e in ipairs(bars) do if e.data.quest == defias then sawDefias = true end end
 check(sawDefias, "The Defias Brotherhood is listed")
+check(#Entries("item") == 0, "each quest starts collapsed")
+UI:ToggleSection("d:DM:q:166")
 local rewardRow = false
 for _, e in ipairs(UI.entries) do
 	if e.kind == "item" and e.data.itemID == 6087 then rewardRow = true end
 end
 check(rewardRow, "its reward is an item row")
-check(K.QuestTag(defias):find("Alliance", 1, true) and K.QuestTag(defias):find("choose 1 of", 1, true), "quest tag: " .. K.QuestTag(defias))
+-- the tag starts with where the quest stands for you; it leaves out the faction (only yours is listed)
+check(K.QuestTag(defias):find("6 quests first", 1, true) and K.QuestTag(defias):find("choose 1 of", 1, true)
+	and not K.QuestTag(defias):find("Alliance", 1, true), "quest tag: " .. K.QuestTag(defias))
 UI.loot:ScrollTo(bars[1].y) -- scroll the quests into view
 local bar
 for i = 1, (UI.used.quest or 0) do if UI.pools.quest[i]:IsShown() then bar = UI.pools.quest[i] break end end
@@ -321,9 +345,9 @@ if bar then
 	bar.scripts.OnEnter(bar)
 	check(GameTooltip.lines[1] == bar.quest.name, "quest bar tooltip")
 	bar.scripts.OnLeave(bar)
-	bar.scripts.OnClick(bar)
+	bar.scripts.OnClick(bar, "RightButton")
 	check(MOCK.popup and MOCK.popup.which == "FOREVERLOOT_WOWHEAD_LINK" and MOCK.popup.data.url:find("quest=" .. bar.quest.id, 1, true)
-		and MOCK.popup:GetEditBox():GetText() == MOCK.popup.data.url, "quest bar gives its Wowhead link in the game's popup")
+		and MOCK.popup:GetEditBox():GetText() == MOCK.popup.data.url, "right-clicking a quest bar gives its Wowhead link in the game's popup")
 end
 -- The other faction's quests are left out
 MOCK.faction = "Horde"
@@ -367,6 +391,7 @@ check(K.UsableBy(ns.DungeonByKey.DM.bosses[1].loot[1], "WARRIOR") ~= nil, "Usabl
 MOCK.class = { "Mage", "MAGE", 8 }
 UI:SetMode("raids")
 UI:Select(R.MC)
+OpenAll()
 local before = #Entries("item")
 UI:ToggleFilter("myClass")
 check(ns.char.filters.myClass == true and UI.toggles.myClass:GetChecked(), "My class turns on")
@@ -421,6 +446,8 @@ for _, st in ipairs(ns.Sets) do
 	check(not UI.header.meta.text:lower():find("item level", 1, true), "no item level in the header of " .. st.name)
 end
 UI:Select(valor)
+check(#Entries("text") == 0 and #Entries("item") == 0 and #Entries("wing") == 2, "a set's bonuses and pieces start collapsed")
+OpenAll()
 check(#Entries("text") == #valor.bonuses and #Entries("item") == 8, "set bonuses and pieces")
 local sourced = 0
 for _, e in ipairs(Entries("item")) do
@@ -501,6 +528,25 @@ UI:SetMode("professions")
 check(UI.mode == "professions" and #ShownRows() > 0 and #UI.entries > 0, "Professions tab")
 UI:SetMode("wishlist")
 check(UI.mode == "wishlist", "Wishlist tab")
+
+-- 1.7: the Quests tab. Every page renders with every quest open, as each status.
+SlashCmdList.FOREVERLOOT("quests")
+check(UI.mode == "quests" and #ShownRows() == 1 + #ns.Dungeons + #ns.Raids, "/fl quests: the to-do page, then every instance")
+for _, e in ipairs(UI:Mode().Entries()) do
+	UI:Select(e)
+	for _, id in ipairs(UI.sectionIds) do UI.sections[id] = true end
+	UI:Refresh()
+	check(UI.current == e and UI.header.name.text == e.name, "Quests page " .. e.name)
+end
+MOCK.questsDone[65], MOCK.questLog[132] = true, "complete"
+UI:Select(ns.DungeonByKey.DM)
+local marks = {}
+for _, e in ipairs(UI.entries) do if e.kind == "qline" and e.data.questID then marks[e.data.questID] = e.data.status end end
+check(marks[65] == "done" and marks[132] == "active", "chain steps show your progress")
+MOCK.questsDone, MOCK.questLog = {}, {}
+local pinned = 0
+for _, info in pairs(ns.QuestInfo) do if info.from and info.from[5] then pinned = pinned + 1 end end
+check(pinned > 500, "quest givers have map spots (" .. pinned .. ")")
 
 SlashCmdList.FOREVERLOOT("raids")
 check(UI.mode == "raids", "/fl raids")
