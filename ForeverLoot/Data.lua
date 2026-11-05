@@ -369,7 +369,7 @@ ns.Dungeons = {
 			{ name = "High Inquisitor Whitemane", npc = { 3977 }, wing = "Cathedral", loot = { 7720, 7721, 7722, 8157, 7495 } },
 			{ name = "Scorn", npc = { 14693 }, wing = "Event bosses", tag = "Scourge Invasion event", loot = { 23169, 23170, 23168 } },
 			{ name = "Trash & zone drops", trash = true, tag = "Any mob in the dungeon", loot = { 7728, 2262, 7729, 1992, 7754, 7760, 7755, 7727, 7759, 10328, 10332, 10331, 5819, 10329, 10333, 7761, 7752, 8226, 7786, 5756, 7736, 8225, 7787, 7753, 7730, 7757, 7758 } },
-			{ name = "New in Forever, boss not confirmed", unconfirmed = true, tag = "Datamined on Wowhead", loot = { 274295 } },
+			{ name = "Boss not confirmed", unconfirmed = true, tag = "Datamined on Wowhead", loot = { 274295 } },
 		},
 		quests = {
 			{ id = 1113, name = "Hearts of Zeal", level = 33, req = 30, side = 2 },
@@ -420,7 +420,7 @@ ns.Dungeons = {
 			{ name = "Amnennar the Coldbringer", npc = { 7358 }, loot = { 10762, 10763, 10764, 10761, 10765 } },
 			{ name = "Lady Falther'ess", npc = { 14686 }, tag = "Scourge Invasion event", loot = { 23178, 23177 } },
 			{ name = "Trash & zone drops", trash = true, tag = "Any mob in the dungeon", loot = { 10578, 10582, 10584, 10571, 10573, 10567, 10581, 10574, 10583, 10570, 10572 } },
-			{ name = "New in Forever, boss not confirmed", unconfirmed = true, tag = "Datamined on Wowhead", loot = { 274381 }, hints = { [274381] = "Amnennar the Coldbringer" } },
+			{ name = "Boss not confirmed", unconfirmed = true, tag = "Datamined on Wowhead", loot = { 274381 }, hints = { [274381] = "Amnennar the Coldbringer" } },
 		},
 		quests = {
 			{ id = 6626, name = "A Host of Evil", level = 35, req = 28, side = 3 },
@@ -936,7 +936,7 @@ ns.Raids = {
 			{ name = "Del'lynar Songwood", loot = {  } },
 			{ name = "Ravus and Darlissa", loot = {  } },
 			{ name = "Sonya Darkhallow", loot = {  } },
-			{ name = "New in Forever, boss not confirmed", unconfirmed = true, tag = "Datamined on Wowhead", loot = { 277179, 277172, 277174, 277178, 277175 }, hints = { [277179] = "Amethrax", [277174] = "Khalith the Dreadspinner", [277178] = "Well of Sorrow", [277175] = "Elder Tangleclaw" } },
+			{ name = "Boss not confirmed", unconfirmed = true, tag = "Datamined on Wowhead", loot = { 277179, 277172, 277174, 277178, 277175 }, hints = { [277179] = "Amethrax", [277174] = "Khalith the Dreadspinner", [277178] = "Well of Sorrow", [277175] = "Elder Tangleclaw" } },
 		},
 	},
 	{

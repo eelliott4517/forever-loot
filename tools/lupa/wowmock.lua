@@ -63,6 +63,7 @@ local FontString = class(Region)
 function FontString:SetFontObject(f) assert(type(f) == "table", "SetFontObject needs a font object"); self._font = f end
 function FontString:SetJustifyH(j) self._justify = j end
 function FontString:SetWordWrap(on) self._wrap = on end
+function FontString:SetSpacing(n) self._spacing = n end
 function FontString:SetText(t)
 	assert(t == nil or type(t) == "string" or type(t) == "number", "FontString:SetText got " .. type(t))
 	self._text = t ~= nil and tostring(t) or nil
@@ -181,7 +182,14 @@ function Slider:SetValue(v)
 end
 function Slider:GetValue() return self._value or 0 end
 
+-- A check button: clicking flips the check before OnClick runs, as in the game
 local CheckButton = class(Button)
+function CheckButton:SetChecked(on) self.checked = on and true or false end
+function CheckButton:GetChecked() return self.checked == true end
+function CheckButton:Click(button)
+	self.checked = not self.checked
+	local fn = self:GetScript("OnClick"); if fn then fn(self, button or "LeftButton") end
+end
 local DropdownButton = class(Button)
 local CLASSES = { Frame = Frame, Button = Button, EditBox = EditBox, ScrollFrame = ScrollFrame, Slider = Slider,
 	CheckButton = CheckButton, DropdownButton = DropdownButton }
@@ -212,7 +220,8 @@ function FontObject:SetFont(file, size, flags) self._file, self._size, self._fla
 function FontObject:SetTextColor() end
 function CreateFont(name) local f = setmetatable({ _name = name }, FontObject); _G[name] = f; return f end
 for _, n in ipairs({ "GameFontNormal", "GameFontNormalSmall", "GameFontNormalLarge", "GameFontNormalHuge",
-	"GameFontHighlight", "GameFontHighlightSmall", "ChatFontNormal" }) do
+	"GameFontHighlight", "GameFontHighlightSmall", "ChatFontNormal", "GameFontNormalMed1", "GameFontHighlightHuge",
+	"GameFontHighlightSmall2" }) do
 	local f = CreateFont(n)
 	f:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 end

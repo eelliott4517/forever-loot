@@ -93,12 +93,17 @@ T.LargeSideTabButtonTemplate = function(f)
 	end
 end
 
--- The search box: instructions, magnifier and a clear button that empties it
+-- The search box: its border in three pieces, instructions, magnifier and a clear button that
+-- empties it
 T.SearchBoxTemplate = function(eb)
 	eb:SetFontObject(ChatFontNormal)
+	eb.Left = eb:CreateTexture(nil, "BACKGROUND")
+	eb.Middle = eb:CreateTexture(nil, "BACKGROUND")
+	eb.Right = eb:CreateTexture(nil, "BACKGROUND")
 	eb.Instructions = FontStringOf(eb, GameFontDisableSmall)
 	eb.searchIcon = eb:CreateTexture(nil, "OVERLAY")
 	local clear = CreateFrame("Button", nil, eb)
+	clear.Icon = clear:CreateTexture(nil, "ARTWORK")
 	clear:SetScript("OnClick", function()
 		eb:SetText("")
 		eb:ClearFocus()
@@ -111,6 +116,7 @@ end
 
 -- A dropdown: the menu is rebuilt from the generator, and the button shows the selections
 T.WowStyle1DropdownTemplate = function(d)
+	d.Background = d:CreateTexture(nil, "BACKGROUND")
 	d.Text = FontStringOf(d, GameFontHighlightSmall)
 	d.Arrow = d:CreateTexture(nil, "OVERLAY")
 	function d:SetDefaultText(text) self.defaultText = text end
@@ -175,9 +181,20 @@ T.UIPanelButtonTemplate = function(b)
 	function b:GetText() return self.Text:GetText() end
 end
 
--- ScrollFrameTemplate: a minimal scroll bar, and the mouse wheel scrolls
+-- ScrollFrameTemplate: a minimal scroll bar (the arrows, the track and its thumb, each drawn in
+-- three pieces), and the mouse wheel scrolls
 T.ScrollFrameTemplate = function(sf)
 	local bar = CreateFrame("Frame", nil, sf)
+	local function Pieces(f)
+		f.Begin = f:CreateTexture(nil, "ARTWORK")
+		f.Middle = f:CreateTexture(nil, "ARTWORK")
+		f.End = f:CreateTexture(nil, "ARTWORK")
+		return f
+	end
+	bar.Track = Pieces(CreateFrame("Frame", nil, bar))
+	bar.Track.Thumb = Pieces(CreateFrame("Button", nil, bar.Track))
+	bar.Back = CreateFrame("Button", nil, bar)
+	bar.Forward = CreateFrame("Button", nil, bar)
 	function bar:SetHideIfUnscrollable(hide) self.hideIfUnscrollable = hide end
 	sf.ScrollBar = bar
 	sf:SetScript("OnMouseWheel", function(self, delta)

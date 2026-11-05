@@ -75,6 +75,7 @@ local FontString = inherit(Region, {
 	SetFontObject = function(self, f) assert(f and f.__isFont, "SetFontObject needs a font object"); self.font = f end,
 	SetJustifyH = function(self, j) assert(j == "LEFT" or j == "RIGHT" or j == "CENTER", "bad justify " .. tostring(j)) end,
 	SetWordWrap = function() end,
+	SetSpacing = function(self, n) assert(type(n) == "number") end,
 	SetText = function(self, t)
 		if t ~= nil and type(t) ~= "string" and type(t) ~= "number" then error("SetText needs a string", 2) end
 		self.text = t and tostring(t) or ""
@@ -188,12 +189,23 @@ local EditBox = inherit(Frame, {
 	HasFocus = function(self) return self.focus == true end,
 })
 
+-- A check button: clicking flips the check before OnClick runs, as in the game
+local CheckButton = inherit(Button, {
+	SetChecked = function(self, checked) self.checked = checked and true or false end,
+	GetChecked = function(self) return self.checked == true end,
+	Click = function(self, button)
+		self.checked = not self.checked
+		local fn = self:GetScript("OnClick")
+		if fn then fn(self, button or "LeftButton") end
+	end,
+})
+
 local kinds = {
 	Frame = strict("Frame", Frame), Button = strict("Button", Button),
 	ScrollFrame = strict("ScrollFrame", ScrollFrame), Slider = strict("Slider", Slider),
 	EditBox = strict("EditBox", EditBox),
 	-- The templates (templates.lua) add what's particular to these
-	CheckButton = strict("CheckButton", Button), DropdownButton = strict("DropdownButton", Button),
+	CheckButton = strict("CheckButton", CheckButton), DropdownButton = strict("DropdownButton", Button),
 }
 
 function CreateFrame(kind, name, parent, template)
@@ -238,6 +250,7 @@ local function newFont(size) return setmetatable({ __isFont = true, file = "Font
 function CreateFont(name) local f = newFont(12); _G[name] = f; return f end
 GameFontNormal, GameFontNormalSmall, GameFontNormalLarge, GameFontNormalHuge = newFont(12), newFont(10), newFont(16), newFont(20)
 GameFontHighlight, GameFontHighlightSmall, ChatFontNormal = newFont(12), newFont(10), newFont(14)
+GameFontNormalMed1, GameFontHighlightHuge, GameFontHighlightSmall2 = newFont(13), newFont(20), newFont(11)
 
 ----------------------------------------------------------------------
 -- Globals

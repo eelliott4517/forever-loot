@@ -5,8 +5,8 @@ ns.ICON = "Interface\\Icons\\INV_Box_01"
 ns.WOWHEAD = "https://www.wowhead.com/forever/"
 ns.WOWHEAD_CLASSIC = "https://www.wowhead.com/classic/"
 
--- The game's own text colors, so the window reads like the rest of the interface
--- (NORMAL_FONT_COLOR, HIGHLIGHT_FONT_COLOR and friends)
+-- Text colors: the game's own for tooltips (NORMAL_FONT_COLOR, HIGHLIGHT_FONT_COLOR and friends),
+-- with a cool silver and grey that sit on the window's slate panels, and one warm accent
 local function rgb(hex)
 	return {
 		tonumber(hex:sub(1, 2), 16) / 255,
@@ -17,11 +17,13 @@ local function rgb(hex)
 end
 
 ns.COLORS = {
-	gold   = rgb("FFD100"), -- headings and labels
+	gold   = rgb("FFD100"), -- tooltip headings and labels
 	white  = rgb("FFFFFF"), -- body text
-	silver = rgb("C0C0C0"), -- secondary text
-	grey   = rgb("808080"), -- disabled, Classic-only
-	green  = rgb("19FF19"), -- new in Forever
+	silver = rgb("AEB6C8"), -- secondary text
+	muted  = rgb("6E7790"), -- labels, hints, the footer
+	grey   = rgb("7E8597"), -- disabled, Classic-only
+	accent = rgb("F4BE4F"), -- the open tab and entry, and what's yours
+	green  = rgb("19FF19"), -- ready to turn in, wishlist hints
 	red    = rgb("FF1919"), -- warnings
 	blue   = rgb("88AAFF"), -- owned, recorded by you
 	black  = rgb("000000"),

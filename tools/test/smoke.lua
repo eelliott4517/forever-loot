@@ -106,15 +106,15 @@ check(UI.frame:IsShown(), "window opens")
 check(table.concat(UI.modeOrder, ",") == "dungeons,raids,quests,sets,professions,wishlist", "tabs: " .. table.concat(UI.modeOrder, ","))
 local tabLabels = {}
 for _, t in ipairs(UI.tabs) do tabLabels[#tabLabels + 1] = t.tooltipText end
-check(table.concat(tabLabels, ",") == "Dungeons,Raids,Quests,Sets,Professions,Wishlist", "side tab tooltips " .. table.concat(tabLabels, ","))
+check(table.concat(tabLabels, ",") == "Dungeons,Raids,Quests,Sets,Professions,Wishlist", "tab names " .. table.concat(tabLabels, ","))
 for _, t in ipairs(UI.tabs) do
-	check(t.Icon.texture ~= nil and t.fillToInterior, "side tab " .. t.key .. " has an icon")
-	check(t.checked == (t.key == UI.mode), "only the open tab is checked: " .. t.key)
+	check(t.label.text == t.tooltipText, "tab " .. t.key .. " shows its name")
+	check(t.selected == (t.key == UI.mode) and t.mark:IsShown() == t.selected, "only the open tab is marked: " .. t.key)
 end
--- Built from the game's templates: a portrait frame with the addon's title and icon
-check(UI.frame.TitleContainer.TitleText.text == "Forever Loot" and UI.frame.PortraitContainer.portrait.texture == ns.ICON,
-	"portrait frame title and icon")
-check(UI.left.Bg ~= nil and UI.right.Bg ~= nil and UI.searchBox.Instructions ~= nil, "insets and the search box template")
+-- A flat window: the title bar has the addon's name and icon, the list column its own panel,
+-- and the search box is still the game's template underneath
+check(UI.titleText.text == "Forever Loot" and UI.titleIcon.texture == ns.ICON, "title bar name and icon")
+check(UI.left.bg ~= nil and UI.searchBox.Instructions ~= nil, "list panel and the search box template")
 
 local function Count(kind)
 	local c = 0
@@ -148,14 +148,13 @@ check(UI.mode == "raids", "Raids tab opens")
 check(UI.listLabel.text == "Raids" and UI.listRight.text == "Players", "raid list headings")
 local rows = ShownRows()
 check(#rows == 9, "one row per raid (" .. #rows .. ")")
-check(rows[1] and rows[1].entry == R.BARROW and rows[1].tag.text == "New", "Barrow Deeps first, tagged New")
+check(rows[1] and rows[1].entry == R.BARROW and rows[1].tag.text == "", "Barrow Deeps first, with no New tag")
 check(rows[1] and rows[1].levels.text == "10", "raid size in the list")
 local mcRow, onyRow = RowFor(R.MC), RowFor(R.ONY)
 check(mcRow and mcRow.tag.text == "Classic", "Classic raids tagged Classic")
 check(mcRow and mcRow.tag.tc and math.abs(mcRow.tag.tc[1] - C.grey[1]) < 0.01, "Classic tag is grey")
 local hyjalRow = RowFor(R.HYJAL)
-check(hyjalRow and not hyjalRow.isSelected and hyjalRow.tag.tc and math.abs(hyjalRow.tag.tc[2] - C.green[2]) < 0.01,
-	"NEW tag stays red on a row that isn't selected")
+check(hyjalRow and hyjalRow.tag.text == "", "no New tag on Hyjal Summit either")
 check(onyRow and onyRow.tag.text == "", "Onyxia has no tag (it's in Forever)")
 check(mcRow and not mcRow.isMarked and math.abs(mcRow.name.tc[3] - C.white[3]) < 0.01, "a level 16 character's raid names are white, not gold")
 
@@ -189,10 +188,9 @@ check(Count("boss") == 3, "opening a quarter shows its 3 bosses (" .. Count("bos
 UI:Select(R.HYJAL)
 OpenAll()
 check(not UI.header.wowhead:IsShown(), "no Wowhead link for a raid Wowhead has no page for")
-check(UI.header.badge:IsShown(), "NEW IN FOREVER badge on Hyjal Summit")
 check(Count("note") == 13, "each Hyjal boss says it has no drops yet (" .. Count("note") .. ")")
 UI:Select(R.MC)
-check(UI.header.wowhead:IsShown() and not UI.header.badge:IsShown(), "Molten Core: Wowhead link, no NEW badge")
+check(UI.header.wowhead:IsShown(), "Molten Core: Wowhead link")
 
 UI:Select(R.BARROW)
 OpenAll()

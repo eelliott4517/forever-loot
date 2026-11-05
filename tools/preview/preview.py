@@ -16,8 +16,11 @@ Scenarios (all by default), each for an Alliance Human Rogue at level 20 who has
                    open, scrolled to the Quests header
   quests-tooltip   quests-dm with the mouse over The Defias Brotherhood's header, its tooltip showing
   dungeons-bosses  the Dungeons tab on The Deadmines, every boss closed but the first
+  search           the Dungeons tab searching "gloves" with My class on, its first two groups open
+  professions      the Professions tab on Leatherworking, its first two groups open
+  sets             the Sets tab on its first set, every section open
 
-Each is written to tools/preview/preview-<scenario>.png: the 880 x 600 window with its side tabs
+Each is written to tools/preview/preview-<scenario>.png: the 880 x 620 window with its shadow
 (and the tooltip), at --scale pixels per UI unit (2 by default; 1 is the game at UI scale 1). Each run
 also prints "layout:" lines for what the drawing shows going wrong: text cut short with "...", text
 wrapping inside a one-line box, text drawn over other text or under a button that isn't its own.
@@ -36,7 +39,7 @@ sys.path.insert(0, HERE)
 import art  # noqa: E402
 
 TOOLS = os.path.dirname(HERE)
-SCENARIOS = ["quests-dm", "quests-todo", "dungeons-dm", "quests-tooltip", "dungeons-bosses"]
+SCENARIOS = ["quests-dm", "quests-todo", "dungeons-dm", "quests-tooltip", "dungeons-bosses", "search", "professions", "sets"]
 S = 2  # pixels per UI unit (--scale)
 
 # GlobalColor (1.60.1.70205): NORMAL_FONT_COLOR FFD200, DISABLED_FONT_COLOR 808080, TOOLTIP_DEFAULT_BACKGROUND_COLOR 171730
@@ -52,6 +55,8 @@ FONTS = {
     "GameFontHighlightSmall": (10, WHITE, True, None), "GameFontDisable": (12, GREY, True, None),
     "GameFontDisableSmall": (10, DISABLED, True, None), "GameFontGreenSmall": (10, (0.1, 1, 0.1), True, None),
     "ChatFontNormal": (14, WHITE, True, None),
+    "GameFontNormalMed1": (13, (1, 0.82, 0), True, None), "GameFontHighlightHuge": (20, WHITE, True, None),
+    "GameFontHighlightSmall2": (11, WHITE, False, None),
     "GameTooltipHeaderText": (14, WHITE, False, "LEFT"), "GameTooltipText": (12, WHITE, False, "LEFT"),
     "GameTooltipTextSmall": (10, WHITE, False, "LEFT"),
 }
@@ -242,8 +247,8 @@ end
 if SCENARIO == "quests-dm" or SCENARIO == "quests-tooltip" then
 	UI:OpenQuest(DM, 166)
 elseif SCENARIO == "quests-todo" then
-	-- click the Quests side tab, then the list's first row
-	for _, tab in ipairs(UI.tabs) do if tab.key == "quests" then tab:MockClick() end end
+	-- click the Quests tab, then the list's first row
+	for _, tab in ipairs(UI.tabs) do if tab.key == "quests" then tab:Click() end end
 	UI.listRows[1]:Click()
 elseif SCENARIO == "dungeons-dm" then
 	-- its Quests section open, and in it The Defias Brotherhood (a quest bar is a section: its
@@ -265,6 +270,21 @@ elseif SCENARIO == "dungeons-bosses" then
 	assert(Has(id), "no section " .. id .. " for the first boss")
 	UI.sections[id] = true
 	UI:Refresh()
+elseif SCENARIO == "search" then
+	UI:Select(DM)
+	UI.toggles.myClass:Click()
+	UI.searchBox:SetText("gloves")
+	for i = 1, 2 do if UI.sectionIds[i] then UI.searchSections[UI.sectionIds[i]] = true end end
+	UI:Refresh()
+elseif SCENARIO == "professions" or SCENARIO == "sets" then
+	for _, tab in ipairs(UI.tabs) do if tab.key == SCENARIO then tab:Click() end end
+	if SCENARIO == "professions" then
+		for _, p in ipairs(ns.Professions) do if p.name == "Leatherworking" then UI:Select(p) end end
+	end
+	local ids = {}
+	for i = 1, (SCENARIO == "sets" and #UI.sectionIds or 2) do ids[#ids + 1] = UI.sectionIds[i] end
+	for _, id in ipairs(ids) do UI.sections[id] = true end
+	UI:Refresh()
 else
 	error("no scenario " .. tostring(SCENARIO))
 end
@@ -279,11 +299,11 @@ end
 -- name the rows for the layout checks
 for kind, pool in pairs(UI.pools) do for _, w in ipairs(pool) do w._rowKind = kind end end
 for _, row in ipairs(UI.listRows) do row._rowKind = "list row" end
-for _, tab in ipairs(UI.tabs) do tab._rowKind = "side tab" end
+for _, tab in ipairs(UI.tabs) do tab._rowKind = "tab" end
 UI.header._rowKind = "header"
 UI.searchBox._rowKind = "search box"
 for _, d in pairs(UI.filterButtons) do d._rowKind = "dropdown" end
-for _, t in pairs(UI.toggles) do t._rowKind = "checkbox" end
+for _, t in pairs(UI.toggles) do t._rowKind = "chip" end
 local L = MOCK.layout
 L.UpdateScrollBars()
 local tip

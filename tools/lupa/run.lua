@@ -127,7 +127,7 @@ check(UI.header.wowhead:IsShown() and not UI.header.clear:IsShown(), "dungeon vi
 check(#entries("item") == 0 and #entries("boss") == #UI.current.bosses, "RFC lists its bosses, collapsed", #entries("item"))
 openAll()
 check(#entries("item") == 12 and #painted("item") == 12, "opened, RFC shows its 12 drops", #entries("item"))
-check(tab("dungeons").checked and not tab("raids").checked, "Dungeons tab is highlighted")
+check(tab("dungeons").selected and not tab("raids").selected, "Dungeons tab is highlighted")
 check(UI.listLabel:GetText() == "Dungeons" and UI.listRight:GetText() == "Levels", "list labels for dungeons")
 
 ---------------------------------------------------------------- dungeon search
@@ -231,8 +231,8 @@ check(true, "every dungeon view renders, every section open")
 wipe(UI.sections)   -- back to everything collapsed
 
 ---------------------------------------------------------------- professions tab
-tab("professions"):MockClick()
-check(UI.mode == "professions" and tab("professions").checked and not tab("dungeons").checked, "Professions tab switches and highlights")
+tab("professions"):Click()
+check(UI.mode == "professions" and tab("professions").selected and not tab("dungeons").selected, "Professions tab switches and highlights")
 check(#listRows() == #ns.Professions and #ns.Professions == 11, "list shows the 11 professions", #listRows())
 check(UI.listLabel:GetText() == "Professions" and UI.listRight:GetText() == "Recipes", "list labels for professions")
 check(UI.current and UI.current.name == "Leatherworking", "opens on your best crafting profession, not Skinning", UI.current and UI.current.name)
@@ -246,7 +246,7 @@ print("  meta: " .. UI.header.meta:GetText())
 check(UI.header.meta:GetText():find("Your skill 125/150", 1, true), "header shows your skill")
 check(#entries("recipe") == 0 and #entries("wing") > 10, "groups start collapsed: only the headers show", #entries("recipe"))
 local glovesHeader = sectionWidget("Gloves")
-check(glovesHeader and glovesHeader.collapsed and glovesHeader.icon:GetAtlas() == "common-button-list-plus", "collapsed headers show a plus")
+check(glovesHeader and glovesHeader.collapsed and glovesHeader.icon:GetAtlas() == "uitools-icon-chevron-right", "collapsed headers show a chevron pointing right")
 glovesHeader:GetScript("OnEnter")(glovesHeader)
 check(GameTooltip.lines[2] and GameTooltip.lines[2]:find("Click to expand", 1, true), "header hint says what a click does")
 glovesHeader:GetScript("OnLeave")(glovesHeader)
@@ -258,7 +258,7 @@ for _, r in ipairs(lw.recipes) do
 end
 check(#entries("recipe") == lwGloves, "clicking Gloves opens just that group", #entries("recipe") .. " vs " .. lwGloves)
 glovesHeader = sectionWidget("Gloves")
-check(not glovesHeader.collapsed and glovesHeader.icon:GetAtlas() == "common-button-list-minus", "open headers show a minus")
+check(not glovesHeader.collapsed and glovesHeader.icon:GetAtlas() == "uitools-icon-chevron-down", "open headers show a chevron pointing down")
 UI:Select(ns.ProfessionByKey.TAIL)
 check(#entries("recipe") == 0, "another profession starts collapsed")
 UI:Select(lw)
@@ -430,11 +430,11 @@ check(UI.searchTotal == consumables and consumables > 100, "Slot: Consumable lis
 
 -- Switching tabs keeps the search words but drops a filter the other tab lacks
 search("gloves")
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 openAll()
 check(UI.mode == "dungeons" and UI.filter.slot == nil and UI.searchBox:GetText() == "gloves" and #entries("item") == gloves,
 	"back on Dungeons the Consumable filter drops and gloves still search")
-tab("professions"):MockClick()
+tab("professions"):Click()
 openAll()
 local craftGloves = #entries("recipe")
 check(UI.mode == "professions" and craftGloves > 0, "and on Professions \"gloves\" lists craftable gloves", craftGloves)
@@ -478,7 +478,7 @@ local function chatHas(text) return (MOCK.chat[#MOCK.chat] or ""):find(text, 1, 
 check(#UI.tabs == 6 and tab("wishlist").tooltipText == "Wishlist", "there's a Wishlist tab")
 
 -- Right-click a dungeon drop
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 UI:ClearSearch()
 UI:Select(ns.DungeonByKey.DM)
 openAll()
@@ -498,7 +498,7 @@ check(table.concat(GameTooltip.lines, "\n"):find("On your wishlist", 1, true), "
 marked:GetScript("OnLeave")(marked)
 
 -- Right-click a recipe: its item goes on the list
-tab("professions"):MockClick()
+tab("professions"):Click()
 UI:Select(lw)
 openAll()
 local recipeRow
@@ -516,7 +516,7 @@ enchantOnly:Click("RightButton")
 check(ns.Wishlist.Count() == 2 and chatHas("can't go on the wishlist"), "enchants make no item, so they can't be added")
 
 -- The Wishlist tab
-tab("wishlist"):MockClick()
+tab("wishlist"):Click()
 check(UI.mode == "wishlist" and UI.current and UI.current.name == "Everything", "the Wishlist tab opens on everything")
 print("  meta: " .. UI.header.meta:GetText())
 check(UI.header.name:GetText() == "Wishlist" and UI.header.meta:GetText():find("2 items", 1, true), "header counts the list")
@@ -552,7 +552,7 @@ check(UI.searchTotal == 1 and #entries("recipe") == 1, "the search box searches 
 UI:ClearSearch()
 
 -- "wanted" finds wishlist items on the other tabs
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 check(search("wanted") == 1, "\"wanted\" finds your wishlist drops on the Dungeons tab")
 UI.searchBox:Type("")
 
@@ -573,7 +573,7 @@ check(pcall(MOCK.Fire, "LOOT_OPENED"), "a secret loot link is skipped, not an er
 MOCK.loot = {}
 
 -- Take things off from the Wishlist tab
-tab("wishlist"):MockClick()
+tab("wishlist"):Click()
 UI:Select(listRows()[1].entry)
 painted("item")[1]:Click("RightButton")
 check(not ns.Wishlist.IsWanted(wantedID) and #entries("item") == 0 and chatHas("is off your wishlist"), "right-click in the list takes it off")
@@ -619,7 +619,7 @@ check(not UI.filterButtons.kind:IsMenuOpen(), "closing the window closes an open
 local function wipeFilters() ns.char.filters.myClass, ns.char.filters.hideClassic = false, false end
 wipeFilters()
 SlashCmdList.FOREVERLOOT("raids")
-check(UI.frame:IsShown() and UI.mode == "raids" and tab("raids").checked, "/fl raids opens the Raids tab")
+check(UI.frame:IsShown() and UI.mode == "raids" and tab("raids").selected, "/fl raids opens the Raids tab")
 check(#listRows() == #ns.Raids and UI.listLabel:GetText() == "Raids" and UI.listRight:GetText() == "Players",
 	"the list shows every raid, with a players column", #listRows())
 check(listRows()[1].levels:GetText() == tostring(ns.Raids[1].size), "raid rows show the raid size", listRows()[1].levels:GetText())
@@ -654,7 +654,7 @@ for _, d in ipairs(ns.Dungeons) do
 	for _, q in ipairs(d.quests or {}) do n[q.side] = n[q.side] + 1 end
 	if n[1] > 0 and n[2] > 0 then qd, sideCount = d, n break end
 end
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 UI:ClearSearch()
 MOCK.faction = "Alliance"
 UI:Select(qd)
@@ -685,7 +685,7 @@ MOCK.popup = nil
 local qRewards = #(qEntry.data.quest.choices or {}) + #(qEntry.data.quest.rewards or {})
 check(#entries("item") == 0, "each quest starts collapsed")
 qRow:Click()
-check(not UI:IsCollapsed(qEntry.data.id) and #entries("item") == qRewards and qRow.toggle:GetAtlas() == "common-button-list-minus",
+check(not UI:IsCollapsed(qEntry.data.id) and #entries("item") == qRewards and qRow.toggle:GetAtlas() == "uitools-icon-chevron-down",
 	"clicking a quest opens it to its rewards", #entries("item") .. " vs " .. qRewards)
 qRow:Click()
 check(UI:IsCollapsed(qEntry.data.id) and #entries("item") == 0, "and clicking again closes it")
@@ -752,9 +752,9 @@ local cantGloves = 0
 for _, e in ipairs(entries("item")) do if rogueCant(ns.Items[e.data.itemID]) and not ns.Items[e.data.itemID][8] then cantGloves = cantGloves + 1 end end
 check(UI.searchTotal < gloves and cantGloves == 0, "searches follow the filters too", UI.searchTotal .. " of " .. gloves)
 UI:ClearSearch()
-tab("professions"):MockClick()
+tab("professions"):Click()
 check(not UI.toggles.myClass:IsShown(), "the Professions tab has no loot filters")
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 UI.toggles.myClass:Click()
 UI.toggles.hideClassic:Click()
 check(not ns.char.filters.myClass and not ns.char.filters.hideClassic and #entries("item") == allItems, "turning both off brings everything back")
@@ -1276,7 +1276,7 @@ check(not ns.PinQuestGiver(gryan) and MOCK.waypoint == nil and (MOCK.chat[#MOCK.
 MOCK.noPins = {}
 
 -- The Dungeons tab: each quest's mark, status and where it starts, with a pin button
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 UI:ClearSearch()
 UI:Select(dm)
 UI.sections["d:DM:quests"] = true
@@ -1331,7 +1331,7 @@ UI:Refresh()
 UI.loot:ScrollTo(defiasEntry.y)
 for _, w in ipairs(painted("qline")) do if w.entry.name == "The Defias Brotherhood" and w.entry.click then line = w end end
 line:Click()
-check(UI.mode == "quests" and UI.current == dm and tab("quests").checked, "clicking the line opens the Quests tab on the dungeon")
+check(UI.mode == "quests" and UI.current == dm and tab("quests").selected, "clicking the line opens the Quests tab on the dungeon")
 check(not UI:IsCollapsed("q:DM:166") and UI.loot:GetVerticalScroll() > 0, "with that quest open and scrolled to")
 
 ---------------------------------------------------------------- 1.7.0: the Quests tab
@@ -1479,7 +1479,7 @@ UI.lastAutoDungeon = nil
 UI:Show()
 check(UI.mode == "quests" and UI.current == dm, "inside a dungeon the Quests tab opens on its quests", UI.current and UI.current.key)
 MOCK.instance = { "Elwynn Forest", "none", 0, "", 0, 0, false, 0 }
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 
 ---------------------------------------------------------------- 1.7.0: one frame's work, and quests two instances list
 -- Within one frame the addon asks the game about each quest once: a level-40 character's to-do
@@ -1505,12 +1505,12 @@ for _, e in ipairs(entries("qline")) do if e.data.questID == 6642 then favor = f
 check(favor == 1, "a quest two instances list is on the to-do page once", favor)
 resetQuests()
 MOCK.rep = {}
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 
 ---------------------------------------------------------------- 1.7.0: everything starts collapsed
 -- Bosses are section headers now: a click opens one to its drops, a right-click gives its
 -- Wowhead link, and shift-click opens every section, the bosses inside wings too
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 UI:ClearSearch()
 wipe(UI.sections)
 local sm = ns.DungeonByKey.SM
@@ -1538,7 +1538,7 @@ wing:Click()
 local inWing = #entries("boss")
 check(inWing > 0 and #entries("item") == 0, "a click opens one wing to its bosses, still closed", inWing)
 local bossBar = painted("boss")[1]
-check(bossBar.icon:GetAtlas() == "common-button-list-plus", "a closed boss shows a plus")
+check(bossBar.icon:GetAtlas() == "uitools-icon-chevron-right", "a closed boss shows a right chevron")
 bossBar:GetScript("OnEnter")(bossBar)
 local bossTip = MOCK.TooltipText()
 check(bossTip:find("Click to see its loot.", 1, true) and bossTip:find("Right-click for its Wowhead link.", 1, true),
@@ -1550,7 +1550,7 @@ local bossEntry
 for _, e in ipairs(UI.entries) do if e.kind == "boss" and e.data.id == bossID then bossEntry = e end end
 check(not UI:IsCollapsed(bossID) and #entries("item") > 0, "clicking a boss shows its drops")
 for _, w in ipairs(painted("boss")) do if w.sectionId == bossID then bossBar = w end end
-check(bossBar.icon:GetAtlas() == "common-button-list-minus", "with a minus")
+check(bossBar.icon:GetAtlas() == "uitools-icon-chevron-down", "with a down chevron")
 MOCK.popup = nil
 bossBar:Click("RightButton")
 check(MOCK.popup and MOCK.popup.data.url:find(ns.WOWHEAD .. "npc=", 1, true) and not UI:IsCollapsed(bossID),
@@ -1583,7 +1583,7 @@ check(issecretvalue(probe:GetFrameStrata()), "(a frame under a parent with a sec
 local secretStrataOK = pcall(function()
 	if UI.frame:IsShown() then UI:Hide() end
 	SlashCmdList.FOREVERLOOT("")
-	for _, key in ipairs(UI.modeOrder) do tab(key):MockClick() end
+	for _, key in ipairs(UI.modeOrder) do tab(key):Click() end
 	UI.searchBox:Type("gloves")
 	UI:ClearSearch()
 	ns.minimapButton:GetScript("OnEnter")(ns.minimapButton)
@@ -1616,17 +1616,17 @@ end)()
 ;(function()
 for _, case in ipairs({ { "sets", function() UI:ClearSearch() end, "the Clear search button" },
 	{ "professions", function() UI.searchBox:Type("") end, "erasing the search" } }) do
-	tab("dungeons"):MockClick()
+	tab("dungeons"):Click()
 	UI:ClearSearch()
 	UI.selected[case[1]] = nil
 	UI.searchBox:Type("gloves")
-	tab(case[1]):MockClick()
+	tab(case[1]):Click()
 	check(UI:IsSearching() and UI.header.name:GetText() == "Search results", "searching, then opening " .. case[1] .. " shows its results")
 	case[2]()
 	check(not UI:IsSearching() and UI.current ~= nil and UI.header.name:GetText() == UI.current.name and not UI.header.clear:IsShown(),
 		case[3] .. " then opens the tab's own first pick", UI.header.name:GetText())
 end
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 end)()
 
 ---------------------------------------------------------------- the October 8 review
@@ -1705,7 +1705,7 @@ local function tipText(itemID)
 	return table.concat(out, " | ")
 end
 check(not tipText(6953):find("Test of Righteousness", 1, true), "a Rogue's tooltip on Verigan's Fist doesn't credit the Paladin quest", tipText(6953))
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 search("verigan")
 local credited = 0
 for _, e in ipairs(entries("item")) do if (e.data.from or ""):find("Test of Righteousness", 1, true) then credited = credited + 1 end end
@@ -1720,7 +1720,7 @@ ns.Wishlist.Toggle(6953)
 local plagueheart
 for _, st in ipairs(ns.Sets) do if st.id == 529 then plagueheart = st end end
 local function robeFrom()
-	tab("sets"):MockClick()
+	tab("sets"):Click()
 	UI:Select(plagueheart)
 	openAll()
 	for _, e in ipairs(entries("item")) do if e.data.itemID == 22504 then return e.data.from or "" end end
@@ -1735,7 +1735,7 @@ reset()
 
 -- A set the filters hide isn't kept open, or opened again
 MOCK.classFile = "MAGE"
-tab("sets"):MockClick()
+tab("sets"):Click()
 local plate
 for _, st in ipairs(ns.Sets) do
 	local all = #st.pieces > 0
@@ -1748,28 +1748,28 @@ check(UI.current ~= plate and UI:IsListed(UI.current) and UI.header.name:GetText
 	"ticking My class on a plate set opens one a Mage can wear", UI.current and UI.current.name)
 UI.toggles.myClass:Click()
 UI:Select(plate)
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 UI.toggles.myClass:Click()
-tab("sets"):MockClick()
+tab("sets"):Click()
 check(UI.current ~= plate and UI:IsListed(UI.current), "and the Sets tab doesn't reopen it after My class went on elsewhere", UI.current and UI.current.name)
 UI.toggles.myClass:Click()
 reset()
 
 -- The Raids tab's Slot menu has Recipe and Other, as the Dungeons tab's does
-tab("raids"):MockClick()
+tab("raids"):Click()
 local recipe = false
 for _, o in ipairs(UI.filterButtons.slot:MockOptions()) do if o.kind == "radio" and o.data == "recipe" then recipe = true end end
 UI.filterButtons.slot:CloseMenu()
 check(recipe, "the Raids tab's Slot menu offers Recipe and Other")
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 UI.filterButtons.slot:MockPick("recipe")
-tab("raids"):MockClick()
+tab("raids"):Click()
 check(UI.filter.slot == "recipe" and UI.searchTotal and UI.searchTotal > 0, "and Slot: Recipe carries over to it", UI.searchTotal)
 UI:SetFilter("slot", nil)
 UI:ClearSearch()
 
 -- Only punctuation is nothing to search by, not a search for everything
-tab("dungeons"):MockClick()
+tab("dungeons"):Click()
 UI.searchBox:Type("-")
 check(not UI:IsSearching() and UI.header.name:GetText() ~= "Search results", "a search of only punctuation isn't a search", UI.header.name:GetText())
 UI.searchBox:Type("")
@@ -1806,6 +1806,70 @@ local learned = ns.db.learned.DM and ns.db.learned.DM["npc:" .. boss.npc[1]]
 check(learned and learned.items[900113] == 1, "a drop with a named-quality link is recorded")
 wipe(ns.db.learned)
 MOCK.loot, MOCK.lootSources, MOCK.instance = {}, {}, OUTSIDE
+UI:Hide()
+end)()
+
+---------------------------------------------------------------- 1.9.0: the New tags are gone
+-- No list row, header, item or recipe row, quest bar or tooltip says New (or "added in Forever")
+;(function()
+local K = ns.UIKit
+SlashCmdList.FOREVERLOOT("")
+local found = {}
+local function flag(where, text)
+	if text and (text == "New" or text:find("New in Forever", 1, true) or text:find("added in Forever", 1, true)) then
+		found[#found + 1] = where .. ": " .. text
+	end
+end
+for _, key in ipairs(UI.modeOrder) do
+	tab(key):Click()
+	local mode = UI:Mode()
+	for _, entry in ipairs(mode.Entries()) do
+		local _, _, tag = mode.RowInfo(entry)
+		flag(key .. " list " .. tostring(entry.name), tag)
+		UI:Select(entry)
+		flag(key .. " header " .. tostring(entry.name), UI.header.note:GetText())
+		flag(key .. " header " .. tostring(entry.name), UI.header.meta:GetText())
+	end
+end
+-- every item Forever added (flag 1) or hasn't tied to a boss (flag 3), drawn as a row and hovered
+local row = K.kinds.item.create(UI.loot.content, UI.contentWidth)
+local newItems = 0
+for id, e in pairs(ns.Items) do
+	if e[4] == 1 or e[4] == 3 then
+		newItems = newItems + 1
+		K.kinds.item.fill(row, { itemID = id })
+		if row.badge:IsShown() then flag("item " .. id, row.badge:GetText()) end
+		row:GetScript("OnEnter")(row)
+		for _, line in ipairs(GameTooltip.lines) do flag("item tooltip " .. id, line) end
+	end
+end
+-- recipes Forever added, and quests it added
+local recipe, newRecipes = K.kinds.recipe.create(UI.loot.content, UI.contentWidth), 0
+for _, p in ipairs(ns.Professions) do
+	for _, rec in ipairs(p.recipes) do
+		if rec.status == "new" then
+			newRecipes = newRecipes + 1
+			recipe.entry = { recipe = rec, prof = p }
+			K.kinds.recipe.fill(recipe, recipe.entry)
+			if recipe.badge:IsShown() then flag("recipe " .. rec.name, recipe.badge:GetText()) end
+			recipe:GetScript("OnEnter")(recipe)
+			for _, line in ipairs(GameTooltip.lines) do flag("recipe tooltip " .. rec.name, line) end
+		end
+	end
+end
+local newQuests = 0
+for _, d in ipairs(ns.Dungeons) do
+	for _, q in ipairs(d.quests or {}) do
+		if q.new then
+			newQuests = newQuests + 1
+			flag("quest " .. q.name, K.QuestTag(q))
+		end
+	end
+end
+GameTooltip:Hide()
+check(newItems > 100 and newRecipes > 0 and newQuests > 0, "there are new items, recipes and quests to check",
+	newItems .. " items, " .. newRecipes .. " recipes, " .. newQuests .. " quests")
+check(#found == 0, "no New tag on any list, header, item, recipe, quest or tooltip", found[1])
 UI:Hide()
 end)()
 

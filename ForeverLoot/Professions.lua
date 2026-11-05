@@ -210,15 +210,9 @@ local function CreateRecipe(parent, width)
 	-- A star: what it makes is on your wishlist
 	r.wanted = Atlas(r, "OVERLAY", "auctionhouse-icon-favorite")
 	r.wanted:SetSize(13, 12)
-	r.wanted:SetPoint("LEFT", 2, 0)
+	r.wanted:SetPoint("LEFT", 4, 0)
 	r.wanted:Hide()
-	r.icon = r:CreateTexture(nil, "ARTWORK")
-	r.icon:SetSize(30, 30)
-	r.icon:SetPoint("LEFT", 18, 0)
-	r.border = r:CreateTexture(nil, "OVERLAY")
-	r.border:SetTexture("Interface\\Common\\WhiteIconFrame")
-	r.border:SetAllPoints(r.icon)
-	r.border:Hide()
+	K.ItemIcon(r, 28, 22)
 	r.src = Text(r, "GameFontHighlightSmall", "RIGHT")
 	r.src:SetPoint("RIGHT", r, "TOPRIGHT", -8, -13)
 	r.src:SetWidth(64)
@@ -229,11 +223,11 @@ local function CreateRecipe(parent, width)
 	r.type = Text(r, "GameFontHighlightSmall", "RIGHT")
 	r.type:SetPoint("RIGHT", r.skill, "LEFT", -10, 0)
 	SetTextColor(r.type, C.silver)
-	r.badge = Text(r, "GameFontHighlightSmall", "RIGHT")
-	r.badge:SetPoint("RIGHT", r.type, "LEFT", -8, 0)
+	r.badge = K.CreateBadge(r)
+	r.badge:SetPoint("RIGHT", r.type, "LEFT", -12, 0)
 	r.name = Text(r, "GameFontHighlight")
 	r.mats = Text(r, "GameFontHighlightSmall")
-	r.mats:SetPoint("LEFT", r, "TOPLEFT", 56, -28)
+	r.mats:SetPoint("LEFT", r, "TOPLEFT", 58, -28)
 	r.mats:SetPoint("RIGHT", r, "TOPRIGHT", -8, -28)
 	SetTextColor(r.mats, C.silver)
 
@@ -283,9 +277,7 @@ local function CreateRecipe(parent, width)
 			notes[#notes + 1] = { "The skill it needs isn't known yet.", C.silver }
 		end
 		notes[#notes + 1] = { HowToLearn(rec, prof), C.silver }
-		if rec.status == "new" then
-			notes[#notes + 1] = { "New in Forever.", C.green }
-		elseif rec.status == "changed" then
+		if rec.status == "changed" then
 			notes[#notes + 1] = { "Changed in Forever" .. (rec.changes and (": " .. table.concat(rec.changes, "; ")) or "") .. ".", C.blue }
 		end
 		if bundled then
@@ -336,16 +328,13 @@ local function FillRecipe(r, d)
 	local rec = d.recipe
 	r.itemID = rec.item
 	local name, quality, typeText, icon
-	r.border:Hide()
 	if rec.item then
 		name, quality, typeText, icon = ns.ItemDisplay(rec.item)
 		local qr, qg, qb = K.HexToRGB(ns.QUALITY_HEX[quality] or "ffffff")
 		r.name:SetTextColor(qr, qg, qb)
-		if quality >= 2 then
-			r.border:SetVertexColor(qr, qg, qb)
-			r.border:Show()
-		end
+		K.SetIconBorder(r.border, quality, qr, qg, qb)
 	else
+		K.SetIconBorder(r.border, nil)
 		name, typeText = rec.name, rec.slot and "Enchant" or ""
 		icon = rec.icon or "Interface\\Icons\\INV_Misc_QuestionMark"
 		SetTextColor(r.name, C.white)
@@ -359,16 +348,12 @@ local function FillRecipe(r, d)
 	r.src:SetText(rec.src)
 
 	r.wanted:SetShown(rec.item ~= nil and ns.Wishlist.IsWanted(rec.item))
-	local badge = (d.owned and K.BADGES.owned) or (rec.status == "new" and K.BADGES.new) or (rec.status == "changed" and CHANGED) or nil
+	local badge = (d.owned and K.BADGES.owned) or (rec.status == "changed" and CHANGED) or nil
 	r.name:ClearAllPoints()
-	r.name:SetPoint("LEFT", r, "TOPLEFT", 56, -13)
-	if badge then
-		r.badge:SetText(badge[1])
-		SetTextColor(r.badge, badge[2])
-		r.badge:Show()
-		r.name:SetPoint("RIGHT", r.badge, "LEFT", -6, 0)
+	r.name:SetPoint("LEFT", r, "TOPLEFT", 58, -13)
+	if K.SetBadge(r.badge, badge) then
+		r.name:SetPoint("RIGHT", r.badge, "LEFT", -12, 0)
 	else
-		r.badge:Hide()
 		r.name:SetPoint("RIGHT", r.type, "LEFT", -8, 0)
 	end
 	r.mats:SetText(MaterialsText(rec))
@@ -478,7 +463,7 @@ function Professions.ShowHeader(ui, h, p)
 	if mine then parts[#parts + 1] = "Your skill " .. mine.rank .. "/" .. mine.max end
 	h.meta:SetText(table.concat(parts, "   ·   "))
 	h.note:SetText("Forever's recipes, materials and sources from Wowhead (" .. (ns.PROFESSION_DATE or "") .. "). " ..
-		ns.Colorize(C.green, "New") .. " = added in Forever. " .. ns.Colorize(C.blue, "Changed") ..
+		ns.Colorize(C.blue, "Changed") ..
 		" = different from Classic. " ..
 		(mine and "Skill numbers are colored by your chance of a skill-up." or "Numbers are the skill each recipe needs."))
 end

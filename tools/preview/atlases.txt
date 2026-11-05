@@ -3,17 +3,23 @@
 # accepts these names, exactly as written, so a typo can't pass; preview.py checks each against the
 # client's own atlas table (from wago.tools) on every run.
 # Forever Loot's own rows and headers
-Professions_Recipe_Active 267 19
-Professions_Recipe_Hover 309 21
-Options_HorizontalDivider 630 1
-common-button-list-collapseExpand 64 28
-common-button-list-plus 13 13
-common-button-list-minus 13 4
 common-icon-checkmark 25 25
 common-icon-redx 25 25
 Waypoint-MapPin-Untracked 30 30
 Waypoint-MapPin-Tracked 30 30
 auctionhouse-icon-favorite 40 36
+# The window's uitools pieces: buttons, icons, the shadow
+uitools-button-background-default 28 28
+uitools-button-background-default-hover 28 28
+uitools-button-background-default-down 28 28
+uitools-icon-close 20 20
+uitools-icon-search 20 20
+uitools-icon-chevron-down 20 20
+uitools-icon-chevron-right 20 20
+uitools-icon-checkbox 20 20
+uitools-icon-checkmark 22 20
+uitools-icon-external-window 20 20
+uitools-window-background-shadow 94 94
 # PortraitFrameTemplate and its close button
 _UI-Frame-TopTileStreaks 256 43
 RedButton-Exit 32 32

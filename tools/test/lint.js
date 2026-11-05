@@ -20,7 +20,7 @@ const KNOWN = new Set(`
   GetSkillLineInfo GetSpellLink ChatEdit_InsertLink GetLootRollItemLink
   C_SkillInfo C_Spell ChatFrameUtil
   UnitClass UnitFactionGroup TooltipDataProcessor Enum ItemRefTooltip
-  GetQuestGreenRange QuestDifficultyColors StaticPopupDialogs StaticPopup_Show CLOSE
+  GetQuestGreenRange QuestDifficultyColors StaticPopupDialogs StaticPopup_Show CLOSE PixelUtil
   C_QuestLog UnitRace C_Map UiMapPoint C_SuperTrack TomTom C_Reputation FACTION_STANDING_LABEL
   ipairs pairs type tostring tonumber select math table string next error pcall
 `.split(/\s+/).filter(Boolean));

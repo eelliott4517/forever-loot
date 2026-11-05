@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.0
+
+- **A modern look.** The window is flat and dark now, in the slate blues of WoW: Forever's own "uitools" art, with thin edges and one gold accent. The tabs moved from the right edge to the title bar, which you drag to move the window. The search box, the Slot and Type menus and the My class and Hide Classic filters sit on flat fields; the filters are chips that light up gold when they're on.
+- Bosses, quests, wings and groups are cards with a chevron that points down when they're open, and an open card gets a gold edge. The open dungeon, raid, set or profession has a gold bar in the list.
+- Item icons have a thin frame in the item's quality color, and the Classic, Owned, Seen and Changed tags sit on small pills.
+- Slim scroll bars without arrows, a round Wowhead button with a link icon, and a close button that turns red under the mouse.
+- **No more New tags.** Forever is live, so the list, the headers, item and recipe rows, quests and tooltips no longer mark what Forever added. The datamined drops no site has tied to a boss are in a section called "Boss not confirmed".
+- The window is 20 points taller, for the title bar.
+
 ## 1.8.0
 
 - **Works with the live WoW: Forever client** (1.60.1.70790). The Windows installer now puts the addon in `_forever_`, the live client's folder, instead of the old beta folder `_classic_beta_`. Every API and event the addon uses was checked against the live client's UI, and none of them changed.

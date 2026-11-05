@@ -35,15 +35,13 @@ end
 ----------------------------------------------------------------------
 -- Set facts
 ----------------------------------------------------------------------
-local function Flag(st)
-	local new, classic = false, true
+-- Whether Forever's data has none of the set's pieces
+local function AllClassic(st)
 	for _, id in ipairs(st.pieces) do
 		local e = ns.Items[id]
-		local flag = e and e[4]
-		if flag == 1 or flag == 3 then new = true end
-		if flag ~= 2 then classic = false end
+		if not (e and e[4] == 2) then return false end
 	end
-	return new, classic
+	return true
 end
 
 local function ForClass(st, class)
@@ -133,10 +131,7 @@ end
 local function Visible(st)
 	local f = K.Filters()
 	if f.myClass and not ForMe(st) then return false end
-	if f.hideClassic then
-		local _, classic = Flag(st)
-		if classic then return false end
-	end
+	if f.hideClassic and AllClassic(st) then return false end
 	return true
 end
 
@@ -159,7 +154,7 @@ local Sets = {
 		"Try a set name like valor, a slot like gloves, or a stat like agility.",
 	},
 	footer = "Click: Wowhead link    Shift-click: link in chat    Ctrl-click: preview    Right-click: wishlist    " ..
-		ns.Colorize(C.gold, "Gold") .. ": your class can wear it",
+		ns.Colorize(C.accent, "Gold") .. ": your class can wear it",
 	filters = true,
 }
 
@@ -175,13 +170,10 @@ function Sets.Entries()
 	return list
 end
 
--- New when Forever added a piece; Classic when Forever's data has none of them
+-- Classic when Forever's data has none of its pieces
 function Sets.RowInfo(st)
-	local new, classic = Flag(st)
 	local tag, color = "", nil
-	if new then
-		tag = "New"
-	elseif classic then
+	if AllClassic(st) then
 		tag, color = "Classic", C.grey
 	end
 	return st.name, st.level and tostring(st.level) or "", tag, ForMe(st), color
@@ -205,24 +197,19 @@ function Sets.Remember(st)
 end
 
 function Sets.WowheadLink(st)
-	local new, classic = Flag(st)
-	if classic then return st.name .. " on Wowhead Classic", ns.WOWHEAD_CLASSIC .. "item-set=" .. st.id end
+	if AllClassic(st) then return st.name .. " on Wowhead Classic", ns.WOWHEAD_CLASSIC .. "item-set=" .. st.id end
 	return st.name .. " on Wowhead", ns.WOWHEAD .. "item-set=" .. st.id
 end
 
 function Sets.ShowHeader(ui, h, st)
-	local new, classic = Flag(st)
 	h.name:SetText(st.name)
-	h.badge.text:SetText("New in Forever")
-	h.badge:SetWidth(h.badge.text:GetStringWidth() + 12)
-	h.badge:SetShown(new)
 	local parts = { Count(#st.pieces, "piece") }
 	if st.level then parts[#parts + 1] = "Level " .. st.level end
 	parts[#parts + 1] = ArmorText(st)
 	local classes = ClassText(st)
 	if classes then parts[#parts + 1] = classes end
 	h.meta:SetText(table.concat(parts, "   ·   "))
-	if classic then
+	if AllClassic(st) then
 		h.note:SetText("Classic set: Wowhead's Forever database has none of these pieces, so Forever may have replaced it. " ..
 			"Bonuses and sources are Classic's.")
 	else

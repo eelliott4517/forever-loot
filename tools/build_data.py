@@ -778,7 +778,7 @@ def main():
             if el:
                 used.update(el)
                 hint_lua = ", ".join(f"[{i}] = {lua_str(hints[i])}" for i in el if i in hints)
-                L.append('\t\t\t{ name = "New in Forever, boss not confirmed", unconfirmed = true, '
+                L.append('\t\t\t{ name = "Boss not confirmed", unconfirmed = true, '
                          'tag = "Datamined on Wowhead", loot = ' + id_list(el)
                          + (f", hints = {{ {hint_lua} }}" if hint_lua else "") + " },")
             L.append("\t\t},")

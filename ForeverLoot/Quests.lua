@@ -119,9 +119,11 @@ end
 -- to open it (shift-click opens or closes them all).
 local function CreateQuestHeader(parent, width)
 	local w = K.kinds.wing.create(parent, width)
+	-- the status mark comes after the card's chevron
 	w.status = w:CreateTexture(nil, "ARTWORK")
 	w.status:SetSize(16, 16)
-	w.status:SetPoint("LEFT", 8, 0)
+	w.status:SetPoint("LEFT", K.TEXT_X - 2, 0)
+	w.statusIcon = true
 	w.text:ClearAllPoints()
 	w.text:SetPoint("LEFT", w.status, "RIGHT", 6, 0)
 	w.text:SetPoint("RIGHT", w.levels, "LEFT", -10, 0)
@@ -266,9 +268,6 @@ local LEGEND = "|TInterface\\GossipFrame\\AvailableQuestIcon:0|t you can take it
 
 function Quests.ShowHeader(ui, h, d)
 	h.name:SetText(d.name)
-	h.badge.text:SetText("New in Forever")
-	h.badge:SetWidth(h.badge.text:GetStringWidth() + 12)
-	h.badge:SetShown(d.isNew and true or false)
 	if d.isTodo then
 		local all = AllTodo()
 		local n, places, easy = all.total, all.places, all.easy
