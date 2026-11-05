@@ -211,7 +211,9 @@ MOCK.FONTS = {}
 for _, name in ipairs({ "GameFontNormal", "GameFontNormalLeft", "GameFontNormalSmall", "GameFontNormalLarge", "GameFontNormalHuge",
 	"GameFontHighlight", "GameFontHighlightSmall", "GameFontDisable", "GameFontDisableSmall", "GameFontGreenSmall",
 	"ChatFontNormal", "GameTooltipHeaderText", "GameTooltipText", "GameTooltipTextSmall",
-	"GameFontNormalMed1", "GameFontHighlightHuge", "GameFontHighlightSmall2" }) do
+	"GameFontNormalMed1", "GameFontHighlightHuge", "GameFontHighlightSmall2",
+	"SystemFont_Small", "SystemFont_Small2", "SystemFont_Med1", "SystemFont_Med2", "SystemFont_Med3", "SystemFont_Large",
+	"SystemFont_Huge2" }) do
 	MOCK.FONTS[name] = true
 	_G[name] = setmetatable({ _fontName = name }, FontObject)
 end

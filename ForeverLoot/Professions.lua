@@ -212,7 +212,7 @@ local function CreateRecipe(parent, width)
 	r.wanted:SetSize(13, 12)
 	r.wanted:SetPoint("LEFT", 4, 0)
 	r.wanted:Hide()
-	K.ItemIcon(r, 28, 22)
+	K.ItemIcon(r, 28, 24)
 	r.src = Text(r, "GameFontHighlightSmall", "RIGHT")
 	r.src:SetPoint("RIGHT", r, "TOPRIGHT", -8, -13)
 	r.src:SetWidth(64)
@@ -226,8 +226,9 @@ local function CreateRecipe(parent, width)
 	r.badge = K.CreateBadge(r)
 	r.badge:SetPoint("RIGHT", r.type, "LEFT", -12, 0)
 	r.name = Text(r, "GameFontHighlight")
-	r.mats = Text(r, "GameFontHighlightSmall")
-	r.mats:SetPoint("LEFT", r, "TOPLEFT", 58, -28)
+	-- the materials in the spellbook's smallest font, so most lists fit on one line
+	r.mats = Text(r, "SystemFont_Small")
+	r.mats:SetPoint("LEFT", r, "TOPLEFT", 62, -28)
 	r.mats:SetPoint("RIGHT", r, "TOPRIGHT", -8, -28)
 	SetTextColor(r.mats, C.silver)
 
@@ -331,10 +332,8 @@ local function FillRecipe(r, d)
 	if rec.item then
 		name, quality, typeText, icon = ns.ItemDisplay(rec.item)
 		local qr, qg, qb = K.HexToRGB(ns.QUALITY_HEX[quality] or "ffffff")
-		r.name:SetTextColor(qr, qg, qb)
-		K.SetIconBorder(r.border, quality, qr, qg, qb)
+		SetTextColor(r.name, { qr, qg, qb })
 	else
-		K.SetIconBorder(r.border, nil)
 		name, typeText = rec.name, rec.slot and "Enchant" or ""
 		icon = rec.icon or "Interface\\Icons\\INV_Misc_QuestionMark"
 		SetTextColor(r.name, C.white)
@@ -350,7 +349,7 @@ local function FillRecipe(r, d)
 	r.wanted:SetShown(rec.item ~= nil and ns.Wishlist.IsWanted(rec.item))
 	local badge = (d.owned and K.BADGES.owned) or (rec.status == "changed" and CHANGED) or nil
 	r.name:ClearAllPoints()
-	r.name:SetPoint("LEFT", r, "TOPLEFT", 58, -13)
+	r.name:SetPoint("LEFT", r, "TOPLEFT", 62, -13)
 	if K.SetBadge(r.badge, badge) then
 		r.name:SetPoint("RIGHT", r.badge, "LEFT", -12, 0)
 	else

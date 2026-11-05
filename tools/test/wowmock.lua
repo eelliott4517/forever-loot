@@ -251,6 +251,8 @@ function CreateFont(name) local f = newFont(12); _G[name] = f; return f end
 GameFontNormal, GameFontNormalSmall, GameFontNormalLarge, GameFontNormalHuge = newFont(12), newFont(10), newFont(16), newFont(20)
 GameFontHighlight, GameFontHighlightSmall, ChatFontNormal = newFont(12), newFont(10), newFont(14)
 GameFontNormalMed1, GameFontHighlightHuge, GameFontHighlightSmall2 = newFont(13), newFont(20), newFont(11)
+SystemFont_Small, SystemFont_Small2, SystemFont_Med1, SystemFont_Med2 = newFont(10), newFont(11), newFont(12), newFont(13)
+SystemFont_Med3, SystemFont_Large, SystemFont_Huge2 = newFont(14), newFont(16), newFont(24)
 
 ----------------------------------------------------------------------
 -- Globals

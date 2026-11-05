@@ -119,10 +119,13 @@ end
 -- to open it (shift-click opens or closes them all).
 local function CreateQuestHeader(parent, width)
 	local w = K.kinds.wing.create(parent, width)
-	-- the status mark comes after the card's chevron
+	-- a quest's name is smaller than a section's, and ruled lighter
+	w.text:SetFontObject(K.PageFont("GameFontHighlight"))
+	w.rule:SetAlpha(0.5)
+	-- the status mark comes after the heading's chevron
 	w.status = w:CreateTexture(nil, "ARTWORK")
 	w.status:SetSize(16, 16)
-	w.status:SetPoint("LEFT", K.TEXT_X - 2, 0)
+	w.status:SetPoint("LEFT", K.TEXT_X - 2, 1)
 	w.statusIcon = true
 	w.text:ClearAllPoints()
 	w.text:SetPoint("LEFT", w.status, "RIGHT", 6, 0)

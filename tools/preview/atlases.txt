@@ -8,18 +8,21 @@ common-icon-redx 25 25
 Waypoint-MapPin-Untracked 30 30
 Waypoint-MapPin-Tracked 30 30
 auctionhouse-icon-favorite 40 36
-# The window's uitools pieces: buttons, icons, the shadow
-uitools-button-background-default 28 28
-uitools-button-background-default-hover 28 28
-uitools-button-background-default-down 28 28
-uitools-icon-close 20 20
-uitools-icon-search 20 20
+# The spellbook's pages, divider, heading light and spell button frame, the tabs under it, and
+# the uitools chevrons on section headings
+spellbook-page-left-c60 810 682
+spellbook-page-right-c60 810 682
+spellbook-divider 657 11
+spellbook-list-backplate 316 106
+spellbook-item-iconframe 138 131
+uiframe-activetab-left 35 42
+_uiframe-activetab-center 1 42
+uiframe-activetab-right 37 42
+uiframe-tab-left 35 36
+_uiframe-tab-center 1 36
+uiframe-tab-right 37 36
 uitools-icon-chevron-down 20 20
 uitools-icon-chevron-right 20 20
-uitools-icon-checkbox 20 20
-uitools-icon-checkmark 22 20
-uitools-icon-external-window 20 20
-uitools-window-background-shadow 94 94
 # PortraitFrameTemplate and its close button
 _UI-Frame-TopTileStreaks 256 43
 RedButton-Exit 32 32

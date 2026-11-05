@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.0
+
+- **The spellbook look.** The window now looks like WoW: Forever's spellbook: the game's portrait frame around the spellbook's own two parchment pages. The list is on the left page, and the open dungeon, raid, set, profession or search is on the right.
+- Text is in the spellbook's dark inks (its own SPELLBOOK_FONT_COLOR for body text) in its shadowless fonts. Item qualities, level and quest colors and the Classic, Owned, Seen and Changed tags keep their hues as darker inks, so they read on parchment. Tooltips stay the game's own.
+- Bosses, wings, groups and quests are headings ruled with the spellbook's divider, and the dungeon's or set's name is as large as the spellbook's headings. Item and recipe icons sit in the spellbook's spell button frames. The open entry in the list gets the soft light the spellbook puts behind its headings.
+- The search box, the Slot and Type menus and the My class and Hide Classic checkboxes are the game's own again, along the dark band at the top of the pages, and the tabs hang below the window like the spellbook's.
+- The window is 960 by 640.
+
 ## 1.9.0
 
 - **A modern look.** The window is flat and dark now, in the slate blues of WoW: Forever's own "uitools" art, with thin edges and one gold accent. The tabs moved from the right edge to the title bar, which you drag to move the window. The search box, the Slot and Type menus and the My class and Hide Classic filters sit on flat fields; the filters are chips that light up gold when they're on.

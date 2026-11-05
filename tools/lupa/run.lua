@@ -312,7 +312,9 @@ for _, e in ipairs(entries("recipe")) do if e.data.recipe.skill and e.data.recip
 UI.loot:ScrollTo(far.y)
 local farRow
 for _, r in ipairs(painted("recipe")) do if r.entry == far.data then farRow = r end end
-check(farRow and farRow.skill._textColor[1] == ns.COLORS.red[1] and farRow.skill._textColor[2] == ns.COLORS.red[2], "recipes above your skill show red")
+-- (the page draws each color as an ink of the same hue)
+local redInk = ns.UIKit.Ink(ns.COLORS.red)
+check(farRow and farRow.skill._textColor[1] == redInk[1] and farRow.skill._textColor[2] == redInk[2], "recipes above your skill show red")
 local grey
 for _, e in ipairs(entries("recipe")) do
 	local cl = e.data.recipe.colors
@@ -321,7 +323,7 @@ end
 UI.loot:ScrollTo(grey.y)
 local greyOk = false
 for _, r in ipairs(painted("recipe")) do
-	if r.entry == grey.data and r.skill._textColor[1] == 0.5 then greyOk = true end
+	if r.entry == grey.data and r.skill._textColor[1] == ns.UIKit.Ink({ 0.5, 0.5, 0.5 })[1] then greyOk = true end
 end
 check(greyOk, "recipes you've outgrown show grey")
 
@@ -625,7 +627,7 @@ check(#listRows() == #ns.Raids and UI.listLabel:GetText() == "Raids" and UI.list
 check(listRows()[1].levels:GetText() == tostring(ns.Raids[1].size), "raid rows show the raid size", listRows()[1].levels:GetText())
 local classicRow
 for _, r in ipairs(listRows()) do if r.entry.status == "classic" then classicRow = r break end end
-check(classicRow and classicRow.tag:GetText() == "Classic" and classicRow.tagColor == nil and classicRow.tag._textColor[1] == ns.COLORS.grey[1], "Classic raids are tagged Classic in grey")
+check(classicRow and classicRow.tag:GetText() == "Classic" and classicRow.tagColor == nil and classicRow.tag._textColor[1] == ns.UIKit.Ink(ns.COLORS.grey)[1], "Classic raids are tagged Classic in grey")
 check(UI.current == ns.Raids[1], "below 60 it opens on the first raid", UI.current and UI.current.key)
 check(UI.toggles.myClass:IsShown() and UI.toggles.hideClassic:IsShown(), "the loot filters show on the Raids tab")
 local naxx = ns.DungeonByKey.NAXX

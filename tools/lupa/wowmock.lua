@@ -221,7 +221,8 @@ function FontObject:SetTextColor() end
 function CreateFont(name) local f = setmetatable({ _name = name }, FontObject); _G[name] = f; return f end
 for _, n in ipairs({ "GameFontNormal", "GameFontNormalSmall", "GameFontNormalLarge", "GameFontNormalHuge",
 	"GameFontHighlight", "GameFontHighlightSmall", "ChatFontNormal", "GameFontNormalMed1", "GameFontHighlightHuge",
-	"GameFontHighlightSmall2" }) do
+	"GameFontHighlightSmall2", "SystemFont_Small", "SystemFont_Small2", "SystemFont_Med1", "SystemFont_Med2", "SystemFont_Med3",
+	"SystemFont_Large", "SystemFont_Huge2" }) do
 	local f = CreateFont(n)
 	f:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 end
