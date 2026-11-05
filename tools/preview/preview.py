@@ -19,6 +19,11 @@ Scenarios (all by default), each for an Alliance Human Rogue at level 20 who has
   search           the Dungeons tab searching "gloves" with My class on, its first two groups open
   professions      the Professions tab on Leatherworking, its first two groups open
   sets             the Sets tab on its first set, every section open
+  dungeons-item    dungeons-bosses with the mouse over Rockslicer, its tooltip showing
+  raids            the Raids tab on Molten Core, its first boss open, the mouse over its first epic
+  professions-item professions with the mouse over the second recipe
+  sets-item        sets with the mouse over the first piece
+  wishlist         the Wishlist tab with five items from two dungeons on it, one of them in the bags
 
 Each is written to tools/preview/preview-<scenario>.png: the 880 x 620 window with its shadow
 (and the tooltip), at --scale pixels per UI unit (2 by default; 1 is the game at UI scale 1). Each run
@@ -39,7 +44,8 @@ sys.path.insert(0, HERE)
 import art  # noqa: E402
 
 TOOLS = os.path.dirname(HERE)
-SCENARIOS = ["quests-dm", "quests-todo", "dungeons-dm", "quests-tooltip", "dungeons-bosses", "search", "professions", "sets"]
+SCENARIOS = ["quests-dm", "quests-todo", "dungeons-dm", "quests-tooltip", "dungeons-bosses", "search", "professions", "sets",
+             "dungeons-item", "raids", "professions-item", "sets-item", "wishlist"]
 S = 2  # pixels per UI unit (--scale)
 
 # GlobalColor (1.60.1.70205): NORMAL_FONT_COLOR FFD200, DISABLED_FONT_COLOR 808080, TOOLTIP_DEFAULT_BACKGROUND_COLOR 171730
@@ -252,6 +258,29 @@ local function Has(id)
 	for _, s in ipairs(UI.sectionIds or {}) do if s == id then return true end end
 	return false
 end
+local function OpenTab(key)
+	for _, tab in ipairs(UI.tabs) do if tab.key == key then tab:Click() end end
+end
+local function ItemNamed(name)
+	for id in pairs(ns.Items) do if (ns.ItemDisplay(id)) == name then return id end end
+	error("no item named " .. name)
+end
+-- the mouse over the first shown row of a kind that passes the test
+local function HoverRow(kind, test)
+	for i = 1, UI.used[kind] or 0 do
+		local row = UI.pools[kind][i]
+		if row:IsShown() and test(row) then hovered = row; break end
+	end
+	assert(hovered, "no " .. kind .. " row to hover")
+	MOCK.Hover(hovered)
+end
+local function OpenFirstBoss(entry)
+	local first = entry.bosses[1]
+	local id = "d:" .. entry.key .. ":b:" .. (first.wing and (first.wing .. ":") or "") .. first.name
+	assert(Has(id), "no section " .. id .. " for the first boss")
+	UI.sections[id] = true
+	UI:Refresh()
+end
 if SCENARIO == "quests-dm" or SCENARIO == "quests-tooltip" then
 	UI:OpenQuest(DM, 166)
 elseif SCENARIO == "quests-todo" then
@@ -270,13 +299,28 @@ elseif SCENARIO == "dungeons-dm" then
 	for _, e in ipairs(UI.entries) do
 		if e.data and e.data.id == "d:DM:quests" then UI.loot:ScrollTo(e.y) end
 	end
-elseif SCENARIO == "dungeons-bosses" then
+elseif SCENARIO == "dungeons-bosses" or SCENARIO == "dungeons-item" then
 	-- every boss closed but the first, so the closed headers show their item counts
 	UI:Select(DM)
-	local first = DM.bosses[1]
-	local id = "d:DM:b:" .. (first.wing and (first.wing .. ":") or "") .. first.name
-	assert(Has(id), "no section " .. id .. " for the first boss")
-	UI.sections[id] = true
+	OpenFirstBoss(DM)
+	if SCENARIO == "dungeons-item" then
+		local id = ItemNamed("Rockslicer")
+		HoverRow("item", function(r) return r.itemID == id end)
+	end
+elseif SCENARIO == "raids" then
+	OpenTab("raids")
+	local MC = ns.DungeonByKey.MC
+	UI:Select(MC)
+	OpenFirstBoss(MC)
+	HoverRow("item", function(r) return select(2, ns.ItemDisplay(r.itemID)) == 4 end)
+elseif SCENARIO == "wishlist" then
+	for _, name in ipairs({ "Dull Sawblade", "Buzzer Blade", "Buzz Saw", "Bloodmage Mantle", "Orb of the Forgotten Seer" }) do
+		ns.Wishlist.Toggle(ItemNamed(name))
+	end
+	MOCK.bags[ItemNamed("Buzzer Blade")] = 1
+	OpenTab("wishlist")
+	UI.listRows[1]:Click()
+	for _, id in ipairs(UI.sectionIds) do UI.sections[id] = true end
 	UI:Refresh()
 elseif SCENARIO == "search" then
 	UI:Select(DM)
@@ -284,15 +328,22 @@ elseif SCENARIO == "search" then
 	UI.searchBox:SetText("gloves")
 	for i = 1, 2 do if UI.sectionIds[i] then UI.searchSections[UI.sectionIds[i]] = true end end
 	UI:Refresh()
-elseif SCENARIO == "professions" or SCENARIO == "sets" then
-	for _, tab in ipairs(UI.tabs) do if tab.key == SCENARIO then tab:Click() end end
-	if SCENARIO == "professions" then
+elseif SCENARIO:match("^professions") or SCENARIO:match("^sets") then
+	local key = SCENARIO:match("^(%a+)")
+	OpenTab(key)
+	if key == "professions" then
 		for _, p in ipairs(ns.Professions) do if p.name == "Leatherworking" then UI:Select(p) end end
 	end
 	local ids = {}
-	for i = 1, (SCENARIO == "sets" and #UI.sectionIds or 2) do ids[#ids + 1] = UI.sectionIds[i] end
+	for i = 1, (key == "sets" and #UI.sectionIds or 2) do ids[#ids + 1] = UI.sectionIds[i] end
 	for _, id in ipairs(ids) do UI.sections[id] = true end
 	UI:Refresh()
+	if SCENARIO == "professions-item" then
+		local n = 0
+		HoverRow("recipe", function() n = n + 1; return n == 2 end)
+	elseif SCENARIO == "sets-item" then
+		HoverRow("item", function() return true end)
+	end
 else
 	error("no scenario " .. tostring(SCENARIO))
 end
