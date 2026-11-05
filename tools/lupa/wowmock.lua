@@ -84,8 +84,29 @@ function Frame:SetMovable(on) end
 function Frame:StartMoving() end
 function Frame:StopMovingOrSizing() end
 function Frame:RegisterForDrag() end
-function Frame:SetFrameStrata(s) assert(({ BACKGROUND = 1, LOW = 1, MEDIUM = 1, HIGH = 1, DIALOG = 1, FULLSCREEN = 1, FULLSCREEN_DIALOG = 1, TOOLTIP = 1 })[s], "bad strata " .. tostring(s)); self._strata = s end
-function Frame:GetFrameStrata() return self._strata or (self._parent and self._parent:GetFrameStrata()) or "MEDIUM" end
+-- Frame strata as build 70291 has it: Blizzard's own code can give a frame a secret strata (the
+-- FrameStrata secret aspect, MOCK.SecretStrata here), and GetFrameStrata then returns a secret, for
+-- that frame and for every frame that takes its strata from it. Addon code can't pass a secret to
+-- SetFrameStrata. MOCK.strataReads counts who read a strata, by chunk ("@UI.lua" for the addon's).
+local STRATA = { BACKGROUND = 1, LOW = 1, MEDIUM = 1, HIGH = 1, DIALOG = 1, FULLSCREEN = 1, FULLSCREEN_DIALOG = 1, TOOLTIP = 1 }
+function Frame:SetFrameStrata(s)
+	assert(not issecretvalue(s), "SetFrameStrata: addon code can't pass a secret")
+	assert(STRATA[s], "bad strata " .. tostring(s))
+	self._strata = s
+end
+function MOCK.SecretStrata(f) f._strataSecret = true end
+MOCK.strataReads = {}
+function Frame:GetFrameStrata()
+	local who = debug.getinfo(2, "S").source
+	MOCK.strataReads[who] = (MOCK.strataReads[who] or 0) + 1
+	local f = self
+	while f do
+		if f._strataSecret then return MOCK.Secret() end
+		if f._strata then return f._strata end
+		f = f._parent
+	end
+	return "MEDIUM"
+end
 function Frame:SetFrameLevel(l) self._level = l end
 function Frame:GetFrameLevel() return self._level or ((self._parent and self._parent.GetFrameLevel and self._parent:GetFrameLevel() or 0) + 1) end
 function Frame:SetToplevel() end
@@ -369,6 +390,14 @@ C_QuestLog = {
 	end,
 	IsOnQuest = function(id) assert(type(id) == "number", "IsOnQuest needs a quest id"); return MOCK.questLog[id] ~= nil end,
 	IsComplete = function(id) assert(type(id) == "number", "IsComplete needs a quest id"); return MOCK.questLog[id] == "complete" end,
+	-- How many levels below yours a quest can be before it's grey (what Forever's nameplates use):
+	-- Classic's rule here, unless a test sets MOCK.trivialRange
+	GetTrivialRange = function()
+		if MOCK.trivialRange then return MOCK.trivialRange end
+		local l = MOCK.level
+		if l <= 5 then return 5 elseif l <= 39 then return math.floor(l / 10) + 5 end
+		return math.floor(l / 5) + 1
+	end,
 }
 MOCK.race = { "Human", "Human", 1 }
 function UnitRace(unit) assert(unit == "player", "UnitRace(" .. tostring(unit) .. ")"); return unpack(MOCK.race) end

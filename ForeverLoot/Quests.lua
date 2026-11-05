@@ -32,7 +32,7 @@ local function Trivial(q)
 end
 
 -- Order on a page: what you can do first, then what's coming, then what's behind you
-local ORDER = { active = 1, ready = 2, locked = 3, level = 4, done = 5, closed = 6 }
+local ORDER = { active = 1, ready = 2, locked = 3, level = 4, rep = 4, skill = 4, special = 4, done = 5, closed = 6 }
 
 -- An instance's quests for your faction, race and class, with each one's status
 local function QuestsOf(d)
@@ -451,6 +451,10 @@ local pending = false
 local events = CreateFrame("Frame")
 for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP" }) do
 	events:RegisterEvent(event)
+end
+-- reputation and profession skill open quests too ("Honored with Argent Dawn", "Blacksmithing 275")
+for _, event in ipairs({ "UPDATE_FACTION", "SKILL_LINES_CHANGED" }) do
+	pcall(events.RegisterEvent, events, event)
 end
 events:SetScript("OnEvent", function()
 	if pending or not (UI.frame and UI.frame:IsShown()) then return end

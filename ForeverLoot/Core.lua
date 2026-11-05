@@ -201,6 +201,12 @@ local function ForMe(info)
 end
 ns.QuestForMe = function(id) return ForMe(ns.QuestInfo and ns.QuestInfo[id]) end
 
+-- A dungeon's quest entry your faction (the entry's own side), race and class can take, so its
+-- rewards count as yours: in searches, the wishlist, item tooltips and set pieces, as on the tabs
+function ns.QuestOpenToMe(q)
+	return ns.QuestForPlayer(q) and (q.id == nil or ns.QuestForMe(q.id))
+end
+
 -- Your reputation with a faction (absolute: 0 is the start of Neutral), or nil if you've never met it
 function ns.Reputation(factionID)
 	local d = C_Reputation and C_Reputation.GetFactionDataByID and C_Reputation.GetFactionDataByID(factionID)
@@ -365,6 +371,12 @@ function ns.QuestNextSteps(id, q)
 		local status, complete = ns.QuestStatus(step, i == #steps and q or nil)
 		if status == "ready" or status == "active" then
 			out[#out + 1] = { id = step, status = status, complete = complete }
+		elseif status == "locked" and type(complete) == "number" then
+			-- its optional lead-in is in your log: turning that in is the step
+			local leadStatus, leadComplete = ns.QuestStatus(complete)
+			if leadStatus == "active" then
+				out[#out + 1] = { id = complete, status = leadStatus, complete = leadComplete }
+			end
 		end
 	end
 	return out

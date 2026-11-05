@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.8.0
+
+- **Works with the live WoW: Forever client** (1.60.1.70790). The Windows installer now puts the addon in `_forever_`, the live client's folder, instead of the old beta folder `_classic_beta_`. Every API and event the addon uses was checked against the live client's UI, and none of them changed.
+- **City of Dalaran has its loot:** three drops each from Atrexis the Grave Knight, the Arcane Anomaly, the Arcanic Enigma, the Unstable Sentinel, the Mana Devourer, the Fel Ancient, Lyn the Ignored and the Shade of the Archmage.
+- **More boss drops** from wowtbc.gg's November 4 tables, in Wailing Caverns, Shadowfang Keep, Gnomeregan, Scarlet Monastery, Uldaman, Maraudon, Zul'Farrak, Stratholme, the Sunken Temple, Blackrock Depths, Dire Maul and others, among them the blueprints bosses drop (Fermenter, Greenhouse, Rock Garden, Field Guide, Tanning Rack, Fishing Rack and more). Some drops moved to the boss that really has them (Dire Maul's Guard Fengus and Mizzle, Stratholme's Balnazzar).
+- New quest: Destruction in Deadmines. Quests show the rewards Forever changed, such as The Crone of the Kraul's Quilboar Blaster and Solution to Doom's Doomcaller's Pants.
+- Item stats, quality and icons were refreshed from Wowhead's live Forever database: 124 items changed quality, 46 Classic items are confirmed in Forever, and 123 Classic drops Wowhead no longer lists for Forever are tagged CLASSIC. Datamined Zul'Farrak and Razorfen Downs items that left the game are gone.
+- The dungeons that opened at launch (The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and Shaper's Terrace) say no site has their loot yet. Kill their bosses and loot them to record drops.
+- Left out: The Heart of the Void, a Season of Discovery quest left in Forever's data with no giver, objectives or rewards, and a wrong Doomcaller's Pants (Season of Discovery's level 60 epic) that wowtbc.gg listed.
+- Quest rewards count as yours only when your faction, race and class can take the quest: in searches, the Wishlist, item tooltips, set pieces and each dungeon's Quests section, as on the Quests tab.
+- With a quest's optional lead-in in your log, turning that in shows as the next step.
+- Quest colors use the game's own grey range (Forever's `C_QuestLog.GetTrivialRange`) instead of Classic's rule.
+- The Quests tab updates when your reputation or a profession skill changes, and sorts quests waiting on either with the other locked ones.
+- Rare and epic loot you pick up is recorded even before the game has sent the item's data: Forever's item links carry their quality.
+- The Raids tab has the Other filter (Recipe, Other) like the Dungeons tab.
+- Filters that hide the open entry (a set your class can't wear) open the tab's first pick instead of leaving a blank page. A search of only punctuation isn't a search, and clearing a search on a tab first opened mid-search goes back to its first pick.
+- The header shows what changed while the window was closed, and leaving a dungeon makes the window jump to it again on your next visit.
+- Messages no longer mention the beta server.
+
 ## 1.7.0
 
 - **Everything starts collapsed and opens on click.** Bosses are headers now: click one for its drops, and right-click it for its Wowhead link. The same goes for each quest on the Dungeons and Raids tabs (click for where it starts and its rewards), and for search results, the Wishlist's groups, a set's bonuses and pieces, a profession's groups and the Quests tab. Closed headers say how many items or quests they hold. Shift-click any header to open or close every section, including the bosses inside wings.

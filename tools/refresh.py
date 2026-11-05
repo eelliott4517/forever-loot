@@ -2,7 +2,7 @@
 
     python3 tools/refresh.py                  sites -> Data.lua -> tests -> release zips
     python3 tools/refresh.py --skip-wowhead   rebuild from the Wowhead scrape already in tools/raw
-    python3 tools/refresh.py --install        also copy the addon into the WoW: Forever beta
+    python3 tools/refresh.py --install        also copy the addon into WoW: Forever
 
 Steps
   1. wowtbc.gg loot tables and dungeon quests (fetched directly).
@@ -213,7 +213,7 @@ def main():
     p.add_argument("--item-age", type=int, default=14, metavar="DAYS",
                    help="re-check item tooltips older than this many days (default 14)")
     p.add_argument("--script-only", action="store_true", help="just write tools/scrape_console.js")
-    p.add_argument("--install", action="store_true", help="copy the addon into the WoW: Forever beta when done")
+    p.add_argument("--install", action="store_true", help="copy the addon into WoW: Forever when done")
     args = p.parse_args()
 
     if args.script_only:

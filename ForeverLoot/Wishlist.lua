@@ -69,7 +69,7 @@ local function Gather(filter)
 		end
 		-- Quest rewards, for quests your faction can take
 		for _, q in ipairs(d.quests or {}) do
-			for _, list in ipairs(ns.QuestForPlayer(q) and { q.choices or {}, q.rewards or {} } or {}) do
+			for _, list in ipairs(ns.QuestOpenToMe(q) and { q.choices or {}, q.rewards or {} } or {}) do
 				for _, itemID in ipairs(list) do
 					if wanted[itemID] and not here[itemID] then
 						placed[itemID], here[itemID] = true, true

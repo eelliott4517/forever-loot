@@ -289,7 +289,7 @@ local function CreateRecipe(parent, width)
 			notes[#notes + 1] = { "Changed in Forever" .. (rec.changes and (": " .. table.concat(rec.changes, "; ")) or "") .. ".", C.blue }
 		end
 		if bundled then
-			notes[#notes + 1] = { "The beta server isn't sending this item's data, so these stats come from Wowhead.", C.silver }
+			notes[#notes + 1] = { "The server isn't sending this item's data, so these stats come from Wowhead.", C.silver }
 		end
 		if d.owned then notes[#notes + 1] = { "You have it: it's in your bags, bank or worn.", C.blue } end
 		if rec.item then notes[#notes + 1] = K.WishlistNote(rec.item) end

@@ -397,6 +397,12 @@ C_QuestLog = {
 	IsQuestFlaggedCompleted = function(id) assert(type(id) == "number", "IsQuestFlaggedCompleted needs a quest id"); return MOCK.questsDone[id] == true end,
 	IsOnQuest = function(id) assert(type(id) == "number", "IsOnQuest needs a quest id"); return MOCK.questLog[id] ~= nil end,
 	IsComplete = function(id) assert(type(id) == "number", "IsComplete needs a quest id"); return MOCK.questLog[id] == "complete" end,
+	-- How many levels below yours a quest can be before it's grey (Classic's rule)
+	GetTrivialRange = function()
+		local l = MOCK.level
+		if l <= 5 then return 5 elseif l <= 39 then return math.floor(l / 10) + 5 end
+		return math.floor(l / 5) + 1
+	end,
 }
 MOCK.race = { "Human", "Human", 1 }
 function UnitRace(unit) assert(unit == "player"); return unpack(MOCK.race) end

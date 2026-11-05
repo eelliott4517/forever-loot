@@ -110,7 +110,7 @@ local KIND_ORDER = { boss = 1, quest = 2, trash = 3, unconfirmed = 4, craft = 5 
 local function PieceSource(itemID)
 	local sources = {}
 	for _, s in ipairs(ns.SourcesOf(itemID)) do
-		if not (s.kind == "quest" and not ns.QuestForPlayer(s.quest)) then sources[#sources + 1] = s end
+		if not (s.kind == "quest" and not ns.QuestOpenToMe(s.quest)) then sources[#sources + 1] = s end
 	end
 	if #sources == 0 then return "No known source", "No dungeon, raid, quest or recipe here lists this piece." end
 	table.sort(sources, function(a, b)

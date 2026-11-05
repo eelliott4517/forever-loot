@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 
--- Wowhead's Forever data is still filling in during the beta. When you loot a
+-- Wowhead's Forever data is still filling in. When you loot a
 -- boss, any rare-or-better item it drops is remembered under that boss so the
 -- loot tables fill in as you play. Stored per account in ForeverLootDB.learned.
 
@@ -27,6 +27,9 @@ end
 local function QualityOf(link)
 	local quality = select(3, ns.GetItemInfo(link))
 	if quality then return quality end
+	-- the link itself: Forever's name the quality ("|cnIQ4:"), older clients' carry its color
+	local named = tonumber(link:match("|cnIQ(%d+):"))
+	if named then return named end
 	local hex = link:match("|c%x%x(%x%x%x%x%x%x)")
 	return hex and QUALITY_BY_HEX[hex:lower()]
 end

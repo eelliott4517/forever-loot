@@ -34,7 +34,7 @@ from collections import defaultdict
 
 from dungeons import DUNGEONS
 from raids import RAIDS
-from forever_additions import ADDITIONS, NOTES, UNCONFIRMED
+from forever_additions import ADDITIONS, LEFTOVER_QUESTS, NOTES, UNCONFIRMED
 import item_info
 import quest_chains
 
@@ -48,6 +48,10 @@ SOD_NPCS = range(200000, 250000)   # Season of Discovery NPC ids (Forever's own 
 FOREVER_IDS = 260000               # items at or above this id were added in Forever
 FOREVER_QUESTS = 90000             # quests at or above this id were added in Forever
 ORIGINAL_IDS = 200000              # items below this id are the original game's, even ones Forever reworked
+# Forever's own quest rewards start at 240000. A reward only wowtbc.gg lists with an id between 200000
+# and that is Season of Discovery's item of the same name (Solution to Doom's "Doomcaller's Pants" as
+# SoD's level 60 epic 233672, where Forever's is 270074), so it's left out.
+SOD_REWARDS = range(200000, 240000)
 MIN_BOSS_QUALITY = 2
 MIN_TRASH_QUALITY = 3              # Wowhead trash lists; wowtbc.gg trash lists keep their greens
 QUEST_LEVELS_BELOW, QUEST_LEVELS_ABOVE = 15, 5   # a zone's quests outside this band aren't its own
@@ -389,6 +393,11 @@ class Build:
         # (Season of Discovery's leak into its Forever pages) "unconfirmed"
         if status in ("removed", "unconfirmed"):
             return False
+        if q["id"] in LEFTOVER_QUESTS:
+            line = f"   {d['name']}: Season of Discovery leftover, left out: {q['name']} ({q['id']})"
+            if line not in self.report:
+                self.report.append(line)
+            return False
         # Wowhead doesn't mark every quest Forever added as new (Dalaran's aren't)
         new = status == "new" or d.get("new") or q["id"] >= FOREVER_QUESTS
         if self.chains.unobtainable(q["id"], new=new):
@@ -430,6 +439,12 @@ class Build:
             loot, _ = load_tbc(slug)
             for tq in (loot.get("quests") or []) + self.tbc_quest_rewards.pop(d["key"], []):
                 side = SIDES.get(tq.get("faction"))
+                sod = [i for i in tq.get("items", []) if i in SOD_REWARDS]
+                if sod:
+                    tq = dict(tq, items=[i for i in tq["items"] if i not in SOD_REWARDS],
+                              new=[i for i in tq.get("new", []) if i not in SOD_REWARDS])
+                    self.report.append(f"   {d['name']}: wowtbc.gg's {tq['name']} reward {', '.join(map(str, sod))} "
+                                       "is a Season of Discovery item, left out")
                 self.new_ids.update(i for i in tq.get("new", []) if i >= ORIGINAL_IDS)
                 # wowtbc.gg lists some chains as one quest ("Abominable Creatures/Unending Torment")
                 matched = []

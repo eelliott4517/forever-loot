@@ -126,8 +126,12 @@ local DIFFICULTY = {
 	impossible = { 1.00, 0.10, 0.10 }, verydifficult = { 1.00, 0.50, 0.25 }, difficult = { 1.00, 0.82, 0.00 },
 	standard = { 0.25, 0.75, 0.25 }, trivial = { 0.50, 0.50, 0.50 },
 }
+-- How far below you a level can be before it's grey: the game's own range (Forever's nameplates
+-- use C_QuestLog.GetTrivialRange; Classic clients have GetQuestGreenRange), else Classic's rule
 local function GreenRange(level)
-	if GetQuestGreenRange then return GetQuestGreenRange() end
+	local range = (C_QuestLog and C_QuestLog.GetTrivialRange and C_QuestLog.GetTrivialRange())
+		or (GetQuestGreenRange and GetQuestGreenRange())
+	if type(range) == "number" and not (issecretvalue and issecretvalue(range)) and range > 0 then return range end
 	if level <= 5 then return 5 elseif level <= 39 then return math.floor(level / 10) + 5 end
 	return math.floor(level / 5) + 1
 end
@@ -262,7 +266,7 @@ end
 
 -- The item part of a row's tooltip: the game's own once the server has sent the item,
 -- otherwise the lines bundled with the addon (the game's would sit on "Retrieving item
--- information", often forever on the beta). Returns true when it used the bundled lines.
+-- information", sometimes for good). Returns true when it used the bundled lines.
 function K.ItemTooltip(itemID)
 	local entry = ns.Items[itemID]
 	local name, quality, _, _, _, live = ns.ItemDisplay(itemID)
@@ -304,7 +308,7 @@ function K.ItemModifiedClick(itemID)
 	elseif entry and entry[4] == 2 then
 		ns:Print(name .. " isn't in Forever's game data, so it can't be linked.")
 	elseif ns.HasNoServerData(itemID) then
-		ns:Print("the beta server has no data for " .. name .. ", so it can't be linked.")
+		ns:Print("the server has no data for " .. name .. " yet, so it can't be linked.")
 	else
 		ns:Print("item data is still loading. Try again in a moment.")
 	end
@@ -374,6 +378,7 @@ local FILTER_MENUS = {
 			{ "offhand", "Off-hand" }, { "shield", "Shield" }, { "relic", "Relic" } },
 		other = {
 			dungeons = { "Other", { "recipe", "Recipe" }, { "other", "Other" } },
+			raids = { "Other", { "recipe", "Recipe" }, { "other", "Other" } },
 			quests = { "Other", { "recipe", "Recipe" }, { "other", "Other" } },
 			professions = { "Other", { "consumable", "Consumable" }, { "tradegoods", "Trade Goods" },
 				{ "bag", "Bag" }, { "other", "Other" } },
@@ -504,11 +509,22 @@ function UI:ToggleFilter(key)
 		self:Refresh()
 	else
 		self:BuildList()
-		if self.current then
+		if self.current and not self:IsListed(self.current) then
+			-- the filters hide what was open (a set your class can't wear): open the tab's own pick
+			self:Select(self:Mode().Default())
+		elseif self.current then
 			self:Mode().ShowHeader(self, self.header, self.current)
 			self:Refresh()
 		end
 	end
+end
+
+-- Whether the tab's list has an entry (the Sets tab's list follows the filters)
+function UI:IsListed(entry)
+	for _, e in ipairs(self:Mode().Entries()) do
+		if e == entry then return true end
+	end
+	return false
 end
 
 function UI:ClearSearchFocus()
@@ -1078,7 +1094,7 @@ local function AddLootNotes(row, entry, bundled)
 	local notes = {}
 	if row.sourceNote then notes[#notes + 1] = { row.sourceNote, C.white } end
 	if bundled and flag ~= 2 then
-		notes[#notes + 1] = { "The beta server isn't sending this item's data, so these stats come from Wowhead.", C.silver }
+		notes[#notes + 1] = { "The server isn't sending this item's data, so these stats come from Wowhead.", C.silver }
 	end
 	if row.pctValue then notes[#notes + 1] = { "Drop chance (Classic data): " .. FormatPct(row.pctValue), C.silver } end
 	if flag == 1 then
@@ -1611,9 +1627,9 @@ function UI:FilterChanged()
 		self.loot:ScrollToTop()
 		self:RenderSearch()
 	else
-		-- Nothing left to search for: back to the entry the results were narrowed to,
-		-- or the one that was open before
-		local back = self.filter.focus or self.current
+		-- Nothing left to search for: back to the entry the results were narrowed to, the one that
+		-- was open before, or (on a tab first opened mid-search) the tab's own first pick
+		local back = self.filter.focus or self.current or self:Mode().Default()
 		self.filter.focus = nil
 		if back then self:Select(back) else self:BuildList() end
 	end
@@ -1621,6 +1637,8 @@ end
 
 function UI:SetSearchText(text)
 	text = strtrim(text or "")
+	-- nothing to search by (only punctuation, say) is no search, not every item
+	if not text:find("%w") then text = "" end
 	if text == self.filter.text then return end
 	self.filter.text = text
 	self:FilterChanged()
@@ -1641,7 +1659,7 @@ function UI:FocusEntry(entry)
 end
 
 function UI:ClearSearch()
-	local back = self.filter.focus or self.current
+	local back = self.filter.focus or self.current or self:Mode().Default()
 	self:ResetFilter()
 	if back then self:Select(back) end
 end
@@ -1698,6 +1716,8 @@ function UI:SetMode(key, quiet)
 	self.mode = key
 	ns.db.mode = key
 	self.current = self.selected[key]
+	-- not one the filters have hidden since (a set My class rules out)
+	if self.current and not self:IsListed(self.current) then self.current = nil end
 	local f = self.filter
 	f.focus = nil
 	-- A filter only the other tab offers (like Consumable) doesn't carry over
@@ -1783,10 +1803,20 @@ function UI:Show()
 	elseif not self.current then
 		self:Select(self:Mode().Default())
 	else
+		-- what changed while it was closed (quests, skills, your bags) shows in the header too
+		if not self:IsSearching() then self:Mode().ShowHeader(self, self.header, self.current) end
 		self:Refresh()
 	end
 	if SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_OPEN then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN) end
 end
+
+-- Leaving the dungeon the window last jumped to (any loading screen out of it) makes the next visit
+-- a new one, which jumps to it again
+local visits = CreateFrame("Frame")
+visits:RegisterEvent("PLAYER_ENTERING_WORLD")
+visits:SetScript("OnEvent", function()
+	if UI.lastAutoDungeon and ns.CurrentDungeon() ~= UI.lastAutoDungeon then UI.lastAutoDungeon = nil end
+end)
 
 function UI:Hide()
 	if self.frame and self.frame:IsShown() then
@@ -2539,7 +2569,7 @@ local function InstanceMode(cfg)
 
 			-- Quest rewards, in a Quests section after the bosses
 			for _, q in ipairs(d.quests or {}) do
-				if ns.QuestForPlayer(q) then
+				if ns.QuestOpenToMe(q) then
 					local from = "Reward from the quest " .. q.name .. " (" .. d.name .. ")."
 					for _, itemID in ipairs(q.choices or {}) do Add(itemID, "Quest reward", from, "Quests") end
 					for _, itemID in ipairs(q.rewards or {}) do Add(itemID, "Quest reward", from, "Quests") end

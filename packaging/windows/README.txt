@@ -5,11 +5,11 @@ built from Wowhead's data.
 INSTALL
 1. Extract this whole zip somewhere (right-click it, then "Extract All").
 2. Double-click Install-ForeverLoot.bat. It finds your WoW folder and copies the addon into
-   _classic_beta_\Interface\AddOns. If Windows warns about the file, click "More info",
+   _forever_\Interface\AddOns. If Windows warns about the file, click "More info",
    then "Run anyway". If it can't find WoW, it asks you to paste the folder path.
 
 Or install it by hand: copy the ForeverLoot folder into
-   C:\Program Files (x86)\World of Warcraft\_classic_beta_\Interface\AddOns\
+   C:\Program Files (x86)\World of Warcraft\_forever_\Interface\AddOns\
 (use your own WoW folder if it's somewhere else, and create Interface\AddOns if it's missing).
 
 Then restart WoW. A /reload won't pick up a new addon. If the AddOns list marks it as

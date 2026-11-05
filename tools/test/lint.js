@@ -48,6 +48,11 @@ for (const f of files) {
     for (const k of Object.keys(node)) if (k !== "loc" && k !== "range") walk(node[k]);
   })(ast);
   // Lua 5.1 has no goto/labels, integer division or bit operators; luaparse 5.1 mode already rejects them.
+  // Since build 70291 a frame's strata can be a secret, which can't be compared: don't read it.
+  if (/GetFrameStrata\s*\(/.test(src)) {
+    console.log(`GetFrameStrata in ${f}: it can return a secret since build 70291`);
+    failed = true;
+  }
   if (src.includes("\u2014")) {
     console.log(`EM DASH found in ${f}`);
     failed = true;

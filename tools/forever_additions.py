@@ -47,14 +47,23 @@ ADDITIONS = {
 
 # dungeon key -> [(item id, boss the name points at or None)]
 UNCONFIRMED = {
-    "GNOMER": [(274042, None), (274043, None)],
-    # (wowtbc.gg confirmed RFK's 274149, 274155 and 274161 and SM's 274290, 274291 and 274293 by 2026-10-04)
-    "SM": [(274292, "Houndmaster Loksey"), (274295, None)],
+    # (wowtbc.gg confirmed RFK's 274149, 274155 and 274161 and SM's 274290, 274291 and 274293 by 2026-10-04,
+    # and Gnomeregan's 274042 and 274043 (Grubbis) and SM's 274292 (Houndmaster Loksey) by 2026-10-08)
+    "SM": [(274295, None)],
     "RFD": [(274380, None), (274381, "Amnennar the Coldbringer")],
     "ZF": [(274638, None), (274639, None), (274641, "Theka the Martyr"), (274642, None), (274643, None),
            (274644, None), (274645, None), (274647, None), (274648, None), (274651, None),
            (274652, "Hydromancer Velratha"), (274653, None), (274655, None), (274657, "Gahz'rilla"),
            (274658, None)],
+}
+
+# Quests Wowhead files under an instance that no one can get in Forever, which the build can't tell
+# by itself: Season of Discovery quests left in Forever's data with their giver, objectives and
+# rewards stripped. Wowhead marks them "updated" rather than "unconfirmed", and their pages still
+# name where they were turned in.
+LEFTOVER_QUESTS = {
+    78916: "The Heart of the Void",   # Season of Discovery's Blackfathom Deeps raid quest (Alliance)
+    78917: "The Heart of the Void",   # and its Horde copy
 }
 
 # Raids. The Barrow Deeps shards are unique, bind-on-pickup and named after its bosses;
@@ -65,17 +74,18 @@ UNCONFIRMED["BARROW"] = [(277172, None), (277174, "Khalith the Dreadspinner"), (
 RAID_DEC9 = "Unlocks Dec 9, 2026. Boss names are datamined; Blizzard hasn't shown any loot yet."
 CLASSIC_RAID = "Classic raid. Forever hasn't announced it yet (as of Sep 2026), so this is its Classic loot from Wowhead Classic."
 
-LATER_BETA = "Opens in the level 30 beta phase. No site has boss or loot data yet."
-LATER_BETA_BOSSES = ("Opens in the level 30 beta phase. The boss names come from the game client (wowclassicforever.info, "
-                     "MaxDPS); no loot is known until players get in. Kill its bosses and loot them to record drops here.")
-AT_LAUNCH = "Opens at launch (Nov 4). No site has boss or loot data yet."
+FROM_SITES = "Loot from wowtbc.gg and Wowhead. Anything else you loot gets added here."
+AT_LAUNCH_BOSSES = ("Open since launch (Nov 4). Its boss names come from wowtbc.gg; no site has its loot yet. "
+                    "Kill its bosses and loot them to record drops here.")
+AT_LAUNCH = ("Open since launch (Nov 4). No site has its bosses or loot yet. "
+             "Kill its bosses and loot them to record drops here.")
 
 NOTES = {
     "HOT": "Loot from Wowhead's Hall of Thanes guide and wowtbc.gg. Anything else you loot gets added here.",
     "ROL": "Loot from Wowhead community reports and wowtbc.gg. Anything else you loot gets added here.",
-    "EXC": LATER_BETA_BOSSES,
-    "DAL": LATER_BETA_BOSSES,
-    "DROWN": AT_LAUNCH,
+    "EXC": FROM_SITES,
+    "DAL": FROM_SITES,
+    "DROWN": AT_LAUNCH_BOSSES,
     "KROL": AT_LAUNCH,
     "ALCAZ": AT_LAUNCH,
     "BMH": AT_LAUNCH,

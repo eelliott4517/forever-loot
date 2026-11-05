@@ -48,7 +48,7 @@ end
 
 ---------------------------------------------------------------- helpers
 -- Every row the Dungeons (or Raids) search can list: boss drops, then the quest rewards
--- your faction can get
+-- your faction, race and class can get
 local function rowsWhere(pred, list)
 	local n = 0
 	for _, d in ipairs(list or ns.Dungeons) do
@@ -58,7 +58,7 @@ local function rowsWhere(pred, list)
 			end
 		end
 		for _, q in ipairs(d.quests or {}) do
-			if ns.QuestForPlayer(q) then
+			if ns.QuestOpenToMe(q) then
 				for _, id in ipairs(q.choices or {}) do if pred(ns.Items[id], id, nil, d) then n = n + 1 end end
 				for _, id in ipairs(q.rewards or {}) do if pred(ns.Items[id], id, nil, d) then n = n + 1 end end
 			end
@@ -1075,8 +1075,10 @@ MOCK.faction = "Alliance"
 check(hordeLines ~= nil, "and a Horde character's tooltip lists that reward")
 check(ns.Items[6340] and ns.Items[6340][4] == 0, "an original item Forever reworked (Fenrus' Hide) isn't marked new")
 
--- The window shares Blizzard's panels' layer, so the dressing room opens in front of it
-check(UI.frame:GetFrameStrata() == "MEDIUM", "the window is on Blizzard's panel layer")
+-- The window shares Blizzard's panels' layer, so the dressing room opens in front of it. Since build
+-- 70291 GetFrameStrata can return a secret, which can't be compared, so look before comparing.
+local windowStrata = UI.frame:GetFrameStrata()
+check(not issecretvalue(windowStrata) and windowStrata == "MEDIUM", "the window is on Blizzard's panel layer")
 
 -- (in a function of its own: Lua 5.1 allows 200 locals in a function)
 ;(function()
@@ -1141,6 +1143,12 @@ check(ns.QuestStatus(166) == "level", "below its level it says so", ns.QuestStat
 MOCK.level = 25
 MOCK.questLog[166] = true
 check(select(2, ns.QuestStatus(166)) == false, "in your log, not complete")
+-- With a quest's optional lead-in in your log (Researching the Corruption's), turning that in is the next step
+MOCK.questLog[3765] = true
+local leadSteps = ns.QuestNextSteps(1275)
+check(ns.QuestStatus(1275) == "locked" and #leadSteps == 1 and leadSteps[1].id == 3765 and leadSteps[1].status == "active",
+	"with its lead-in in your log, the next step is turning that in", leadSteps[1] and leadSteps[1].id)
+MOCK.questLog[3765] = nil
 MOCK.questLog[166] = "complete"
 local st, complete = ns.QuestStatus(166)
 check(st == "active" and complete == true, "in your log and complete")
@@ -1557,6 +1565,248 @@ check(#entries("item") == 0 and firstGroup and firstGroup.data.right:find("item"
 	firstGroup and firstGroup.data.right)
 UI:ClearSearch()
 wipe(UI.sections)
+end)()
+
+---------------------------------------------------------------- build 70291: a frame's strata can be a secret
+-- GetFrameStrata returns a secret for a frame whose strata Blizzard's code made secret, and for the
+-- frames that take theirs from it. The addon never reads a strata, and sets its own frames' itself.
+;(function()
+local readers = {}
+for _, file in ipairs(toc) do
+	if MOCK.strataReads["@" .. file] then readers[#readers + 1] = file end
+end
+check(#readers == 0, "the addon never reads a frame's strata", table.concat(readers, ", "))
+MOCK.SecretStrata(UIParent)
+MOCK.SecretStrata(Minimap)
+local probe = CreateFrame("Frame", nil, UIParent)
+check(issecretvalue(probe:GetFrameStrata()), "(a frame under a parent with a secret strata gets a secret one)")
+local secretStrataOK = pcall(function()
+	if UI.frame:IsShown() then UI:Hide() end
+	SlashCmdList.FOREVERLOOT("")
+	for _, key in ipairs(UI.modeOrder) do tab(key):MockClick() end
+	UI.searchBox:Type("gloves")
+	UI:ClearSearch()
+	ns.minimapButton:GetScript("OnEnter")(ns.minimapButton)
+	ns.minimapButton:GetScript("OnLeave")(ns.minimapButton)
+	UI:Hide()
+end)
+check(secretStrataOK, "with UIParent's and the minimap's strata secret, the window and its tabs still work")
+local ownStrata, buttonStrata = UI.frame:GetFrameStrata(), ns.minimapButton:GetFrameStrata()
+check(not issecretvalue(ownStrata) and ownStrata == "MEDIUM" and not issecretvalue(buttonStrata) and buttonStrata == "MEDIUM",
+	"and the window and minimap button keep the strata they set themselves")
+UIParent._strataSecret, Minimap._strataSecret = nil, nil
+end)()
+
+---------------------------------------------------------------- grey quests: the game's own range
+-- Forever has no GetQuestGreenRange; its nameplates use C_QuestLog.GetTrivialRange, so the addon
+-- does too, and Classic's rule is only the fallback
+;(function()
+local K, level = ns.UIKit, MOCK.level
+MOCK.level, MOCK.trivialRange = 60, nil
+check(K.DifficultyKey(48) == "standard", "at 60, a level 48 quest is green by Classic's rule (13 levels)")
+MOCK.trivialRange = 10
+check(K.DifficultyKey(48) == "trivial" and K.DifficultyKey(50) == "standard",
+	"with the game's own range at 10 it's grey, and a level 50 quest still green", K.DifficultyKey(48))
+MOCK.level, MOCK.trivialRange = level, nil
+end)()
+
+---------------------------------------------------------------- clearing a search on a tab opened mid-search
+-- Searching, then opening a tab for the first time, then clearing the search (the button, or by
+-- erasing the text) used to leave that search's results up, with nothing picked
+;(function()
+for _, case in ipairs({ { "sets", function() UI:ClearSearch() end, "the Clear search button" },
+	{ "professions", function() UI.searchBox:Type("") end, "erasing the search" } }) do
+	tab("dungeons"):MockClick()
+	UI:ClearSearch()
+	UI.selected[case[1]] = nil
+	UI.searchBox:Type("gloves")
+	tab(case[1]):MockClick()
+	check(UI:IsSearching() and UI.header.name:GetText() == "Search results", "searching, then opening " .. case[1] .. " shows its results")
+	case[2]()
+	check(not UI:IsSearching() and UI.current ~= nil and UI.header.name:GetText() == UI.current.name and not UI.header.clear:IsShown(),
+		case[3] .. " then opens the tab's own first pick", UI.header.name:GetText())
+end
+tab("dungeons"):MockClick()
+end)()
+
+---------------------------------------------------------------- the October 8 review
+;(function()
+local OUTSIDE = { "Elwynn Forest", "none", 0, "", 0, 0, false, 0 }
+local DEADMINES = { "The Deadmines", "party", 1, "", 5, 0, false, 36 }
+local function reset()
+	MOCK.questsDone, MOCK.questLog, MOCK.level, MOCK.faction, MOCK.classFile = {}, {}, 25, "Alliance", "ROGUE"
+	MOCK.race, MOCK.rep = { "Human", "Human", 1 }, {}
+end
+local function line(id)
+	for _, e in ipairs(entries("qline")) do if e.data.questID == id then return e end end
+end
+local function headStatus(id)
+	for _, e in ipairs(entries("qhead")) do if e.data.quest.id == id then return e.data.status end end
+end
+reset()
+
+-- Reopening the window brings its header up to date, not just the rows (a skill-up while it was shut)
+local leatherworking = MOCK.skills[2]
+local rank = leatherworking[3]
+leatherworking[3] = 125
+MOCK.Fire("SKILL_LINES_CHANGED")
+SlashCmdList.FOREVERLOOT("professions")
+UI:Select(ns.ProfessionByKey.LW)
+check(UI.header.meta:GetText():find("Your skill 125/150", 1, true), "(the Professions header shows your skill)", UI.header.meta:GetText())
+UI:Hide()
+leatherworking[3] = 140
+MOCK.Fire("SKILL_LINES_CHANGED")
+UI:Show()
+check(UI.header.meta:GetText():find("Your skill 140/150", 1, true), "reopening the window updates its header too", UI.header.meta:GetText())
+leatherworking[3] = rank
+MOCK.Fire("SKILL_LINES_CHANGED")
+
+-- Taking a quest's optional lead-in keeps the quest on "Quests you can do", the lead-in as its step
+SlashCmdList.FOREVERLOOT("quests")
+local todo = UI.modes.quests.Entries()[1]
+UI:Select(todo)
+openAll(true)
+check(line(2040), "(Underground Assault is on Quests you can do)")
+MOCK.questLog[2041] = true
+UI:Select(todo)
+openAll(true)
+local step = line(2041)
+check(line(2040) and step and step.data.status == "active", "with its lead-in Speak with Shoni in your log it stays, the lead-in as the next step")
+MOCK.questLog[2041] = nil
+
+-- What waits on reputation or a profession sorts after what you can take now
+reset()
+MOCK.level = 60
+UI:Select(ns.DungeonByKey.BRD)
+local waiting, inOrder, sawRep = false, true, false
+for _, e in ipairs(entries("qhead")) do
+	local s = e.data.status
+	if s == "rep" then sawRep = true end
+	if s == "rep" or s == "skill" or s == "special" or s == "level" or s == "locked" then waiting = true
+	elseif (s == "ready" or s == "active") and waiting then inOrder = false end
+end
+check(sawRep and inOrder, "Blackrock Depths lists what needs Thorium Brotherhood rep after what you can take now")
+
+-- Reputation and skills open quests on the page that's open, without another quest event
+local zg
+for _, r in ipairs(ns.Raids) do for _, q in ipairs(r.quests or {}) do if q.id == 9208 then zg = r end end end
+UI:Select(zg)
+check(headStatus(9208) == "rep", "(The Savage Guard waits on Honored with the Zandalar Tribe)", headStatus(9208))
+MOCK.rep[270] = 9000
+MOCK.Fire("UPDATE_FACTION")
+MOCK.RunTimers()
+check(headStatus(9208) == "ready", "reaching Honored opens it on the open page", headStatus(9208))
+reset()
+
+-- Rewards of another class's quests aren't yours: Verigan's Fist is a Paladin quest's
+local function tipText(itemID)
+	local out = {}
+	for _, l in ipairs(ns.TooltipLines(itemID) or {}) do out[#out + 1] = l[1] end
+	return table.concat(out, " | ")
+end
+check(not tipText(6953):find("Test of Righteousness", 1, true), "a Rogue's tooltip on Verigan's Fist doesn't credit the Paladin quest", tipText(6953))
+tab("dungeons"):MockClick()
+search("verigan")
+local credited = 0
+for _, e in ipairs(entries("item")) do if (e.data.from or ""):find("Test of Righteousness", 1, true) then credited = credited + 1 end end
+check(credited == 0, "nor does a search", credited)
+UI:ClearSearch()
+ns.Wishlist.Toggle(6953)
+local sfkGroup = false
+for _, e in ipairs(UI.modes.wishlist.Entries()) do if e.key == "SFK" then sfkGroup = true end end
+check(not sfkGroup, "nor the wishlist, which files it under no known source")
+ns.Wishlist.Toggle(6953)
+-- the Plagueheart Robe is a warlock quest's reward too
+local plagueheart
+for _, st in ipairs(ns.Sets) do if st.id == 529 then plagueheart = st end end
+local function robeFrom()
+	tab("sets"):MockClick()
+	UI:Select(plagueheart)
+	openAll()
+	for _, e in ipairs(entries("item")) do if e.data.itemID == 22504 then return e.data.from or "" end end
+	return ""
+end
+check(not robeFrom():find("Reward from the quest", 1, true), "nor a set piece's source", robeFrom())
+MOCK.classFile = "WARLOCK"
+check(robeFrom():find("Reward from the quest", 1, true), "a Warlock's set piece does", robeFrom())
+MOCK.classFile = "PALADIN"
+check(tipText(6953):find("Test of Righteousness", 1, true), "a Paladin's tooltip does", tipText(6953))
+reset()
+
+-- A set the filters hide isn't kept open, or opened again
+MOCK.classFile = "MAGE"
+tab("sets"):MockClick()
+local plate
+for _, st in ipairs(ns.Sets) do
+	local all = #st.pieces > 0
+	for _, id in ipairs(st.pieces) do if ns.UIKit.SearchInfo(id).kind ~= "plate" then all = false end end
+	if all and not plate then plate = st end
+end
+UI:Select(plate)
+UI.toggles.myClass:Click()
+check(UI.current ~= plate and UI:IsListed(UI.current) and UI.header.name:GetText() == UI.current.name,
+	"ticking My class on a plate set opens one a Mage can wear", UI.current and UI.current.name)
+UI.toggles.myClass:Click()
+UI:Select(plate)
+tab("dungeons"):MockClick()
+UI.toggles.myClass:Click()
+tab("sets"):MockClick()
+check(UI.current ~= plate and UI:IsListed(UI.current), "and the Sets tab doesn't reopen it after My class went on elsewhere", UI.current and UI.current.name)
+UI.toggles.myClass:Click()
+reset()
+
+-- The Raids tab's Slot menu has Recipe and Other, as the Dungeons tab's does
+tab("raids"):MockClick()
+local recipe = false
+for _, o in ipairs(UI.filterButtons.slot:MockOptions()) do if o.kind == "radio" and o.data == "recipe" then recipe = true end end
+UI.filterButtons.slot:CloseMenu()
+check(recipe, "the Raids tab's Slot menu offers Recipe and Other")
+tab("dungeons"):MockClick()
+UI.filterButtons.slot:MockPick("recipe")
+tab("raids"):MockClick()
+check(UI.filter.slot == "recipe" and UI.searchTotal and UI.searchTotal > 0, "and Slot: Recipe carries over to it", UI.searchTotal)
+UI:SetFilter("slot", nil)
+UI:ClearSearch()
+
+-- Only punctuation is nothing to search by, not a search for everything
+tab("dungeons"):MockClick()
+UI.searchBox:Type("-")
+check(not UI:IsSearching() and UI.header.name:GetText() ~= "Search results", "a search of only punctuation isn't a search", UI.header.name:GetText())
+UI.searchBox:Type("")
+
+-- Each visit to a dungeon jumps to it once: browsing elsewhere sticks until you leave and come back
+UI:Hide()
+MOCK.instance, UI.lastAutoDungeon = DEADMINES, nil
+MOCK.Fire("PLAYER_ENTERING_WORLD")
+UI:Show()
+check(UI.current.key == "DM", "(walking into the Deadmines jumps to it)")
+UI:Select(ns.DungeonByKey.RFC)
+UI:Hide()
+UI:Show()
+check(UI.current.key == "RFC", "(browsing elsewhere sticks during that visit)")
+UI:Hide()
+MOCK.instance = OUTSIDE
+MOCK.Fire("PLAYER_ENTERING_WORLD")
+MOCK.instance = DEADMINES
+MOCK.Fire("PLAYER_ENTERING_WORLD")
+UI:Show()
+check(UI.current.key == "DM", "a second visit jumps to it again", UI.current.key)
+MOCK.instance = OUTSIDE
+MOCK.Fire("PLAYER_ENTERING_WORLD")
+
+-- A blue drop is recorded from its link alone when its item data hasn't loaded: Forever's links name
+-- the quality ("|cnIQ3:") instead of carrying its color
+local boss
+for _, b in ipairs(ns.DungeonByKey.DM.bosses) do if b.npc and b.npc[1] and not b.trash and not boss then boss = b end end
+MOCK.instance = DEADMINES
+MOCK.loot = { "|cnIQ3:|Hitem:900113::::::::|h[Named Blue]|h|r" }
+MOCK.lootSources = { { "Creature-0-0-0-0-" .. boss.npc[1] .. "-0000000003", 1 } }
+MOCK.Fire("LOOT_OPENED")
+local learned = ns.db.learned.DM and ns.db.learned.DM["npc:" .. boss.npc[1]]
+check(learned and learned.items[900113] == 1, "a drop with a named-quality link is recorded")
+wipe(ns.db.learned)
+MOCK.loot, MOCK.lootSources, MOCK.instance = {}, {}, OUTSIDE
+UI:Hide()
 end)()
 
 ---------------------------------------------------------------- globals
