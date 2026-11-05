@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.10.1
+
+- **Calmer pages.** Bosses and quests are plain entries now, like the spells under a spellbook heading, in a smaller font with no ruled line under each. Only a section that's open (a wing, the Quests section, a group of search results) gets the spellbook's ruled heading line, so a page of closed sections reads as a simple list.
+- Darker inks for gold and yellow text (your-level dungeons, "Available", quest names at your level) and for green and red level ranges, so each reads clearly on the parchment. Hints and Classic tags are a little darker too.
+
 ## 1.10.0
 
 - **The spellbook look.** The window now looks like WoW: Forever's spellbook: the game's portrait frame around the spellbook's own two parchment pages. The list is on the left page, and the open dungeon, raid, set, profession or search is on the right.

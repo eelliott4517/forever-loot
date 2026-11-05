@@ -63,9 +63,9 @@ end
 local INK = {
 	text  = Shade("2E1B0F"), -- body text
 	soft  = Shade("4E3926"), -- secondary text: types, counts, notes
-	faint = Shade("664E39"), -- labels, hints, Classic loot
+	faint = Shade("5C4532"), -- labels, hints, Classic loot
 	head  = Shade("5E2410"), -- headings
-	gold  = Shade("7C5000"), -- what's yours: your level, your class, your profession
+	gold  = Shade("5E3B00"), -- what's yours: your level, your class, your profession
 }
 K.INK = INK
 local INK_OF = {
@@ -74,7 +74,12 @@ local INK_OF = {
 }
 
 -- Any color as an ink: the game's light colors (white, silver, grey) become the browns by how
--- light they are; a colored one keeps its hue at no more than 30% lightness
+-- light they are; a colored one keeps its hue, darkened until it reads on the parchment
+local MAX_INK_LUMINANCE = 0.055
+local function Luminance(c)
+	local function lin(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
+	return 0.2126 * lin(c[1]) + 0.7152 * lin(c[2]) + 0.0722 * lin(c[3])
+end
 local inkCache = {}
 local function InkRGB(r, g, b)
 	local key = ("%02x%02x%02x"):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
@@ -90,17 +95,27 @@ local function InkRGB(r, g, b)
 		local h
 		if hi == r then h = (g - b) / (hi - lo) % 6 elseif hi == g then h = (b - r) / (hi - lo) + 2 else h = (r - g) / (hi - lo) + 4 end
 		h = h / 6
-		l, s = math.min(l, 0.3), math.min(s, 0.85)
-		local q = l < 0.5 and l * (1 + s) or l + s - l * s
-		local p = 2 * l - q
-		local function hue(t)
-			t = t % 1
-			if t < 1 / 6 then return p + (q - p) * 6 * t end
-			if t < 1 / 2 then return q end
-			if t < 2 / 3 then return p + (q - p) * (2 / 3 - t) * 6 end
-			return p
+		s = math.min(s, 0.85)
+		local function FromHSL(light)
+			local q = light < 0.5 and light * (1 + s) or light + s - light * s
+			local p = 2 * light - q
+			local function hue(t)
+				t = t % 1
+				if t < 1 / 6 then return p + (q - p) * 6 * t end
+				if t < 1 / 2 then return q end
+				if t < 2 / 3 then return p + (q - p) * (2 / 3 - t) * 6 end
+				return p
+			end
+			return { hue(h + 1 / 3), hue(h), hue(h - 1 / 3) }
 		end
-		out = { hue(h + 1 / 3), hue(h), hue(h - 1 / 3) }
+		-- dark enough to read: about 4:1 against the parchment's light middle (yellows and
+		-- greens look lighter than reds and blues at the same lightness, so they go darker)
+		l = math.min(l, 0.3)
+		out = FromHSL(l)
+		while Luminance(out) > MAX_INK_LUMINANCE and l > 0.05 do
+			l = l - 0.01
+			out = FromHSL(l)
+		end
 	end
 	inkCache[key] = out
 	return out[1], out[2], out[3], key
@@ -1214,17 +1229,21 @@ end
 ----------------------------------------------------------------------
 -- Rows both tabs use: section headers, item rows and notes
 ----------------------------------------------------------------------
--- Section headers are the spellbook's headings: the name over its ruled divider, with a chevron
--- at the left that points down while the section is open. `faint` rules it lighter (quests).
+-- Section headers open and close with a chevron at the left that points down while open. An
+-- open section (a wing, the Quests section, a group of results) is one of the spellbook's
+-- headings, its name over the ruled divider; closed, it's a plain line, so a page of closed
+-- sections reads as a list. The entries in a section (bosses, quests) are never ruled, like the
+-- spells under a spellbook heading. Everything lights up under the mouse.
 local CHEVRON = { closed = "uitools-icon-chevron-right", open = "uitools-icon-chevron-down" }
-local function Card(b, faint)
-	b.rule = Divider(b)
-	b.rule:SetPoint("BOTTOMLEFT", 0, 1)
-	b.rule:SetPoint("BOTTOMRIGHT", 0, 1)
-	if faint then b.rule:SetAlpha(0.5) end
+local function Card(b, ruled)
+	if ruled then
+		b.rule = Divider(b)
+		b.rule:SetPoint("BOTTOMLEFT", 0, 1)
+		b.rule:SetPoint("BOTTOMRIGHT", 0, 1)
+	end
 	b.glow = RowHighlight(b)
 	b.icon = Icon(b, CHEVRON.closed, 12, INK.soft)
-	b.icon:SetPoint("LEFT", CHEVRON_X, 1)
+	b.icon:SetPoint("LEFT", CHEVRON_X, ruled and 1 or 0)
 	return b
 end
 
@@ -1238,7 +1257,7 @@ end
 
 -- A wing, group or other section: click to collapse or expand it, shift-click for every section
 local function CreateWing(parent, width)
-	local w = Card(CreateFrame("Button", nil, parent))
+	local w = Card(CreateFrame("Button", nil, parent), true)
 	w:SetSize(width, WING_H)
 	w.isForeverLootRow = true
 	w:RegisterForClicks("LeftButtonUp")
@@ -1275,6 +1294,7 @@ K.RegisterKind("wing", CreateWing, function(w, d)
 	else
 		w.icon:Hide()
 	end
+	w.rule:SetShown(not w.unruled and not collapsed)
 	-- a header that doesn't open has no chevron, so its text moves over
 	if not w.statusIcon then w.text:SetPoint("LEFT", d.id and TEXT_X or 4, 1) end
 	w:EnableMouse(d.id ~= nil)
@@ -2146,11 +2166,11 @@ local function CreateBoss(parent, width)
 	b:SetSize(width, BOSS_H)
 	b.isForeverLootRow = true
 	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	b.name = Text(b, "GameFontNormalMed1")
-	b.name:SetPoint("LEFT", TEXT_X, 1)
+	b.name = Text(b, "SystemFont_Med3")
+	b.name:SetPoint("LEFT", TEXT_X, 0)
 	SetTextColor(b.name, INK.text)
 	b.tag = Text(b, "GameFontHighlightSmall", "RIGHT")
-	b.tag:SetPoint("RIGHT", -6, 1)
+	b.tag:SetPoint("RIGHT", -6, 0)
 	b.name:SetPoint("RIGHT", b.tag, "LEFT", -10, 0)
 	SetTextColor(b.tag, C.silver)
 	b.onRight = function(self)
@@ -2349,7 +2369,7 @@ K.QuestTag = QuestTag
 -- quest log. A section header: click it for where it starts and its rewards (item rows),
 -- right-click for the quest's Wowhead link.
 local function CreateQuest(parent, width)
-	local b = Card(CreateFrame("Button", nil, parent), true)
+	local b = Card(CreateFrame("Button", nil, parent))
 	b:SetSize(width, QUEST_H)
 	b.isForeverLootRow = true
 	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -2357,10 +2377,10 @@ local function CreateQuest(parent, width)
 	b.toggle = b.icon
 	b.icon = b:CreateTexture(nil, "ARTWORK")
 	b.icon:SetSize(16, 16)
-	b.icon:SetPoint("LEFT", TEXT_X - 2, 1)
+	b.icon:SetPoint("LEFT", TEXT_X - 2, 0)
 	b.icon:SetTexture(QUEST_ICON)
 	b.tag = Text(b, "GameFontHighlightSmall", "RIGHT")
-	b.tag:SetPoint("RIGHT", -6, 1)
+	b.tag:SetPoint("RIGHT", -6, 0)
 	SetTextColor(b.tag, C.silver)
 	b.name = Text(b, "GameFontNormal")
 	b.name:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
