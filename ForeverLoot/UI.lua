@@ -27,125 +27,33 @@ UI.selected = {}
 -- the session; search results forget it with each new search.
 UI.sections, UI.searchSections = {}, {}
 
--- The window looks like WoW: Forever's spellbook: the game's portrait frame around two
--- parchment pages (the spellbook's own page art, with its dark band along the top for the search
--- box and the filters), the tabs hanging below it, and the text in the spellbook's dark inks:
--- headings ruled with its divider, item icons in its spell button frames.
+-- The window looks like Rep Planner and Trainer Locator, which take theirs from Forever's character
+-- window: the game's portrait frame over the character window's dark wood backdrop, the list on
+-- the left and the open entry on the right, each between the character window's scroll lines.
+-- Sections sit on the Reputation tab's list plate with their name in gold and a plus or minus;
+-- the entries in them are white, with the Reputation tab's soft line under the mouse. The text
+-- is the game's own fonts and colors.
 local WIDTH, HEIGHT = 960, 640
-local PAGE_TOP, PAGE_SIDE, PAGE_BOTTOM = 22, 3, 3 -- the pages inside the portrait frame
-local STRIP_H = 54 -- the dark band along the top of each page
-local FOOTER_Y = 32 -- the footer lines, up from the bottom of the pages
-local LIST_W = 330 -- the left page
+local INSET_TOP, INSET_SIDE, INSET_BOTTOM = 21, 2, 2 -- the backdrop inside the portrait frame
+local STRIP_H = 46 -- the controls along the top: the search box, the dropdowns, the checkboxes
+local FOOTER_H = 36 -- the footer, under the bottom scroll line
+local LIST_W = 300 -- the left pane
 local LIST_ROW_H = 24
-local HEADER_H = 104
-local WING_H = 30
-local BOSS_H = 30
+local HEADER_H = 96
+local WING_H = 28
+local BOSS_H = 28
 local ITEM_H = 28
 local NOTE_H = 22
-local SECTION_GAP = 10
+local SECTION_GAP = 6
 local SEARCH_H = 20
 local QUEST_H = 28
 local SOURCE_W = 150
 local PAINT_PAD = 60
 local SCROLLBAR_W = 18
-local CHEVRON_X = 6 -- where a section header's chevron sits; its text starts at TEXT_X
-local TEXT_X = 24
+local CHEVRON_X = 4 -- where an entry's plus or minus box sits; its text starts at TEXT_X
+local TEXT_X = 28
 K.WING_H, K.ITEM_H, K.NOTE_H, K.SECTION_GAP = WING_H, ITEM_H, NOTE_H, SECTION_GAP
 K.CHEVRON_X, K.TEXT_X = CHEVRON_X, TEXT_X
-
-local function Shade(hex, alpha)
-	return { tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255, alpha or 1 }
-end
-
--- The inks. Body text is the spellbook's own SPELLBOOK_FONT_COLOR (2E1B0F); the rest are browns
--- around it, and any other color (an item's quality, a level's difficulty, a quest's status) is
--- darkened to an ink of the same hue, so it reads on the parchment.
-local INK = {
-	text  = Shade("2E1B0F"), -- body text
-	soft  = Shade("4E3926"), -- secondary text: types, counts, notes
-	faint = Shade("5C4532"), -- labels, hints, Classic loot
-	head  = Shade("5E2410"), -- headings
-	gold  = Shade("5E3B00"), -- what's yours: your level, your class, your profession
-}
-K.INK = INK
-local INK_OF = {
-	[C.white] = INK.text, [C.silver] = INK.soft, [C.muted] = INK.faint, [C.grey] = INK.faint,
-	[C.gold] = INK.head, [C.accent] = INK.gold,
-}
-
--- Any color as an ink: the game's light colors (white, silver, grey) become the browns by how
--- light they are; a colored one keeps its hue, darkened until it reads on the parchment
-local MAX_INK_LUMINANCE = 0.055
-local function Luminance(c)
-	local function lin(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
-	return 0.2126 * lin(c[1]) + 0.7152 * lin(c[2]) + 0.0722 * lin(c[3])
-end
-local inkCache = {}
-local function InkRGB(r, g, b)
-	local key = ("%02x%02x%02x"):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
-	local done = inkCache[key]
-	if done then return done[1], done[2], done[3], key end
-	local hi, lo = math.max(r, g, b), math.min(r, g, b)
-	local l = (hi + lo) / 2
-	local s = hi == lo and 0 or (l > 0.5 and (hi - lo) / (2 - hi - lo) or (hi - lo) / (hi + lo))
-	local out
-	if s < 0.2 then
-		out = l > 0.85 and INK.text or (l > 0.6 and INK.soft or INK.faint)
-	else
-		local h
-		if hi == r then h = (g - b) / (hi - lo) % 6 elseif hi == g then h = (b - r) / (hi - lo) + 2 else h = (r - g) / (hi - lo) + 4 end
-		h = h / 6
-		s = math.min(s, 0.85)
-		local function FromHSL(light)
-			local q = light < 0.5 and light * (1 + s) or light + s - light * s
-			local p = 2 * light - q
-			local function hue(t)
-				t = t % 1
-				if t < 1 / 6 then return p + (q - p) * 6 * t end
-				if t < 1 / 2 then return q end
-				if t < 2 / 3 then return p + (q - p) * (2 / 3 - t) * 6 end
-				return p
-			end
-			return { hue(h + 1 / 3), hue(h), hue(h - 1 / 3) }
-		end
-		-- dark enough to read: about 4:1 against the parchment's light middle (yellows and
-		-- greens look lighter than reds and blues at the same lightness, so they go darker)
-		l = math.min(l, 0.3)
-		out = FromHSL(l)
-		while Luminance(out) > MAX_INK_LUMINANCE and l > 0.05 do
-			l = l - 0.01
-			out = FromHSL(l)
-		end
-	end
-	inkCache[key] = out
-	return out[1], out[2], out[3], key
-end
-local function Ink(color)
-	local known = INK_OF[color]
-	if known or color == INK.text or color == INK.soft or color == INK.faint or color == INK.head or color == INK.gold then
-		return known or color
-	end
-	local r, g, b = InkRGB(color[1], color[2], color[3])
-	return { r, g, b }
-end
-K.Ink = Ink
-
--- Color codes in a string, as inks (the notes' "Classic", a quest's "Available"); the game's
--- colors in ns.COLORS get the same inks as text set in them
-local function HexOf(c)
-	return ("%02x%02x%02x"):format(math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5))
-end
-local INK_HEX = {}
-for color, ink in pairs(INK_OF) do INK_HEX[HexOf(color)] = HexOf(ink) end
-local function InkCodes(text)
-	return (text:gsub("|c[fF][fF](%x%x%x%x%x%x)", function(hex)
-		hex = hex:lower()
-		if INK_HEX[hex] then return "|cff" .. INK_HEX[hex] end
-		local r, g, b = InkRGB(tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255)
-		return "|cff" .. HexOf({ r, g, b })
-	end))
-end
-K.InkCodes = InkCodes
 
 ----------------------------------------------------------------------
 -- Small widget helpers
@@ -164,39 +72,23 @@ local function Atlas(parent, layer, atlas, alpha)
 	return t
 end
 
--- The game's font objects by name. Text on the pages uses the spellbook's fonts, which have no
--- shadow (a shadow smudges dark ink on parchment): the usual names map to their sizes there.
-local PAGE_FONTS = {
-	GameFontHighlight = "SystemFont_Med2", GameFontNormal = "SystemFont_Med2",
-	GameFontHighlightSmall = "SystemFont_Small2", GameFontNormalSmall = "SystemFont_Small2",
-	GameFontHighlightSmall2 = "SystemFont_Small2", GameFontNormalMed1 = "SystemFont_Large",
-	GameFontNormalLarge = "SystemFont_Large", GameFontHighlightHuge = "SystemFont_Huge2",
-}
+-- The game's font objects by name
 local function Font(name)
 	return _G[name] or GameFontHighlight
 end
-local function PageFont(name)
-	return _G[PAGE_FONTS[name] or name] or Font(name)
-end
 
--- Text on a page: the spellbook's fonts, and inks for its colors and color codes
+-- A line of text in one of the game's fonts, in that font's color (GameFontNormal gold,
+-- GameFontHighlight white) until it's given another
 local function Text(parent, font, justify)
 	local fs = parent:CreateFontString(nil, "OVERLAY")
-	fs:SetFontObject(type(font) == "string" and PageFont(font) or font)
+	fs:SetFontObject(type(font) == "string" and Font(font) or font)
 	fs:SetJustifyH(justify or "LEFT")
 	fs:SetWordWrap(false)
-	local setText = fs.SetText
-	fs.SetText = function(self, text)
-		if type(text) == "string" and text:find("|c", 1, true) then text = InkCodes(text) end
-		setText(self, text)
-	end
-	fs:SetTextColor(INK.text[1], INK.text[2], INK.text[3])
 	return fs
 end
 
 local function SetTextColor(fs, color)
-	local c = Ink(color)
-	fs:SetTextColor(c[1], c[2], c[3])
+	fs:SetTextColor(color[1], color[2], color[3])
 end
 
 local function HexToRGB(hex)
@@ -224,7 +116,7 @@ local function Fill(parent, color, layer)
 	return t
 end
 
--- A white uitools icon (a chevron), tinted
+-- An atlas icon at a size, tinted if given a color
 local function Icon(parent, atlas, size, color, layer)
 	local t = parent:CreateTexture(nil, layer or "ARTWORK")
 	t:SetAtlas(atlas)
@@ -233,10 +125,10 @@ local function Icon(parent, atlas, size, color, layer)
 	return t
 end
 
--- The spellbook's divider: the thin ruled line under each of its headings
+-- The character window's scroll line: the thin line above and below its lists
 local function Divider(parent, layer)
 	local t = parent:CreateTexture(nil, layer or "ARTWORK")
-	t:SetAtlas("spellbook-divider")
+	t:SetAtlas("UI-Character-Info-ScrollLine-Long")
 	t:SetHeight(8)
 	return t
 end
@@ -257,13 +149,28 @@ local function ShowHint(owner, title, line)
 	GameTooltip:Show()
 end
 
--- A row under the mouse: the soft light the spellbook puts behind its headings
+-- The Reputation tab's line behind a row: soft white with rounded ends, in three pieces.
+-- Returns the middle piece, with the ends as its .ends.
+local function LineGlow(row, layer, alpha)
+	local left = Atlas(row, layer, "charactercreate-customize-dropdown-linemouseover-side", alpha)
+	left:SetWidth(6)
+	left:SetPoint("TOPLEFT")
+	left:SetPoint("BOTTOMLEFT")
+	local right = Atlas(row, layer, "charactercreate-customize-dropdown-linemouseover-side", alpha)
+	right:SetWidth(6)
+	right:SetTexCoord(1, 0, 0, 1)
+	right:SetPoint("TOPRIGHT")
+	right:SetPoint("BOTTOMRIGHT")
+	local middle = Atlas(row, layer, "charactercreate-customize-dropdown-linemouseover-middle", alpha)
+	middle:SetPoint("TOPLEFT", left, "TOPRIGHT")
+	middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
+	middle.ends = { left, right }
+	return middle
+end
+
+-- A row under the mouse: the Reputation tab's hover line
 local function RowHighlight(row)
-	local h = row:CreateTexture(nil, "HIGHLIGHT")
-	h:SetAtlas("spellbook-list-backplate")
-	h:SetAllPoints()
-	h:SetAlpha(0.45)
-	return h
+	return LineGlow(row, "HIGHLIGHT", 0.1)
 end
 
 -- Difficulty colors for a level, as the quest log colors quests (and falls back to its
@@ -298,7 +205,6 @@ local function DifficultyColor(level)
 end
 
 K.Tex, K.Atlas, K.Font, K.Text, K.SetTextColor, K.HexToRGB = Tex, Atlas, Font, Text, SetTextColor, HexToRGB
-K.PageFont = PageFont
 K.Count, K.Money, K.ShowHint, K.PanelButton, K.RowHighlight = Count, Money, ShowHint, PanelButton, RowHighlight
 K.Fill, K.Icon, K.Divider = Fill, Icon, Divider
 K.DifficultyColor, K.DifficultyKey = DifficultyColor, DifficultyKey
@@ -395,7 +301,7 @@ local function FormatPct(p)
 end
 
 -- Item flags from Data.lua: 1 new in Forever, 2 Classic only, 3 new with no confirmed boss.
--- A tag next to the item's name: a word in ink on a faint wash of that ink.
+-- A tag next to the item's name: a small word in its color.
 local BADGES = {
 	owned = { "Owned", C.blue },
 	seen = { "Seen", C.blue },
@@ -403,28 +309,20 @@ local BADGES = {
 }
 K.BADGES = BADGES
 
--- The tag a row shows (or nil for none). The pill is a texture behind the word, sized to it.
+-- The tag a row shows (or nil for none)
 local function CreateBadge(row)
 	local fs = Text(row, "GameFontHighlightSmall", "RIGHT")
-	fs.pill = row:CreateTexture(nil, "ARTWORK")
-	fs.pill:SetPoint("TOPLEFT", fs, "TOPLEFT", -5, 3)
-	fs.pill:SetPoint("BOTTOMRIGHT", fs, "BOTTOMRIGHT", 5, -3)
 	fs:Hide()
-	fs.pill:Hide()
 	return fs
 end
 local function SetBadge(fs, badge)
 	if not badge then
 		fs:Hide()
-		fs.pill:Hide()
 		return false
 	end
-	local c = Ink(badge[2])
 	fs:SetText(badge[1])
-	SetTextColor(fs, c)
-	fs.pill:SetColorTexture(c[1], c[2], c[3], 0.12)
+	SetTextColor(fs, badge[2])
 	fs:Show()
-	fs.pill:Show()
 	return true
 end
 K.CreateBadge, K.SetBadge = CreateBadge, SetBadge
@@ -595,7 +493,7 @@ for _, menu in pairs(FILTER_MENUS) do
 	end
 end
 
--- The game's search box, as on the spellbook: magnifier, grey hint text and the clear button
+-- The game's search box: magnifier, grey hint text and the clear button
 -- come with it
 local function CreateSearchBox(parent)
 	local eb = CreateFrame("EditBox", "ForeverLootSearchBox", parent, "SearchBoxTemplate")
@@ -712,7 +610,7 @@ function UI:Mode()
 	return self.modes[self.mode]
 end
 
--- A tab hanging below the window, as under the spellbook: the game's tab art (the open tab
+-- A tab hanging below the window, as under the character window: the game's tab art (the open tab
 -- taller and lit), its name in gold, white once it's open
 local TAB_ART = {
 	open = { "uiframe-activetab-left", "_uiframe-activetab-center", "uiframe-activetab-right" },
@@ -764,20 +662,16 @@ local function CreateTab(parent, mode)
 	return t
 end
 
--- A page of the book: the spellbook's page art, with its dark band along the top
-local function CreatePage(parent, atlas)
-	local page = CreateFrame("Frame", nil, parent)
-	page.art = page:CreateTexture(nil, "BACKGROUND")
-	page.art:SetAtlas(atlas)
-	page.art:SetAllPoints()
-	return page
+-- A pane of the window: a frame its controls and list hang from (the backdrop is the window's)
+local function CreatePane(parent)
+	return CreateFrame("Frame", nil, parent)
 end
 
 function UI:Create()
 	if self.frame then return self.frame end
 	self.mode = (ns.db.mode and self.modes[ns.db.mode]) and ns.db.mode or self.modeOrder[1]
 
-	-- The spellbook's frame: the game's portrait frame, with its title and close button
+	-- The game's portrait frame, with its title and close button
 	local f = CreateFrame("Frame", "ForeverLootFrame", UIParent, "PortraitFrameTemplate")
 	f:SetSize(WIDTH, HEIGHT)
 	-- Blizzard's panels' layer, so the dressing room from Ctrl-click (and any other window you
@@ -798,6 +692,14 @@ function UI:Create()
 		UI:Hide()
 		return false
 	end
+
+	-- The character window's own backdrop, as Rep Planner and Trainer Locator have
+	if f.Bg then f.Bg:Hide() end
+	if f.TopTileStreaks then f.TopTileStreaks:Hide() end
+	f.backdrop = f:CreateTexture(nil, "BACKGROUND")
+	f.backdrop:SetAtlas("UI-Character-Info-General-BG")
+	f.backdrop:SetPoint("TOPLEFT", INSET_SIDE, -INSET_TOP)
+	f.backdrop:SetPoint("BOTTOMRIGHT", -INSET_SIDE, INSET_BOTTOM)
 
 	-- Drag the window by its title bar
 	local drag = CreateFrame("Frame", nil, f)
@@ -823,44 +725,58 @@ function UI:Create()
 		self.tabs[#self.tabs + 1] = t
 	end
 
-	-- The left page: search in its dark band, then the list
-	local left = CreatePage(f, "spellbook-page-left-c60")
-	left:SetPoint("TOPLEFT", PAGE_SIDE, -PAGE_TOP)
-	left:SetPoint("BOTTOMLEFT", PAGE_SIDE, PAGE_BOTTOM)
+	-- The left pane: the search box, then the list between the scroll lines
+	local left = CreatePane(f)
+	left:SetPoint("TOPLEFT", INSET_SIDE, -INSET_TOP)
+	left:SetPoint("BOTTOMLEFT", INSET_SIDE, INSET_BOTTOM)
 	left:SetWidth(LIST_W)
 	self.left = left
 
+	-- clear of the portrait, level with the dropdowns on the right
 	local search = CreateSearchBox(left)
-	search:SetPoint("TOPLEFT", 34, -(STRIP_H - SEARCH_H) / 2 + 1)
-	search:SetPoint("TOPRIGHT", -26, -(STRIP_H - SEARCH_H) / 2 + 1)
+	search:SetPoint("TOPLEFT", 66, -14)
+	search:SetPoint("TOPRIGHT", -14, -14)
 	self.searchBox = search
 
-	local LIST_TOP = STRIP_H + 18
-	self.listLabel = Text(left, "SystemFont_Med3")
-	self.listLabel:SetPoint("TOPLEFT", 30, -LIST_TOP)
-	SetTextColor(self.listLabel, INK.head)
+	self.listLabel = Text(left, "GameFontNormal")
+	self.listLabel:SetPoint("TOPLEFT", 18, -(STRIP_H + 10))
 	self.listRight = Text(left, "GameFontHighlightSmall", "RIGHT")
-	self.listRight:SetPoint("TOPRIGHT", -(SCROLLBAR_W + 30), -(LIST_TOP + 2))
-	SetTextColor(self.listRight, INK.soft)
-	local rule = Divider(left)
-	rule:SetPoint("TOPLEFT", 18, -(LIST_TOP + 16))
-	rule:SetPoint("TOPRIGHT", -(SCROLLBAR_W + 24), -(LIST_TOP + 16))
+	self.listRight:SetPoint("TOPRIGHT", -(SCROLLBAR_W + 18), -(STRIP_H + 11))
+	SetTextColor(self.listRight, C.grey)
+	local topLine = Divider(left)
+	topLine:SetPoint("TOPLEFT", 6, -(STRIP_H + 26))
+	topLine:SetPoint("TOPRIGHT", -6, -(STRIP_H + 26))
+	local bottomLine = Divider(left)
+	bottomLine:SetPoint("BOTTOMLEFT", 6, FOOTER_H - 4)
+	bottomLine:SetPoint("BOTTOMRIGHT", -6, FOOTER_H - 4)
 
-	local listWidth = LIST_W - 24 - SCROLLBAR_W - 30
+	local listWidth = LIST_W - 12 - SCROLLBAR_W - 12
 	local list = CreateScrollArea(left, listWidth)
-	list:SetPoint("TOPLEFT", 24, -(LIST_TOP + 26))
-	list:SetPoint("BOTTOMRIGHT", -(SCROLLBAR_W + 30), FOOTER_Y + 18)
+	list:SetPoint("TOPLEFT", 12, -(STRIP_H + 34))
+	list:SetPoint("BOTTOMRIGHT", -(SCROLLBAR_W + 12), FOOTER_H + 4)
 	self.list = list
 
-	-- The right page: the Slot and Type dropdowns and the loot filters in its dark band, then
-	-- the open entry (or search results)
-	local right = CreatePage(f, "spellbook-page-right-c60")
-	right:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
-	right:SetPoint("BOTTOMRIGHT", -PAGE_SIDE, PAGE_BOTTOM)
+	-- Between the panes: a dark groove with a faint light edge
+	local groove = f:CreateTexture(nil, "BORDER")
+	groove:SetColorTexture(0, 0, 0, 0.6)
+	groove:SetPoint("TOPLEFT", left, "TOPRIGHT", 0, 0)
+	groove:SetPoint("BOTTOMLEFT", left, "BOTTOMRIGHT", 0, 0)
+	groove:SetWidth(1)
+	local edge = f:CreateTexture(nil, "BORDER")
+	edge:SetColorTexture(1, 0.86, 0.6, 0.08)
+	edge:SetPoint("TOPLEFT", groove, "TOPRIGHT", 0, 0)
+	edge:SetPoint("BOTTOMLEFT", groove, "BOTTOMRIGHT", 0, 0)
+	edge:SetWidth(1)
+
+	-- The right pane: the Slot and Type dropdowns and the loot filters, then the open entry
+	-- (or search results)
+	local right = CreatePane(f)
+	right:SetPoint("TOPLEFT", left, "TOPRIGHT", 2, 0)
+	right:SetPoint("BOTTOMRIGHT", -INSET_SIDE, INSET_BOTTOM)
 	self.right = right
 
 	local slotFilter = CreateDropdown(right, "slot", 150)
-	slotFilter:SetPoint("TOPLEFT", 34, -(STRIP_H - 25) / 2 + 2)
+	slotFilter:SetPoint("TOPLEFT", 16, -11)
 	local kindFilter = CreateDropdown(right, "kind", 150)
 	kindFilter:SetPoint("LEFT", slotFilter, "RIGHT", 10, 0)
 	self.filterButtons = { slot = slotFilter, kind = kindFilter }
@@ -875,32 +791,32 @@ function UI:Create()
 	end
 	self.toggles = { myClass = classToggle, hideClassic = classicToggle }
 
-	-- The heading: the entry's name, as large as the spellbook's headings, ruled underneath
+	-- The heading: the entry's name in white, a gold line about it and a grey note, over the
+	-- list's scroll line
 	local header = CreateFrame("Frame", nil, right)
 	header:SetPoint("TOPLEFT", 0, -STRIP_H)
 	header:SetPoint("TOPRIGHT", 0, -STRIP_H)
 	header:SetHeight(HEADER_H)
 	local divider = Divider(header)
-	divider:SetPoint("BOTTOMLEFT", 24, 0)
-	divider:SetPoint("BOTTOMRIGHT", -40, 0)
+	divider:SetPoint("BOTTOMLEFT", 6, -4)
+	divider:SetPoint("BOTTOMRIGHT", -6, -4)
 
 	header.name = Text(header, "GameFontHighlightHuge")
-	header.name:SetPoint("TOPLEFT", 40, -18)
-	header.name:SetPoint("RIGHT", -150, 0)
-	SetTextColor(header.name, INK.head)
+	header.name:SetPoint("TOPLEFT", 22, -8)
+	header.name:SetPoint("RIGHT", -140, 0)
 
-	header.meta = Text(header, "SystemFont_Med3")
+	header.meta = Text(header, "GameFontNormal")
 	header.meta:SetPoint("TOPLEFT", header.name, "BOTTOMLEFT", 0, -8)
 
-	header.note = Text(header, "GameFontHighlightSmall2")
+	header.note = Text(header, "GameFontHighlightSmall")
 	header.note:SetPoint("TOPLEFT", header.meta, "BOTTOMLEFT", 0, -7)
-	header.note:SetPoint("RIGHT", -48, 0)
+	header.note:SetPoint("RIGHT", -24, 0)
 	header.note:SetWordWrap(true)
 	header.note:SetSpacing(2)
-	SetTextColor(header.note, INK.soft)
+	SetTextColor(header.note, C.silver)
 
 	header.wowhead = PanelButton(header, "Wowhead", 96)
-	header.wowhead:SetPoint("TOPRIGHT", -46, -18)
+	header.wowhead:SetPoint("TOPRIGHT", -22, -8)
 	header.wowhead:SetScript("OnClick", function()
 		local title, url = UI:Mode().WowheadLink(UI.current)
 		if url then UI:ShowURL(title, url) end
@@ -908,30 +824,33 @@ function UI:Create()
 
 	-- Takes the place of the Wowhead button while search results are showing
 	header.clear = PanelButton(header, "Clear search", 110)
-	header.clear:SetPoint("TOPRIGHT", -46, -18)
+	header.clear:SetPoint("TOPRIGHT", -22, -8)
 	header.clear:SetScript("OnClick", function() UI:ClearSearch() end)
 	header.clear:Hide()
 	self.header = header
 
-	local rightW = WIDTH - 2 * PAGE_SIDE - LIST_W
-	local contentWidth = rightW - 36 - (SCROLLBAR_W + 44)
+	local rightW = WIDTH - 2 * INSET_SIDE - LIST_W - 2
+	local contentWidth = rightW - 16 - (SCROLLBAR_W + 12)
 	local loot = CreateScrollArea(right, contentWidth)
-	loot:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 36, -8)
-	loot:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT", -(SCROLLBAR_W + 44), FOOTER_Y + 34)
+	loot:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 16, -8)
+	loot:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT", -(SCROLLBAR_W + 12), FOOTER_H + 4)
 	loot.onScrolled = function() UI:Paint() end
 	self.loot = loot
 	self.contentWidth = contentWidth
+	local footLine = Divider(right)
+	footLine:SetPoint("BOTTOMLEFT", 6, FOOTER_H - 4)
+	footLine:SetPoint("BOTTOMRIGHT", -6, FOOTER_H - 4)
 
-	-- Footer lines at the foot of the pages: how fresh the data is, and what the clicks do
+	-- The footer, under the scroll lines: how fresh the data is, and what the clicks do
 	self.footerSource = Text(left, "GameFontHighlightSmall")
-	self.footerSource:SetPoint("BOTTOMLEFT", 30, FOOTER_Y)
-	SetTextColor(self.footerSource, INK.soft)
+	self.footerSource:SetPoint("BOTTOMLEFT", 18, 10)
+	SetTextColor(self.footerSource, C.grey)
 	-- the click help can run to two lines; they grow upward
 	self.footerHelp = Text(right, "GameFontHighlightSmall")
-	self.footerHelp:SetPoint("BOTTOMLEFT", 40, FOOTER_Y)
-	self.footerHelp:SetPoint("RIGHT", -48, 0)
+	self.footerHelp:SetPoint("BOTTOMLEFT", 22, 6)
+	self.footerHelp:SetPoint("RIGHT", -24, 0)
 	self.footerHelp:SetWordWrap(true)
-	SetTextColor(self.footerHelp, INK.soft)
+	SetTextColor(self.footerHelp, C.grey)
 
 	self.listRows = {}
 	self.pools, self.used = {}, {}
@@ -988,19 +907,10 @@ end
 local function CreateListRow(parent, width)
 	local b = CreateFrame("Button", nil, parent)
 	b:SetSize(width, LIST_ROW_H)
-	-- the open entry: the soft light the spellbook puts behind a heading, with a darker wash and
-	-- an ink rule at its left
-	b.selected = b:CreateTexture(nil, "BACKGROUND")
-	b.selected:SetAtlas("spellbook-list-backplate")
-	b.selected:SetPoint("TOPLEFT", -6, 4)
-	b.selected:SetPoint("BOTTOMRIGHT", 6, -4)
+	-- the open entry: the Reputation tab's line, brighter than the hover's
+	b.selected = LineGlow(b, "BACKGROUND", 0.2)
 	b.selected:Hide()
-	b.selectedBar = b:CreateTexture(nil, "ARTWORK")
-	b.selectedBar:SetColorTexture(INK.head[1], INK.head[2], INK.head[3], 0.85)
-	b.selectedBar:SetPoint("TOPLEFT", 0, -3)
-	b.selectedBar:SetPoint("BOTTOMLEFT", 0, 3)
-	b.selectedBar:SetWidth(2)
-	b.selectedBar:Hide()
+	for _, e in ipairs(b.selected.ends) do e:Hide() end
 	RowHighlight(b)
 	b.levels = Text(b, "GameFontHighlightSmall", "RIGHT")
 	b.levels:SetPoint("RIGHT", -6, 0)
@@ -1061,7 +971,7 @@ function UI:BuildList()
 		if e.entry then name, right, tag, marker, tagColor, rightColor = mode.RowInfo(e.entry) end
 		row.isMarked = marker and true or false
 		row.name:SetText(name)
-		SetTextColor(row.name, row.isMarked and INK.gold or INK.text)
+		SetTextColor(row.name, row.isMarked and C.gold or C.white)
 		if e.count then
 			row.levels:Hide()
 			row.tag:Hide()
@@ -1095,7 +1005,7 @@ function UI:UpdateListSelection()
 		local on = row:IsShown() and row.entry == selected
 		row.isSelected = on
 		row.selected:SetShown(on)
-		row.selectedBar:SetShown(on)
+		for _, e in ipairs(row.selected.ends) do e:SetShown(on) end
 	end
 end
 
@@ -1229,43 +1139,51 @@ end
 ----------------------------------------------------------------------
 -- Rows both tabs use: section headers, item rows and notes
 ----------------------------------------------------------------------
--- Section headers open and close with a chevron at the left that points down while open. An
--- open section (a wing, the Quests section, a group of results) is one of the spellbook's
--- headings, its name over the ruled divider; closed, it's a plain line, so a page of closed
--- sections reads as a list. The entries in a section (bosses, quests) are never ruled, like the
--- spells under a spellbook heading. Everything lights up under the mouse.
-local CHEVRON = { closed = "uitools-icon-chevron-right", open = "uitools-icon-chevron-down" }
-local function Card(b, ruled)
-	if ruled then
-		b.rule = Divider(b)
-		b.rule:SetPoint("BOTTOMLEFT", 0, 1)
-		b.rule:SetPoint("BOTTOMRIGHT", 0, 1)
-	end
-	b.glow = RowHighlight(b)
-	b.icon = Icon(b, CHEVRON.closed, 12, INK.soft)
-	b.icon:SetPoint("LEFT", CHEVRON_X, ruled and 1 or 0)
+-- A section (a wing, the Quests section, a group of results) sits on the Reputation tab's list
+-- plate: its name in gold, its count or levels in grey, and a plus or minus at the right. The
+-- entries in a section that open too (bosses, quests) are white lines with the campaign log's
+-- plus or minus box at their left. Everything lights up under the mouse.
+local PLATE_ICON = { closed = "common-button-list-plus", open = "common-button-list-minus" }
+local BOX_ICON = { closed = "campaign_headericon_closed", open = "campaign_headericon_open" }
+
+-- An entry that opens: the box at its left and the hover line
+local function Card(b)
+	RowHighlight(b)
+	b.icon = b:CreateTexture(nil, "ARTWORK")
+	b.icon:SetPoint("LEFT", CHEVRON_X, 0)
+	b.icon:SetAtlas(BOX_ICON.closed)
+	b.icon:SetSize(18, 18)
 	return b
 end
 
--- A heading's chevron for whether its section is open
+-- An entry's box for whether it's open
 local function SetChevron(icon, open)
-	icon:SetAtlas(open and CHEVRON.open or CHEVRON.closed)
-	icon:SetSize(12, 12)
-	local c = open and INK.head or INK.soft
-	icon:SetVertexColor(c[1], c[2], c[3])
+	icon:SetAtlas(open and BOX_ICON.open or BOX_ICON.closed)
+	icon:SetSize(18, 18)
 end
 
 -- A wing, group or other section: click to collapse or expand it, shift-click for every section
 local function CreateWing(parent, width)
-	local w = Card(CreateFrame("Button", nil, parent), true)
+	local w = CreateFrame("Button", nil, parent)
 	w:SetSize(width, WING_H)
 	w.isForeverLootRow = true
 	w:RegisterForClicks("LeftButtonUp")
-	w.text = Text(w, "GameFontNormalMed1")
-	w.text:SetPoint("LEFT", TEXT_X, 1)
+	w.plate = Atlas(w, "BACKGROUND", "common-button-list-collapseExpand")
+	w.plate:SetAllPoints()
+	w.glow = Atlas(w, "HIGHLIGHT", "common-button-list-collapseExpand", 0.3)
+	w.glow:SetAllPoints()
+	w.glow:SetBlendMode("ADD")
+	w.icon = w:CreateTexture(nil, "ARTWORK")
+	w.icon:SetPoint("RIGHT", -8, -1)
+	w.text = Text(w, "GameFontNormal")
+	w.text:SetPoint("LEFT", 10, 0)
 	w.levels = Text(w, "GameFontHighlightSmall", "RIGHT")
-	w.levels:SetPoint("RIGHT", -6, 1)
-	SetTextColor(w.levels, C.silver)
+	w.levels:SetPoint("RIGHT", -28, 0)
+	SetTextColor(w.levels, C.grey)
+	w.text:SetPoint("RIGHT", w.levels, "LEFT", -10, 0)
+	-- the name dips a pixel while the mouse is down, as Blizzard's headers do
+	w:SetScript("OnMouseDown", function(self) if self.sectionId then self.text:SetPoint("LEFT", 11, -1) end end)
+	w:SetScript("OnMouseUp", function(self) self.text:SetPoint("LEFT", 10, 0) end)
 	w:SetScript("OnEnter", function(self)
 		if not self.sectionId then return end
 		ShowHint(self, self.text:GetText(), (UI:IsCollapsed(self.sectionId) and "Click to expand." or "Click to collapse.") ..
@@ -1284,34 +1202,29 @@ end
 K.RegisterKind("wing", CreateWing, function(w, d)
 	w.sectionId = d.id
 	w.text:SetText(d.text)
-	SetTextColor(w.text, INK.head)
+	SetTextColor(w.text, C.gold)
 	w.levels:SetText(d.right or "")
 	local collapsed = d.id and UI:IsCollapsed(d.id)
 	w.collapsed = collapsed and true or false
 	if d.id then
-		SetChevron(w.icon, not collapsed)
+		w.icon:SetAtlas(collapsed and PLATE_ICON.closed or PLATE_ICON.open, true)
 		w.icon:Show()
 	else
 		w.icon:Hide()
 	end
-	w.rule:SetShown(not w.unruled and not collapsed)
-	-- a header that doesn't open has no chevron, so its text moves over
-	if not w.statusIcon then w.text:SetPoint("LEFT", d.id and TEXT_X or 4, 1) end
+	-- a header that doesn't open has no plus or minus, so its levels move over
+	w.levels:SetPoint("RIGHT", d.id and -28 or -10, 0)
 	w:EnableMouse(d.id ~= nil)
 end)
 
 
--- An item icon in the spellbook's spell button frame (the frame is a ninth bigger than the
--- icon, as on its spell buttons); the item's quality shows in its name's ink
+-- An item icon, trimmed of its own border as the spellbook and Trainer Locator trim theirs; the
+-- item's quality shows in its name's color
 local function ItemIcon(row, size, x)
 	row.icon = row:CreateTexture(nil, "ARTWORK")
 	row.icon:SetSize(size, size)
 	row.icon:SetPoint("LEFT", x, 0)
-	row.border = row:CreateTexture(nil, "OVERLAY")
-	row.border:SetAtlas("spellbook-item-iconframe")
-	local frame = math.floor(size * 40 / 36 + 0.5)
-	row.border:SetSize(frame, frame)
-	row.border:SetPoint("CENTER", row.icon, "CENTER")
+	row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 end
 K.ItemIcon = ItemIcon
 
@@ -2166,13 +2079,12 @@ local function CreateBoss(parent, width)
 	b:SetSize(width, BOSS_H)
 	b.isForeverLootRow = true
 	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	b.name = Text(b, "SystemFont_Med3")
+	b.name = Text(b, "GameFontHighlight")
 	b.name:SetPoint("LEFT", TEXT_X, 0)
-	SetTextColor(b.name, INK.text)
 	b.tag = Text(b, "GameFontHighlightSmall", "RIGHT")
 	b.tag:SetPoint("RIGHT", -6, 0)
 	b.name:SetPoint("RIGHT", b.tag, "LEFT", -10, 0)
-	SetTextColor(b.tag, C.silver)
+	SetTextColor(b.tag, C.grey)
 	b.onRight = function(self)
 		if self.url then UI:ShowURL(self.boss.name .. " on Wowhead", self.url) end
 	end

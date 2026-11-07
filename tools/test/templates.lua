@@ -57,6 +57,8 @@ T.PortraitFrameTemplate = function(f)
 	f.PortraitContainer.portrait = f.PortraitContainer:CreateTexture(nil, "OVERLAY")
 	f.NineSlice = CreateFrame("Frame", nil, f)
 	f.Bg = f:CreateTexture(nil, "BACKGROUND")
+	-- the texture template _UI-Frame-TopTileStreaks along the top
+	f.TopTileStreaks = f:CreateTexture(nil, "BORDER")
 	-- UIPanelCloseButton: onCloseCallback, then HideUIPanel (a plain Hide for an unmanaged frame)
 	local close = CreateFrame("Button", nil, f)
 	close:SetScript("OnClick", function(self)

@@ -246,7 +246,7 @@ print("  meta: " .. UI.header.meta:GetText())
 check(UI.header.meta:GetText():find("Your skill 125/150", 1, true), "header shows your skill")
 check(#entries("recipe") == 0 and #entries("wing") > 10, "groups start collapsed: only the headers show", #entries("recipe"))
 local glovesHeader = sectionWidget("Gloves")
-check(glovesHeader and glovesHeader.collapsed and glovesHeader.icon:GetAtlas() == "uitools-icon-chevron-right", "collapsed headers show a chevron pointing right")
+check(glovesHeader and glovesHeader.collapsed and glovesHeader.icon:GetAtlas() == "common-button-list-plus", "collapsed headers show a plus")
 glovesHeader:GetScript("OnEnter")(glovesHeader)
 check(GameTooltip.lines[2] and GameTooltip.lines[2]:find("Click to expand", 1, true), "header hint says what a click does")
 glovesHeader:GetScript("OnLeave")(glovesHeader)
@@ -258,7 +258,7 @@ for _, r in ipairs(lw.recipes) do
 end
 check(#entries("recipe") == lwGloves, "clicking Gloves opens just that group", #entries("recipe") .. " vs " .. lwGloves)
 glovesHeader = sectionWidget("Gloves")
-check(not glovesHeader.collapsed and glovesHeader.icon:GetAtlas() == "uitools-icon-chevron-down", "open headers show a chevron pointing down")
+check(not glovesHeader.collapsed and glovesHeader.icon:GetAtlas() == "common-button-list-minus", "open headers show a minus")
 UI:Select(ns.ProfessionByKey.TAIL)
 check(#entries("recipe") == 0, "another profession starts collapsed")
 UI:Select(lw)
@@ -313,8 +313,8 @@ UI.loot:ScrollTo(far.y)
 local farRow
 for _, r in ipairs(painted("recipe")) do if r.entry == far.data then farRow = r end end
 -- (the page draws each color as an ink of the same hue)
-local redInk = ns.UIKit.Ink(ns.COLORS.red)
-check(farRow and farRow.skill._textColor[1] == redInk[1] and farRow.skill._textColor[2] == redInk[2], "recipes above your skill show red")
+local red = ns.COLORS.red
+check(farRow and farRow.skill._textColor[1] == red[1] and farRow.skill._textColor[2] == red[2], "recipes above your skill show red")
 local grey
 for _, e in ipairs(entries("recipe")) do
 	local cl = e.data.recipe.colors
@@ -323,7 +323,7 @@ end
 UI.loot:ScrollTo(grey.y)
 local greyOk = false
 for _, r in ipairs(painted("recipe")) do
-	if r.entry == grey.data and r.skill._textColor[1] == ns.UIKit.Ink({ 0.5, 0.5, 0.5 })[1] then greyOk = true end
+	if r.entry == grey.data and r.skill._textColor[1] == 0.5 then greyOk = true end
 end
 check(greyOk, "recipes you've outgrown show grey")
 
@@ -627,7 +627,7 @@ check(#listRows() == #ns.Raids and UI.listLabel:GetText() == "Raids" and UI.list
 check(listRows()[1].levels:GetText() == tostring(ns.Raids[1].size), "raid rows show the raid size", listRows()[1].levels:GetText())
 local classicRow
 for _, r in ipairs(listRows()) do if r.entry.status == "classic" then classicRow = r break end end
-check(classicRow and classicRow.tag:GetText() == "Classic" and classicRow.tagColor == nil and classicRow.tag._textColor[1] == ns.UIKit.Ink(ns.COLORS.grey)[1], "Classic raids are tagged Classic in grey")
+check(classicRow and classicRow.tag:GetText() == "Classic" and classicRow.tagColor == nil and classicRow.tag._textColor[1] == ns.COLORS.grey[1], "Classic raids are tagged Classic in grey")
 check(UI.current == ns.Raids[1], "below 60 it opens on the first raid", UI.current and UI.current.key)
 check(UI.toggles.myClass:IsShown() and UI.toggles.hideClassic:IsShown(), "the loot filters show on the Raids tab")
 local naxx = ns.DungeonByKey.NAXX
@@ -687,7 +687,7 @@ MOCK.popup = nil
 local qRewards = #(qEntry.data.quest.choices or {}) + #(qEntry.data.quest.rewards or {})
 check(#entries("item") == 0, "each quest starts collapsed")
 qRow:Click()
-check(not UI:IsCollapsed(qEntry.data.id) and #entries("item") == qRewards and qRow.toggle:GetAtlas() == "uitools-icon-chevron-down",
+check(not UI:IsCollapsed(qEntry.data.id) and #entries("item") == qRewards and qRow.toggle:GetAtlas() == "campaign_headericon_open",
 	"clicking a quest opens it to its rewards", #entries("item") .. " vs " .. qRewards)
 qRow:Click()
 check(UI:IsCollapsed(qEntry.data.id) and #entries("item") == 0, "and clicking again closes it")
@@ -1540,7 +1540,7 @@ wing:Click()
 local inWing = #entries("boss")
 check(inWing > 0 and #entries("item") == 0, "a click opens one wing to its bosses, still closed", inWing)
 local bossBar = painted("boss")[1]
-check(bossBar.icon:GetAtlas() == "uitools-icon-chevron-right", "a closed boss shows a right chevron")
+check(bossBar.icon:GetAtlas() == "campaign_headericon_closed", "a closed boss shows a plus box")
 bossBar:GetScript("OnEnter")(bossBar)
 local bossTip = MOCK.TooltipText()
 check(bossTip:find("Click to see its loot.", 1, true) and bossTip:find("Right-click for its Wowhead link.", 1, true),
@@ -1552,7 +1552,7 @@ local bossEntry
 for _, e in ipairs(UI.entries) do if e.kind == "boss" and e.data.id == bossID then bossEntry = e end end
 check(not UI:IsCollapsed(bossID) and #entries("item") > 0, "clicking a boss shows its drops")
 for _, w in ipairs(painted("boss")) do if w.sectionId == bossID then bossBar = w end end
-check(bossBar.icon:GetAtlas() == "uitools-icon-chevron-down", "with a down chevron")
+check(bossBar.icon:GetAtlas() == "campaign_headericon_open", "with a minus box")
 MOCK.popup = nil
 bossBar:Click("RightButton")
 check(MOCK.popup and MOCK.popup.data.url:find(ns.WOWHEAD .. "npc=", 1, true) and not UI:IsCollapsed(bossID),

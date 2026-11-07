@@ -112,12 +112,12 @@ for _, t in ipairs(UI.tabs) do
 	check(t.selected == (t.key == UI.mode) and t.open[1]:IsShown() == t.selected and t.closed[1]:IsShown() ~= t.selected,
 		"only the open tab is drawn open: " .. t.key)
 end
--- The spellbook's look: the game's portrait frame with the addon's title and icon, the
--- spellbook's two pages, and the search box template on the left page
+-- Rep Planner's look: the game's portrait frame with the addon's title and icon, over the
+-- character window's backdrop, and the search box template on the left pane
 check(UI.frame.TitleContainer.TitleText.text == "Forever Loot" and UI.frame.PortraitContainer.portrait.texture == ns.ICON,
 	"portrait frame title and icon")
-check(UI.left.art.atlas == "spellbook-page-left-c60" and UI.right.art.atlas == "spellbook-page-right-c60" and
-	UI.searchBox.Instructions ~= nil, "the spellbook's pages and the search box template")
+check(UI.frame.backdrop.atlas == "UI-Character-Info-General-BG" and not UI.frame.Bg:IsShown() and
+	UI.searchBox.Instructions ~= nil, "the character window's backdrop and the search box template")
 
 local function Count(kind)
 	local c = 0
@@ -155,12 +155,11 @@ check(rows[1] and rows[1].entry == R.BARROW and rows[1].tag.text == "", "Barrow 
 check(rows[1] and rows[1].levels.text == "10", "raid size in the list")
 local mcRow, onyRow = RowFor(R.MC), RowFor(R.ONY)
 check(mcRow and mcRow.tag.text == "Classic", "Classic raids tagged Classic")
--- (the page draws each color as an ink: grey as its faint brown, white as the body ink)
-check(mcRow and mcRow.tag.tc and math.abs(mcRow.tag.tc[1] - K.Ink(C.grey)[1]) < 0.01, "Classic tag is grey")
+check(mcRow and mcRow.tag.tc and math.abs(mcRow.tag.tc[1] - C.grey[1]) < 0.01, "Classic tag is grey")
 local hyjalRow = RowFor(R.HYJAL)
 check(hyjalRow and hyjalRow.tag.text == "", "no New tag on Hyjal Summit either")
 check(onyRow and onyRow.tag.text == "", "Onyxia has no tag (it's in Forever)")
-check(mcRow and not mcRow.isMarked and math.abs(mcRow.name.tc[3] - K.INK.text[3]) < 0.01, "a level 16 character's raid names are body ink, not gold")
+check(mcRow and not mcRow.isMarked and math.abs(mcRow.name.tc[3] - C.white[3]) < 0.01, "a level 16 character's raid names are white, not gold")
 
 for _, r in ipairs(ns.Raids) do
 	UI:Select(r)

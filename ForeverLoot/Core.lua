@@ -5,8 +5,8 @@ ns.ICON = "Interface\\Icons\\INV_Box_01"
 ns.WOWHEAD = "https://www.wowhead.com/forever/"
 ns.WOWHEAD_CLASSIC = "https://www.wowhead.com/classic/"
 
--- The game's own text colors, for tooltips and chat (NORMAL_FONT_COLOR, HIGHLIGHT_FONT_COLOR and
--- friends). The window's pages draw each as a dark ink of the same hue (UI.lua's Ink).
+-- The game's own text colors, for the window, tooltips and chat (NORMAL_FONT_COLOR,
+-- HIGHLIGHT_FONT_COLOR and friends)
 local function rgb(hex)
 	return {
 		tonumber(hex:sub(1, 2), 16) / 255,

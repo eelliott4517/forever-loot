@@ -8,21 +8,24 @@ common-icon-redx 25 25
 Waypoint-MapPin-Untracked 30 30
 Waypoint-MapPin-Tracked 30 30
 auctionhouse-icon-favorite 40 36
-# The spellbook's pages, divider, heading light and spell button frame, the tabs under it, and
-# the uitools chevrons on section headings
-spellbook-page-left-c60 810 682
-spellbook-page-right-c60 810 682
-spellbook-divider 657 11
-spellbook-list-backplate 316 106
-spellbook-item-iconframe 138 131
+# Rep Planner's and Trainer Locator's look, from the character window and the Reputation tab: the
+# backdrop, the scroll lines, the list plate with its plus and minus, the campaign log's plus and
+# minus boxes, the hover line; and the tabs under the window
+UI-Character-Info-General-BG 398 464
+UI-Character-Info-ScrollLine-Long 384 8
+common-button-list-collapseExpand 64 28
+common-button-list-plus 13 13
+common-button-list-minus 13 4
+campaign_headericon_open 22 22
+campaign_headericon_closed 22 22
+charactercreate-customize-dropdown-linemouseover-side 6 20
+charactercreate-customize-dropdown-linemouseover-middle 1 20
 uiframe-activetab-left 35 42
 _uiframe-activetab-center 1 42
 uiframe-activetab-right 37 42
 uiframe-tab-left 35 36
 _uiframe-tab-center 1 36
 uiframe-tab-right 37 36
-uitools-icon-chevron-down 20 20
-uitools-icon-chevron-right 20 20
 # PortraitFrameTemplate and its close button
 _UI-Frame-TopTileStreaks 256 43
 RedButton-Exit 32 32

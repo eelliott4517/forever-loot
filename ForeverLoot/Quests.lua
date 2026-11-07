@@ -115,22 +115,25 @@ end
 ----------------------------------------------------------------------
 -- Rows
 ----------------------------------------------------------------------
--- A quest's header: its status mark, its name in the quest log's colors, and its status. Click
--- to open it (shift-click opens or closes them all).
+-- A quest's header: the box that opens it, its status mark, its name in the quest log's colors,
+-- and its status. Click to open it (shift-click opens or closes them all).
 local function CreateQuestHeader(parent, width)
-	local w = K.kinds.wing.create(parent, width)
-	-- a quest is an entry, not a section: smaller than a section's name, and not ruled
-	w.text:SetFontObject(K.PageFont("GameFontHighlight"))
-	w.unruled = true
-	w.icon:SetPoint("LEFT", K.CHEVRON_X, 0)
-	-- the status mark comes after the heading's chevron
+	local w = K.Card(CreateFrame("Button", nil, parent))
+	w:SetSize(width, K.WING_H)
+	w.isForeverLootRow = true
+	w:RegisterForClicks("LeftButtonUp")
+	-- the status mark comes after the box
 	w.status = w:CreateTexture(nil, "ARTWORK")
 	w.status:SetSize(16, 16)
 	w.status:SetPoint("LEFT", K.TEXT_X - 2, 0)
-	w.statusIcon = true
-	w.text:ClearAllPoints()
+	w.levels = K.Text(w, "GameFontHighlightSmall", "RIGHT")
+	w.levels:SetPoint("RIGHT", -6, 0)
+	w.text = K.Text(w, "GameFontHighlight")
 	w.text:SetPoint("LEFT", w.status, "RIGHT", 6, 0)
 	w.text:SetPoint("RIGHT", w.levels, "LEFT", -10, 0)
+	w:SetScript("OnClick", function(self)
+		if IsShiftKeyDown() then UI:ToggleAllSections() else UI:ToggleSection(self.sectionId) end
+	end)
 	w:SetScript("OnEnter", function(self)
 		local q = self.quest
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -149,7 +152,11 @@ local function CreateQuestHeader(parent, width)
 end
 
 K.RegisterKind("qhead", CreateQuestHeader, function(w, d)
-	K.kinds.wing.fill(w, d)
+	w.sectionId = d.id
+	w.text:SetText(d.text)
+	w.levels:SetText(d.right or "")
+	w.collapsed = UI:IsCollapsed(d.id) and true or false
+	K.SetChevron(w.icon, not w.collapsed)
 	w.quest = d.quest
 	K.SetQuestIcon(w.status, d.status or "ready", d.complete)
 	K.SetTextColor(w.text, d.quest.level and K.DifficultyColor(d.quest.level) or C.gold)

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.0
+
+- **The Rep Planner and Trainer Locator look.** The parchment is gone: the window now has the character window's dark wood backdrop that Rep Planner and Trainer Locator use, in the game's own fonts and colors (gold headings, white entries, grey details), so all three addons match.
+- Wings, the Quests section and search groups sit on the Reputation tab's list plate, with their name in gold and a plus or minus at the right. Bosses and quests are white lines with the quest log's red plus or minus box at their left.
+- The lists sit between the character window's scroll lines, rows get the Reputation tab's soft hover line, and the open dungeon, raid, set or profession in the list is lit the same way. A thin groove splits the list from the page.
+- Item and recipe icons are trimmed like the spellbook's, and the item's quality shows in its name. The Classic, Owned, Seen and Changed tags are plain words in their colors.
+- The right page is wider, so more of each list fits, and long recipe material lists fit on one line.
+
 ## 1.10.1
 
 - **Calmer pages.** Bosses and quests are plain entries now, like the spells under a spellbook heading, in a smaller font with no ruled line under each. Only a section that's open (a wing, the Quests section, a group of search results) gets the spellbook's ruled heading line, so a page of closed sections reads as a simple list.
