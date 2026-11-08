@@ -147,8 +147,7 @@ local Wishlist = {
 	key = "wishlist",
 	tab = "Wishlist",
 	icon = "Interface\\Icons\\INV_Misc_Note_01",
-	listTitle = "Where to get it",
-	listRight = "Items",
+	listStyle = "art",
 	allLabel = "Everything",
 	unit = "item",
 	groupUnit = "source",
@@ -158,13 +157,7 @@ local Wishlist = {
 		"Nothing on your wishlist matches that.",
 		"Clear the search to see the whole list.",
 	},
-	footer = "Right-click: take it off    Shift-click: link in chat    Ctrl-click: preview    " ..
-		ns.Colorize(C.blue, "Owned") .. ": in your bags, bank or worn",
 }
-
-function Wishlist.dataDate()
-	return ns.PROFESSION_DATE or ns.DATA_DATE
-end
 
 -- Counts for the list's right column, worked out with its entries
 local counts = {}
@@ -193,20 +186,21 @@ function Wishlist.RowInfo(entry)
 	return entry.name, counts[entry] or 0, "", marker
 end
 
+-- Under its name: how many wanted items come from there
+function Wishlist.RowSub(entry)
+	return Count(counts[entry] or 0, "item")
+end
+
+-- A dungeon's or raid's picture; the general one for the rest
+function Wishlist.ListArt(entry)
+	return entry and entry.minLevel and K.InstanceArt(entry) or ns.OtherArt
+end
+
 function Wishlist.Default()
 	return EVERYTHING
 end
 
 function Wishlist.Remember()
-end
-
-function Wishlist.WowheadLink(entry)
-	-- A new raid or dungeon Wowhead has no zone page for yet gets no link
-	if entry and entry.minLevel then
-		if entry.zone and entry.zone ~= 0 then return entry.name .. " on Wowhead", ns.WOWHEAD .. "zone=" .. entry.zone end
-		return entry.name .. " on Wowhead", nil
-	end
-	if entry and entry.recipes then return entry.name .. " on Wowhead", ns.WOWHEAD .. "skill=" .. entry.skill end
 end
 
 function Wishlist.ShowHeader(ui, h, entry)
@@ -229,9 +223,9 @@ function Wishlist.ShowHeader(ui, h, entry)
 		if entry.minLevel then table.insert(parts, 1, K.LevelText(entry)) end
 		h.meta:SetText(table.concat(parts, "   ·   "))
 	end
-	h.note:SetText("Right-click an item on the Dungeons, Raids or Sets tab, or a recipe on the Professions tab, to add it; " ..
+	h.about = "Right-click an item on the Dungeons, Raids or Sets tab, or a recipe on the Professions tab, to add it; " ..
 		"right-click it here to take it off. You get a chat alert when one drops or comes up for a roll. " ..
-		ns.Colorize(C.blue, "Owned") .. " = in your bags, bank or worn.")
+		"Owned: in your bags, bank or worn."
 end
 
 function Wishlist.Render(ui, entry)

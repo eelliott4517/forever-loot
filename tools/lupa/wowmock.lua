@@ -17,7 +17,14 @@ function Region:SetWidth(w) self._w = w end
 function Region:SetHeight(h) self._h = h end
 function Region:GetWidth() return self._w or 0 end
 function Region:GetHeight() return self._h or 0 end
-function Region:SetPoint(...) self._points = self._points or {}; table.insert(self._points, { ... }) end
+-- a second point of the same name takes the first one's place, as in the client
+function Region:SetPoint(point, ...)
+	self._points = self._points or {}
+	for i, p in ipairs(self._points) do
+		if p[1] == point then self._points[i] = { point, ... }; return end
+	end
+	table.insert(self._points, { point, ... })
+end
 function Region:ClearAllPoints() self._points = {} end
 function Region:SetAllPoints(rel) self._points = { { "ALL", rel } } end
 function Region:GetPoint(i) local p = (self._points or {})[i or 1]; if p then return p[1], p[2], p[3], p[4], p[5] end end
@@ -57,10 +64,16 @@ function Texture:SetAtlas(atlas) assert(type(atlas) == "string", "SetAtlas needs
 function Texture:SetDesaturated(on) assert(type(on) == "boolean", "SetDesaturated needs a boolean"); self._desaturated = on end
 function Texture:GetAlpha() return self._alpha or 1 end
 function Texture:GetAtlas() return self._atlas end
+function Texture:GetTexture() return self._texture end
+function Texture:GetTexCoord()
+	local c = type(self._crop) == "table" and self._crop or { 0, 1, 0, 1 }
+	return c[1], c[2], c[3], c[4]
+end
 function Texture:SetBlendMode(mode) self._blend = mode end
 
 local FontString = class(Region)
 function FontString:SetFontObject(f) assert(type(f) == "table", "SetFontObject needs a font object"); self._font = f end
+function FontString:GetFontObject() return self._font end
 function FontString:SetJustifyH(j) self._justify = j end
 function FontString:SetWordWrap(on) self._wrap = on end
 function FontString:SetSpacing(n) self._spacing = n end
@@ -71,6 +84,12 @@ end
 function FontString:GetText() return self._text end
 function FontString:SetTextColor(r, g, b) self._textColor = { r, g, b } end
 function FontString:GetStringWidth() return #(self._text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") * 6 end
+-- one line, unless it wraps: then as many lines as its width needs
+function FontString:GetStringHeight()
+	local w = self._w or 0
+	if not self._wrap or w <= 0 then return 12 end
+	return 12 * math.max(1, math.ceil(self:GetStringWidth() / w))
+end
 
 ---------------------------------------------------------------- frames
 local Frame = class(Region)
@@ -221,8 +240,7 @@ function FontObject:SetTextColor() end
 function CreateFont(name) local f = setmetatable({ _name = name }, FontObject); _G[name] = f; return f end
 for _, n in ipairs({ "GameFontNormal", "GameFontNormalSmall", "GameFontNormalLarge", "GameFontNormalHuge",
 	"GameFontHighlight", "GameFontHighlightSmall", "ChatFontNormal", "GameFontNormalMed1", "GameFontHighlightHuge",
-	"GameFontHighlightSmall2", "SystemFont_Small", "SystemFont_Small2", "SystemFont_Med1", "SystemFont_Med2", "SystemFont_Med3",
-	"SystemFont_Large", "SystemFont_Huge2" }) do
+	"GameFontHighlightSmall2", "GameFontHighlightMed2", "GameFontNormalHuge3" }) do
 	local f = CreateFont(n)
 	f:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 end

@@ -63,14 +63,7 @@ FONTS = {
     "ChatFontNormal": (14, WHITE, True, None),
     "GameFontNormalMed1": (13, (1, 0.82, 0), True, None), "GameFontHighlightHuge": (20, WHITE, True, None),
     "GameFontHighlightSmall2": (11, WHITE, False, None),
-    # the shadowless SystemFont_* families the spellbook's pages use
-    "SystemFont_Small": (10, WHITE, False, None),
-    "SystemFont_Small2": (11, WHITE, False, None),
-    "SystemFont_Med1": (12, WHITE, False, None),
-    "SystemFont_Med2": (13, WHITE, False, None),
-    "SystemFont_Med3": (14, WHITE, False, None),
-    "SystemFont_Large": (16, WHITE, False, None),
-    "SystemFont_Huge2": (24, WHITE, False, None),
+    "GameFontHighlightMed2": (14, WHITE, True, None), "GameFontNormalHuge3": (25, (1, 0.82, 0), True, None),
     "GameTooltipHeaderText": (14, WHITE, False, "LEFT"), "GameTooltipText": (12, WHITE, False, "LEFT"),
     "GameTooltipTextSmall": (10, WHITE, False, "LEFT"),
 }

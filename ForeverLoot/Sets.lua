@@ -142,8 +142,6 @@ local Sets = {
 	key = "sets",
 	tab = "Sets",
 	icon = "Interface\\Icons\\INV_Chest_Plate03",
-	listTitle = "Item sets",
-	listRight = "Level",
 	allLabel = "All sets",
 	unit = "piece",
 	groupUnit = "set",
@@ -153,14 +151,8 @@ local Sets = {
 		"No set piece matches that.",
 		"Try a set name like valor, a slot like gloves, or a stat like agility.",
 	},
-	footer = "Click: Wowhead link    Shift-click: link in chat    Ctrl-click: preview    Right-click: wishlist    " ..
-		ns.Colorize(C.accent, "Gold") .. ": your class can wear it",
 	filters = true,
 }
-
-function Sets.dataDate()
-	return ns.DATA_DATE
-end
 
 function Sets.Entries()
 	local list = {}
@@ -196,11 +188,6 @@ function Sets.Remember(st)
 	ns.db.lastSet = st.id
 end
 
-function Sets.WowheadLink(st)
-	if AllClassic(st) then return st.name .. " on Wowhead Classic", ns.WOWHEAD_CLASSIC .. "item-set=" .. st.id end
-	return st.name .. " on Wowhead", ns.WOWHEAD .. "item-set=" .. st.id
-end
-
 function Sets.ShowHeader(ui, h, st)
 	h.name:SetText(st.name)
 	local parts = { Count(#st.pieces, "piece") }
@@ -209,13 +196,9 @@ function Sets.ShowHeader(ui, h, st)
 	local classes = ClassText(st)
 	if classes then parts[#parts + 1] = classes end
 	h.meta:SetText(table.concat(parts, "   ·   "))
-	if AllClassic(st) then
-		h.note:SetText("Classic set: Wowhead's Forever database has none of these pieces, so Forever may have replaced it. " ..
-			"Bonuses and sources are Classic's.")
-	else
-		h.note:SetText("Where each piece comes from, from the dungeon, raid and quest tables. Set bonuses are " ..
-			"Forever's where Wowhead's Forever database has the set (" .. (ns.DATA_DATE or "") .. ").")
-	end
+	if AllClassic(st) then h.note:SetText("Classic set: Forever may have replaced it.") end
+	h.about = "Where each piece comes from, from the dungeon, raid and quest tables. Set bonuses are " ..
+		"Forever's where Wowhead's Forever database has the set (" .. (ns.DATA_DATE or "") .. "). Gold set names: your class can wear it."
 end
 
 -- Two sections, collapsed until clicked: the set bonuses, then the pieces with where each comes from

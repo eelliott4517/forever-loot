@@ -36,12 +36,18 @@ UI.sections, UI.searchSections = {}, {}
 local WIDTH, HEIGHT = 960, 640
 local INSET_TOP, INSET_SIDE, INSET_BOTTOM = 21, 2, 2 -- the backdrop inside the portrait frame
 local STRIP_H = 46 -- the controls along the top: the search box, the dropdowns, the checkboxes
-local FOOTER_H = 36 -- the footer, under the bottom scroll line
+local FOOTER_H = 14 -- under the bottom scroll line
 local LIST_W = 300 -- the left pane
-local LIST_ROW_H = 24
-local HEADER_H = 96
+local LIST_ROW_H = 28 -- a plain row in the list; one with a picture or an icon is taller
+local ART_ROW_H = 56
+local ICON_ROW_H = 36
+local ART_W, ART_H = 84, 46 -- a dungeon's picture in the list
+local HEADER_H = 72 -- the heading: its name and one line; a note under them makes it taller
+local NOTE_HEADER_H = 98
 local WING_H = 28
-local BOSS_H = 28
+local BOSS_H = 44
+local PORTRAIT_W, PORTRAIT_H = 76, 38 -- a boss's portrait (the journal's are 128 x 64)
+local BOSS_TEXT_X = 86 -- where a boss's name starts, and its loot's icons
 local ITEM_H = 28
 local NOTE_H = 22
 local SECTION_GAP = 6
@@ -50,10 +56,9 @@ local QUEST_H = 28
 local SOURCE_W = 150
 local PAINT_PAD = 60
 local SCROLLBAR_W = 18
-local CHEVRON_X = 4 -- where an entry's plus or minus box sits; its text starts at TEXT_X
-local TEXT_X = 28
+local STATUS_X = 6 -- where a quest's status mark sits
 K.WING_H, K.ITEM_H, K.NOTE_H, K.SECTION_GAP = WING_H, ITEM_H, NOTE_H, SECTION_GAP
-K.CHEVRON_X, K.TEXT_X = CHEVRON_X, TEXT_X
+K.STATUS_X = STATUS_X
 
 ----------------------------------------------------------------------
 -- Small widget helpers
@@ -585,7 +590,7 @@ function UI:ToggleFilter(key)
 			-- the filters hide what was open (a set your class can't wear): open the tab's own pick
 			self:Select(self:Mode().Default())
 		elseif self.current then
-			self:Mode().ShowHeader(self, self.header, self.current)
+			self:ShowHeader(self.current)
 			self:Refresh()
 		end
 	end
@@ -738,21 +743,16 @@ function UI:Create()
 	search:SetPoint("TOPRIGHT", -14, -14)
 	self.searchBox = search
 
-	self.listLabel = Text(left, "GameFontNormal")
-	self.listLabel:SetPoint("TOPLEFT", 18, -(STRIP_H + 10))
-	self.listRight = Text(left, "GameFontHighlightSmall", "RIGHT")
-	self.listRight:SetPoint("TOPRIGHT", -(SCROLLBAR_W + 18), -(STRIP_H + 11))
-	SetTextColor(self.listRight, C.grey)
 	local topLine = Divider(left)
-	topLine:SetPoint("TOPLEFT", 6, -(STRIP_H + 26))
-	topLine:SetPoint("TOPRIGHT", -6, -(STRIP_H + 26))
+	topLine:SetPoint("TOPLEFT", 6, -(STRIP_H + 2))
+	topLine:SetPoint("TOPRIGHT", -6, -(STRIP_H + 2))
 	local bottomLine = Divider(left)
 	bottomLine:SetPoint("BOTTOMLEFT", 6, FOOTER_H - 4)
 	bottomLine:SetPoint("BOTTOMRIGHT", -6, FOOTER_H - 4)
 
 	local listWidth = LIST_W - 12 - SCROLLBAR_W - 12
 	local list = CreateScrollArea(left, listWidth)
-	list:SetPoint("TOPLEFT", 12, -(STRIP_H + 34))
+	list:SetPoint("TOPLEFT", 12, -(STRIP_H + 10))
 	list:SetPoint("BOTTOMRIGHT", -(SCROLLBAR_W + 12), FOOTER_H + 4)
 	self.list = list
 
@@ -791,8 +791,9 @@ function UI:Create()
 	end
 	self.toggles = { myClass = classToggle, hideClassic = classicToggle }
 
-	-- The heading: the entry's name in white, a gold line about it and a grey note, over the
-	-- list's scroll line
+	-- The heading: the entry's name, large and white, one gold line about it, and a short grey
+	-- note only when there's something to say, over the list's scroll line. Hovering the name
+	-- says where the data comes from.
 	local header = CreateFrame("Frame", nil, right)
 	header:SetPoint("TOPLEFT", 0, -STRIP_H)
 	header:SetPoint("TOPRIGHT", 0, -STRIP_H)
@@ -801,9 +802,18 @@ function UI:Create()
 	divider:SetPoint("BOTTOMLEFT", 6, -4)
 	divider:SetPoint("BOTTOMRIGHT", -6, -4)
 
-	header.name = Text(header, "GameFontHighlightHuge")
-	header.name:SetPoint("TOPLEFT", 22, -8)
+	header.name = Text(header, "GameFontNormalHuge3")
+	header.name:SetPoint("TOPLEFT", 22, -10)
 	header.name:SetPoint("RIGHT", -140, 0)
+	SetTextColor(header.name, C.white)
+	header.hover = CreateFrame("Frame", nil, header)
+	header.hover:SetPoint("TOPLEFT", header.name, "TOPLEFT", -4, 4)
+	header.hover:SetPoint("BOTTOMRIGHT", header.name, "BOTTOMRIGHT", 4, -4)
+	header.hover:EnableMouse(true)
+	header.hover:SetScript("OnEnter", function(self)
+		if header.about then ShowHint(self, header.name:GetText(), header.about) end
+	end)
+	header.hover:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
 	header.meta = Text(header, "GameFontNormal")
 	header.meta:SetPoint("TOPLEFT", header.name, "BOTTOMLEFT", 0, -8)
@@ -815,16 +825,9 @@ function UI:Create()
 	header.note:SetSpacing(2)
 	SetTextColor(header.note, C.silver)
 
-	header.wowhead = PanelButton(header, "Wowhead", 96)
-	header.wowhead:SetPoint("TOPRIGHT", -22, -8)
-	header.wowhead:SetScript("OnClick", function()
-		local title, url = UI:Mode().WowheadLink(UI.current)
-		if url then UI:ShowURL(title, url) end
-	end)
-
-	-- Takes the place of the Wowhead button while search results are showing
+	-- Shows while search results are
 	header.clear = PanelButton(header, "Clear search", 110)
-	header.clear:SetPoint("TOPRIGHT", -22, -8)
+	header.clear:SetPoint("TOPRIGHT", -22, -12)
 	header.clear:SetScript("OnClick", function() UI:ClearSearch() end)
 	header.clear:Hide()
 	self.header = header
@@ -841,17 +844,6 @@ function UI:Create()
 	footLine:SetPoint("BOTTOMLEFT", 6, FOOTER_H - 4)
 	footLine:SetPoint("BOTTOMRIGHT", -6, FOOTER_H - 4)
 
-	-- The footer, under the scroll lines: how fresh the data is, and what the clicks do
-	self.footerSource = Text(left, "GameFontHighlightSmall")
-	self.footerSource:SetPoint("BOTTOMLEFT", 18, 10)
-	SetTextColor(self.footerSource, C.grey)
-	-- the click help can run to two lines; they grow upward
-	self.footerHelp = Text(right, "GameFontHighlightSmall")
-	self.footerHelp:SetPoint("BOTTOMLEFT", 22, 6)
-	self.footerHelp:SetPoint("RIGHT", -24, 0)
-	self.footerHelp:SetWordWrap(true)
-	SetTextColor(self.footerHelp, C.grey)
-
 	self.listRows = {}
 	self.pools, self.used = {}, {}
 	self:UpdateChrome()
@@ -865,18 +857,14 @@ function UI:Create()
 	return f
 end
 
--- Tabs, list labels, search hint and footer for the current mode
+-- Tabs, filters and search hint for the current mode
 function UI:UpdateChrome()
 	local mode = self:Mode()
 	self:UpdateTabs()
 	-- The loot filters are only on the tabs that list loot
 	for _, t in pairs(self.toggles) do t:SetShown(mode.filters and true or false) end
 	self:UpdateToggles()
-	self.listLabel:SetText(mode.listTitle)
-	self.listRight:SetText(mode.listRight)
 	self.searchBox.Instructions:SetText(mode.searchHint)
-	self.footerHelp:SetText(mode.footer)
-	self.footerSource:SetText("Wowhead data " .. (mode.dataDate() or ""))
 	self:UpdateFilterButtons()
 end
 
@@ -904,6 +892,28 @@ end
 ----------------------------------------------------------------------
 -- The list on the left
 ----------------------------------------------------------------------
+-- A picture from Art.lua ({ file ID, left, right, top, bottom, width / height }) on a texture
+-- of w x h, cut from its middle to that shape
+local function SetArt(tex, art, w, h)
+	tex:SetTexture(art[1])
+	local l, r, t, b, aspect = art[2], art[3], art[4], art[5], art[6]
+	local want = w / h
+	if aspect > want then
+		local cut = (r - l) * (1 - want / aspect) / 2
+		l, r = l + cut, r - cut
+	else
+		local cut = (b - t) * (1 - aspect / want) / 2
+		t, b = t + cut, b - cut
+	end
+	tex:SetTexCoord(l, r, t, b)
+end
+K.SetArt = SetArt
+
+-- A dungeon's or raid's picture, or the general one for anything else in a list of them
+function K.InstanceArt(entry)
+	return (entry and entry.key and ns.InstanceArt and ns.InstanceArt[entry.key]) or ns.OtherArt
+end
+
 local function CreateListRow(parent, width)
 	local b = CreateFrame("Button", nil, parent)
 	b:SetSize(width, LIST_ROW_H)
@@ -912,6 +922,12 @@ local function CreateListRow(parent, width)
 	b.selected:Hide()
 	for _, e in ipairs(b.selected.ends) do e:Hide() end
 	RowHighlight(b)
+	-- a dungeon's picture in a thin dark frame (gold while it's open), or a profession's icon
+	b.art = b:CreateTexture(nil, "ARTWORK")
+	b.art:SetPoint("LEFT", 6, 0)
+	b.frame = b:CreateTexture(nil, "BORDER")
+	b.frame:SetPoint("TOPLEFT", b.art, "TOPLEFT", -1, 1)
+	b.frame:SetPoint("BOTTOMRIGHT", b.art, "BOTTOMRIGHT", 1, -1)
 	b.levels = Text(b, "GameFontHighlightSmall", "RIGHT")
 	b.levels:SetPoint("RIGHT", -6, 0)
 	b.levels:SetWidth(44)
@@ -921,9 +937,8 @@ local function CreateListRow(parent, width)
 	b.count = Text(b, "GameFontHighlightSmall", "RIGHT")
 	b.count:SetPoint("RIGHT", -6, 0)
 	b.count:Hide()
-	b.name = Text(b, "GameFontHighlight")
-	b.name:SetPoint("LEFT", 10, 0)
-	b.name:SetPoint("RIGHT", b.tag, "LEFT", -4, 0)
+	b.name = Text(b, "GameFontHighlightMed2")
+	b.sub = Text(b, "GameFontHighlightSmall")
 	b:SetScript("OnClick", function(self)
 		UI:ClearSearchFocus()
 		if UI:IsSearching() then
@@ -935,11 +950,46 @@ local function CreateListRow(parent, width)
 	return b
 end
 
+-- A row's shape for its list: "art" (a picture, the name, a line under it), "icon" (an icon and
+-- the name) or plain (the name)
+local function LayoutListRow(row, style, right)
+	row.style = style
+	row.name:ClearAllPoints()
+	row.sub:ClearAllPoints()
+	row.art:SetShown(style ~= nil)
+	row.frame:SetShown(style == "art")
+	row.sub:SetShown(style == "art")
+	row.name:SetWordWrap(style == "art")
+	row.name:SetWidth(0)
+	if style == "art" then
+		row:SetHeight(ART_ROW_H)
+		row.art:SetSize(ART_W, ART_H)
+		-- a long name takes two lines, so the pair starts higher
+		local width = row:GetWidth() - (6 + ART_W + 10) - (right:IsShown() and 34 or 6)
+		row.name:SetWidth(width)
+		row.sub:SetWidth(width)
+		row.name:SetPoint("TOPLEFT", row.art, "TOPRIGHT", 10, row.name:GetStringHeight() > 20 and -1 or -7)
+		row.sub:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -5)
+	elseif style == "icon" then
+		row:SetHeight(ICON_ROW_H)
+		row.art:SetSize(26, 26)
+		row.art:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		row.name:SetPoint("LEFT", row.art, "RIGHT", 10, 0)
+		row.name:SetPoint("RIGHT", right, "LEFT", -6, 0)
+	else
+		row:SetHeight(LIST_ROW_H)
+		row.name:SetPoint("LEFT", 10, 0)
+		row.name:SetPoint("RIGHT", right, "LEFT", -6, 0)
+	end
+end
+
 -- Normally lists every entry of the tab. While searching it lists "All ..." and then
 -- only the entries with matches, each with its match count.
 -- RowInfo gives name, right column, tag, marker (the entry is yours: your level range, your
 -- profession, your class), tag color and right column color. Marked names are gold, as the
--- game marks what's yours; the rest are white.
+-- game marks what's yours; the rest are white. A tab with pictures (listStyle "art") shows
+-- RowSub's line under the name instead of the right column and tag; one with icons ("icon")
+-- shows ListIcon's icon.
 function UI:BuildList()
 	local mode = self:Mode()
 	local searching = self:IsSearching()
@@ -959,11 +1009,12 @@ function UI:BuildList()
 	end
 
 	local width = self.list.content:GetWidth()
+	local style = mode.listStyle
+	local y = 0
 	for i, e in ipairs(entries) do
 		local row = self.listRows[i]
 		if not row then
 			row = CreateListRow(self.list.content, width)
-			row:SetPoint("TOPLEFT", 0, -(i - 1) * LIST_ROW_H)
 			self.listRows[i] = row
 		end
 		row.entry = e.entry
@@ -972,13 +1023,19 @@ function UI:BuildList()
 		row.isMarked = marker and true or false
 		row.name:SetText(name)
 		SetTextColor(row.name, row.isMarked and C.gold or C.white)
+		local rightSide
 		if e.count then
 			row.levels:Hide()
 			row.tag:Hide()
 			row.count:SetText(e.count)
 			SetTextColor(row.count, C.silver)
 			row.count:Show()
-			row.name:SetPoint("RIGHT", row.count, "LEFT", -6, 0)
+			rightSide = row.count
+		elseif style == "art" then
+			row.count:Hide()
+			row.levels:Hide()
+			row.tag:Hide()
+			rightSide = row.count
 		else
 			row.count:Hide()
 			row.levels:SetText(right)
@@ -987,12 +1044,22 @@ function UI:BuildList()
 			row.tag:SetText(tag or "")
 			SetTextColor(row.tag, tagColor or C.silver)
 			row.tag:Show()
-			row.name:SetPoint("RIGHT", row.tag, "LEFT", -4, 0)
+			rightSide = row.tag
 		end
+		LayoutListRow(row, style, rightSide)
+		if style == "art" then
+			SetArt(row.art, (mode.ListArt or K.InstanceArt)(e.entry), ART_W, ART_H)
+			row.sub:SetText(e.entry and mode.RowSub and mode.RowSub(e.entry) or "")
+		elseif style == "icon" then
+			row.art:SetTexture(e.entry and mode.ListIcon(e.entry) or mode.icon)
+		end
+		row:ClearAllPoints()
+		row:SetPoint("TOPLEFT", 0, -y)
+		y = y + row:GetHeight()
 		row:Show()
 	end
 	for i = #entries + 1, #self.listRows do self.listRows[i]:Hide() end
-	self.list:SetContentHeight(#entries * LIST_ROW_H)
+	self.list:SetContentHeight(y)
 	self:UpdateListSelection()
 end
 
@@ -1006,6 +1073,9 @@ function UI:UpdateListSelection()
 		row.isSelected = on
 		row.selected:SetShown(on)
 		for _, e in ipairs(row.selected.ends) do e:SetShown(on) end
+		-- an open entry's picture gets a gold frame
+		local c = on and C.gold or { 0, 0, 0 }
+		row.frame:SetColorTexture(c[1], c[2], c[3], on and 0.9 or 0.85)
 	end
 end
 
@@ -1140,26 +1210,23 @@ end
 -- Rows both tabs use: section headers, item rows and notes
 ----------------------------------------------------------------------
 -- A section (a wing, the Quests section, a group of results) sits on the Reputation tab's list
--- plate: its name in gold, its count or levels in grey, and a plus or minus at the right. The
--- entries in a section that open too (bosses, quests) are white lines with the campaign log's
--- plus or minus box at their left. Everything lights up under the mouse.
+-- plate: its name in gold, its count or levels in grey. The entries in a section that open too
+-- (bosses, quests) are lines on the backdrop. Everything that opens has the gold plus or minus at
+-- its right, and lights up under the mouse.
 local PLATE_ICON = { closed = "common-button-list-plus", open = "common-button-list-minus" }
-local BOX_ICON = { closed = "campaign_headericon_closed", open = "campaign_headericon_open" }
 
--- An entry that opens: the box at its left and the hover line
+-- An entry that opens: the hover line, and the plus or minus at its right
 local function Card(b)
 	RowHighlight(b)
 	b.icon = b:CreateTexture(nil, "ARTWORK")
-	b.icon:SetPoint("LEFT", CHEVRON_X, 0)
-	b.icon:SetAtlas(BOX_ICON.closed)
-	b.icon:SetSize(18, 18)
+	b.icon:SetPoint("RIGHT", -8, -1)
+	b.icon:SetAtlas(PLATE_ICON.closed, true)
 	return b
 end
 
--- An entry's box for whether it's open
+-- The plus or minus for whether it's open
 local function SetChevron(icon, open)
-	icon:SetAtlas(open and BOX_ICON.open or BOX_ICON.closed)
-	icon:SetSize(18, 18)
+	icon:SetAtlas(open and PLATE_ICON.open or PLATE_ICON.closed, true)
 end
 
 -- A wing, group or other section: click to collapse or expand it, shift-click for every section
@@ -1207,7 +1274,7 @@ K.RegisterKind("wing", CreateWing, function(w, d)
 	local collapsed = d.id and UI:IsCollapsed(d.id)
 	w.collapsed = collapsed and true or false
 	if d.id then
-		w.icon:SetAtlas(collapsed and PLATE_ICON.closed or PLATE_ICON.open, true)
+		SetChevron(w.icon, not collapsed)
 		w.icon:Show()
 	else
 		w.icon:Hide()
@@ -1233,6 +1300,10 @@ local function UpdateItemRow(row)
 	local entry = ns.Items[row.itemID]
 	local flag = entry and entry[4]
 	row.icon:SetTexture(icon)
+	-- a boss's loot lines up under its name
+	local x = row.indent or 24
+	row.icon:SetPoint("LEFT", x, 0)
+	row.wanted:SetPoint("LEFT", x - 20, 0)
 	local r, g, b = HexToRGB(ns.QUALITY_HEX[quality] or "ffffff")
 	row.name:SetText(name)
 	SetTextColor(row.name, { r, g, b })
@@ -1345,6 +1416,7 @@ end
 -- data: itemID, learnedCount, pct, hint, owned, and in search results source (the boss) and from (tooltip line)
 K.RegisterKind("item", CreateItem, function(r, d)
 	r.itemID = d.itemID
+	r.indent = d.indent
 	r.owned = d.owned
 	r.learnedCount = d.learnedCount
 	r.pctValue = d.pct
@@ -1747,7 +1819,6 @@ function UI:RenderSearch()
 
 	local h = self.header
 	h.name:SetText("Search results")
-	h.wowhead:Hide()
 	h.clear:Show()
 	local meta
 	if total == 0 then
@@ -1771,7 +1842,9 @@ function UI:RenderSearch()
 	else
 		tip = "Click a " .. mode.groupUnit .. " on the left to see only its matches."
 	end
-	h.note:SetText(table.concat(parts, "   ·   ") .. ".   " .. tip)
+	h.note:SetText("")
+	h.about = table.concat(parts, "   ·   ") .. ".   " .. tip
+	self:FitHeader()
 
 	self:BuildList()
 end
@@ -1839,6 +1912,23 @@ end
 ----------------------------------------------------------------------
 -- Opening an entry, switching tabs
 ----------------------------------------------------------------------
+-- The heading for an entry: the mode sets its name and line, and a note or an about (the name's
+-- tooltip) when it has one
+function UI:ShowHeader(entry)
+	local h = self.header
+	h.about = nil
+	h.note:SetText("")
+	self:Mode().ShowHeader(self, h, entry)
+	self:FitHeader()
+end
+
+-- The heading is as tall as what it shows: taller with a note under it
+function UI:FitHeader()
+	local h = self.header
+	local note = h.note:GetText()
+	h:SetHeight((note and note ~= "") and NOTE_HEADER_H or HEADER_H)
+end
+
 function UI:Select(entry)
 	if not entry then return end
 	-- Picking an entry leaves the search results
@@ -1846,10 +1936,8 @@ function UI:Select(entry)
 	local mode = self:Mode()
 	self.current = entry
 	mode.Remember(entry)
-	local h = self.header
-	h.clear:Hide()
-	h.wowhead:SetShown(select(2, mode.WowheadLink(entry)) ~= nil)
-	mode.ShowHeader(self, h, entry)
+	self.header.clear:Hide()
+	self:ShowHeader(entry)
 	if self.listKey ~= self.mode .. ":entries" then self:BuildList() else self:UpdateListSelection() end
 	self.loot:ScrollToTop()
 	self:BeginContent()
@@ -1905,7 +1993,7 @@ function UI:ToggleWanted(itemID)
 	self:Refresh()
 	-- The Wishlist tab's list and header count what's on it
 	if not self:IsSearching() and self.current then
-		self:Mode().ShowHeader(self, self.header, self.current)
+		self:ShowHeader(self.current)
 		self:BuildList()
 	end
 end
@@ -1968,7 +2056,7 @@ function UI:Show()
 		self:Select(self:Mode().Default())
 	else
 		-- what changed while it was closed (quests, skills, your bags) shows in the header too
-		if not self:IsSearching() then self:Mode().ShowHeader(self, self.header, self.current) end
+		if not self:IsSearching() then self:ShowHeader(self.current) end
 		self:Refresh()
 	end
 	if SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_OPEN then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN) end
@@ -2052,12 +2140,9 @@ local function SetSectionIcon(icon, id)
 	SetChevron(icon, not UI:IsCollapsed(id))
 end
 
--- What a click on a section header does: open or close it, or with Shift every section;
--- a right-click runs `onRight` (a boss's or quest's Wowhead link)
-local function SectionClick(self, button)
-	if button == "RightButton" then
-		if self.onRight then self.onRight(self) end
-	elseif IsShiftKeyDown() then
+-- What a click on a section header does: open or close it, or with Shift every section
+local function SectionClick(self)
+	if IsShiftKeyDown() then
 		UI:ToggleAllSections()
 	else
 		UI:ToggleSection(self.sectionId)
@@ -2066,30 +2151,37 @@ end
 K.SectionClick, K.SetSectionIcon, K.Card, K.SetChevron = SectionClick, SetSectionIcon, Card, SetChevron
 
 -- "Click to see its loot." and the rest of a header's hint
-local function SectionHint(id, what, right)
+local function SectionHint(id, what)
 	return (UI:IsCollapsed(id) and ("Click to see " .. what .. ".") or "Click to close it.") ..
-		" Shift-click opens or closes every section." .. (right and (" Right-click for " .. right .. ".") or "")
+		" Shift-click opens or closes every section."
 end
 K.SectionHint = SectionHint
 
--- Boss bar: a section header over the boss's loot. Click it to see the drops, right-click for
--- the boss's Wowhead link.
+-- Boss bar: the boss's portrait from the Encounter Journal, its name, and how many drops it has.
+-- Click it to see them.
+local TRASH_ICON = "Interface\\Icons\\INV_Misc_Bag_10"
+local UNCONFIRMED_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local function CreateBoss(parent, width)
 	local b = Card(CreateFrame("Button", nil, parent))
 	b:SetSize(width, BOSS_H)
 	b.isForeverLootRow = true
-	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	b.name = Text(b, "GameFontHighlight")
-	b.name:SetPoint("LEFT", TEXT_X, 0)
+	b:RegisterForClicks("LeftButtonUp")
+	b.portrait = b:CreateTexture(nil, "ARTWORK")
+	b.portrait:SetSize(PORTRAIT_W, PORTRAIT_H)
+	b.portrait:SetPoint("BOTTOMLEFT", 2, 2)
+	-- trash and unconfirmed drops get an icon in the portrait's place
+	b.badgeIcon = b:CreateTexture(nil, "ARTWORK")
+	b.badgeIcon:SetSize(30, 30)
+	b.badgeIcon:SetPoint("CENTER", b.portrait, "CENTER")
+	b.badgeIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	b.name = Text(b, "GameFontHighlightMed2")
+	b.name:SetPoint("LEFT", BOSS_TEXT_X, 0)
 	b.tag = Text(b, "GameFontHighlightSmall", "RIGHT")
-	b.tag:SetPoint("RIGHT", -6, 0)
+	b.tag:SetPoint("RIGHT", -28, 0)
 	b.name:SetPoint("RIGHT", b.tag, "LEFT", -10, 0)
 	SetTextColor(b.tag, C.grey)
-	b.onRight = function(self)
-		if self.url then UI:ShowURL(self.boss.name .. " on Wowhead", self.url) end
-	end
 	b:SetScript("OnEnter", function(self)
-		ShowHint(self, self.boss.name, SectionHint(self.sectionId, "its loot", self.url and "its Wowhead link"))
+		ShowHint(self, self.boss.name, SectionHint(self.sectionId, "its loot"))
 	end)
 	b:SetScript("OnLeave", function()
 		GameTooltip:Hide()
@@ -2101,10 +2193,21 @@ end
 K.RegisterKind("boss", CreateBoss, function(b, d)
 	b.sectionId = d.id
 	b.boss = { name = d.name }
-	b.url = d.url
 	b.name:SetText(d.name)
 	b.tag:SetText(d.tag or "")
 	SetSectionIcon(b.icon, d.id)
+	-- the journal's portrait; a boss it has none for gets its silhouette, dimmed
+	local icon = d.trash and TRASH_ICON or (d.unconfirmed and UNCONFIRMED_ICON) or nil
+	b.badgeIcon:SetShown(icon ~= nil)
+	b.portrait:SetShown(icon == nil)
+	if icon then
+		b.badgeIcon:SetTexture(icon)
+	else
+		local art = ns.BossArt and ns.BossArt[d.name]
+		b.portrait:SetTexture(art or ns.UnknownBossArt)
+		b.portrait:SetDesaturated(art == nil)
+		b.portrait:SetAlpha(art and 1 or 0.35)
+	end
 end)
 
 ----------------------------------------------------------------------
@@ -2261,19 +2364,11 @@ local function AddQuestHowTo(id, q)
 end
 K.AddQuestHowTo = AddQuestHowTo
 
--- "Available  ·  Level 22  ·  choose 1 of 3". It leaves out what the bar shows anyway: the
--- faction (only yours is listed) and the level when the status already gives it.
+-- Where a quest stands for you: "Available", "In your log", "3 quests first"...
 local function QuestTag(q)
-	local parts = {}
 	local status, detail = ns.QuestStatus(q.id, q)
 	local text, color = StatusText(status, detail, q.id, q)
-	if text then parts[#parts + 1] = ns.Colorize(color, text) end
-	if q.level and status ~= "level" then parts[#parts + 1] = "Level " .. q.level end
-	local choices, rewards = #(q.choices or {}), #(q.rewards or {})
-	if choices > 1 then
-		parts[#parts + 1] = "choose 1 of " .. choices .. (rewards > 0 and (", plus " .. rewards) or "")
-	end
-	return table.concat(parts, "  ·  ")
+	return text and ns.Colorize(color, text) or ""
 end
 K.QuestTag = QuestTag
 
@@ -2284,15 +2379,15 @@ local function CreateQuest(parent, width)
 	local b = Card(CreateFrame("Button", nil, parent))
 	b:SetSize(width, QUEST_H)
 	b.isForeverLootRow = true
-	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	-- the card's chevron opens it; the quest's status mark comes after it
+	b:RegisterForClicks("LeftButtonUp")
+	-- the card's plus or minus opens it; the quest's status mark is at its left
 	b.toggle = b.icon
 	b.icon = b:CreateTexture(nil, "ARTWORK")
 	b.icon:SetSize(16, 16)
-	b.icon:SetPoint("LEFT", TEXT_X - 2, 0)
+	b.icon:SetPoint("LEFT", STATUS_X, 0)
 	b.icon:SetTexture(QUEST_ICON)
 	b.tag = Text(b, "GameFontHighlightSmall", "RIGHT")
-	b.tag:SetPoint("RIGHT", -6, 0)
+	b.tag:SetPoint("RIGHT", -28, 0)
 	SetTextColor(b.tag, C.silver)
 	b.name = Text(b, "GameFontNormal")
 	b.name:SetPoint("LEFT", b.icon, "RIGHT", 6, 0)
@@ -2313,17 +2408,13 @@ local function CreateQuest(parent, width)
 			GameTooltip:AddLine("Forever: " .. change, C.green[1], C.green[2], C.green[3], true)
 		end
 		AddQuestHowTo(q.id, q)
-		GameTooltip:AddLine(SectionHint(self.sectionId, "where it starts and its rewards", q.id and "its Wowhead link"),
+		GameTooltip:AddLine(SectionHint(self.sectionId, "where it starts and its rewards"),
 			C.silver[1], C.silver[2], C.silver[3], true)
 		GameTooltip:Show()
 	end)
 	b:SetScript("OnLeave", function()
 		GameTooltip:Hide()
 	end)
-	b.onRight = function(self)
-		local q = self.quest
-		if q.id then UI:ShowURL(q.name .. " on Wowhead", ns.WOWHEAD .. "quest=" .. q.id) end
-	end
 	b:SetScript("OnClick", SectionClick)
 	return b
 end
@@ -2448,23 +2539,19 @@ function K.QuestStartLine(q, click)
 		tipTitle = q.name, hint = click and "Click to see the quests before it, and where each starts, in the Quests tab." }
 end
 
-local FOOTER = "Click a boss or quest to open it    Item: click for Wowhead, Shift-click to link, Ctrl-click to preview, right-click for the wishlist"
-
 -- A tab over one list of instances. `cfg` gives the list, the labels, and the row and note text.
 local function InstanceMode(cfg)
 	local M = {
 		key = cfg.key,
 		tab = cfg.tab,
 		icon = cfg.icon,
-		listTitle = cfg.listTitle,
-		listRight = cfg.listRight,
+		listStyle = "art",
 		allLabel = cfg.allLabel,
 		unit = "item",
 		groupUnit = cfg.groupUnit,
 		searchHint = cfg.searchHint,
 		searchAbout = "The search looks at item names, slots, types and stats.",
 		noMatch = cfg.noMatch,
-		footer = FOOTER,
 		filters = true,
 	}
 	local Sorted = cfg.sorted
@@ -2473,15 +2560,12 @@ local function InstanceMode(cfg)
 		return d ~= nil and (d.isRaid or false) == cfg.raids
 	end
 
-	function M.dataDate()
-		return ns.DATA_DATE
-	end
-
 	function M.Entries()
 		return Sorted()
 	end
 
 	M.RowInfo = cfg.rowInfo
+	M.RowSub = cfg.rowSub
 
 	function M.Default()
 		local here = ns.CurrentDungeon()
@@ -2501,37 +2585,25 @@ local function InstanceMode(cfg)
 		ns.db[cfg.remember] = d.key
 	end
 
-	-- A new instance Wowhead has no zone page for yet gets no link
-	function M.WowheadLink(d)
-		if d.zone and d.zone ~= 0 then
-			return d.name .. " on Wowhead", ns.WOWHEAD .. "zone=" .. d.zone
-		end
-		return d.name .. " on Wowhead", nil
-	end
-
+	-- Its name, levels, size and where it is; its own note if it has one
 	function M.ShowHeader(ui, h, d)
 		h.name:SetText(d.name)
-		local bossCount = 0
-		for _, b in ipairs(d.bosses) do
-			if not (b.trash or b.unconfirmed) then bossCount = bossCount + 1 end
-		end
 		local parts = { LevelText(d) }
 		if d.size then parts[#parts + 1] = d.size .. " players" end
 		if d.location then parts[#parts + 1] = d.location end
-		if d.territory then parts[#parts + 1] = d.territory end
-		if bossCount > 0 then parts[#parts + 1] = bossCount .. (bossCount == 1 and " boss" or " bosses") end
 		h.meta:SetText(table.concat(parts, "   ·   "))
-		h.note:SetText(d.note or cfg.defaultNote())
+		h.note:SetText(d.note or "")
+		h.about = cfg.about()
 	end
 
 	function M.Render(ui, d)
 		local lastWing
 		local usedKeys = {}
 
-		local function AddItems(itemIDs, learnedCounts, pct, hints)
+		local function AddItems(itemIDs, learnedCounts, pct, hints, indent)
 			for _, itemID in ipairs(itemIDs) do
 				ui:AddEntry("item", ITEM_H, { itemID = itemID, learnedCount = learnedCounts and learnedCounts[itemID],
-					pct = pct and pct[itemID], hint = hints and hints[itemID] })
+					pct = pct and pct[itemID], hint = hints and hints[itemID], indent = indent })
 			end
 		end
 
@@ -2539,9 +2611,11 @@ local function InstanceMode(cfg)
 			ui:AddEntry("note", NOTE_H, { text = text })
 		end
 
-		-- A boss bar over its drops (a section of its own: the drops show once it's opened)
-		local function AddBoss(key, name, tag, url, loot, learnedKeys, emptyText, pct, hints)
-			if ui:AddSection("d:" .. d.key .. ":b:" .. key, name, tag, "boss", { name = name, tag = tag, url = url }) then
+		-- A boss bar over its drops (a section of its own: the drops show once it's opened, lined up
+		-- under its name)
+		local function AddBoss(key, name, tag, kind, loot, learnedKeys, emptyText, pct, hints)
+			if ui:AddSection("d:" .. d.key .. ":b:" .. key, name, tag, "boss",
+				{ name = name, tag = tag, trash = kind == "trash", unconfirmed = kind == "unconfirmed" }) then
 				ui:AddGap(2)
 				return
 			end
@@ -2551,8 +2625,8 @@ local function InstanceMode(cfg)
 			local learned, counts = LearnedFor(d, learnedKeys, known)
 			local shown, hidden = K.VisibleItems(loot)
 			local shownLearned, hiddenLearned = K.VisibleItems(learned)
-			AddItems(shown, nil, pct, hints)
-			AddItems(shownLearned, counts)
+			AddItems(shown, nil, pct, hints, BOSS_TEXT_X)
+			AddItems(shownLearned, counts, nil, nil, BOSS_TEXT_X)
 			if #shown == 0 and #shownLearned == 0 then
 				local filtered = hidden + hiddenLearned
 				AddNote(filtered > 0 and (Count(filtered, "item") .. " hidden by the My class / Hide Classic filters.") or emptyText)
@@ -2594,14 +2668,13 @@ local function InstanceMode(cfg)
 			local keys = ns.Learn.KeysForBoss(boss)
 			for _, k in ipairs(keys) do usedKeys[k] = true end
 			if not collapsed then
-				local url = boss.npc and boss.npc[1] and (ns.WOWHEAD .. "npc=" .. boss.npc[1]) or nil
 				-- how many drops, so a closed boss still says what it has
 				local count, visible = #boss.loot, #(K.VisibleItems(boss.loot))
-				local countText = visible < count and (visible .. " of " .. count .. " items")
+				local tag = visible < count and (visible .. " of " .. count .. " items")
 					or (count .. (count == 1 and " item" or " items"))
-				local tag = (boss.tag and (boss.tag .. "  ·  ") or "") .. countText
 				local plain = boss.trash or boss.unconfirmed
-				AddBoss((boss.wing and (boss.wing .. ":") or "") .. boss.name, boss.name, tag, url, boss.loot, plain and {} or keys,
+				local kind = boss.trash and "trash" or (boss.unconfirmed and "unconfirmed") or nil
+				AddBoss((boss.wing and (boss.wing .. ":") or "") .. boss.name, boss.name, tag, kind, boss.loot, plain and {} or keys,
 					boss.trash and "No trash drops listed." or "No drops listed yet. Kill it and loot to record them here.",
 					boss.pct, boss.hints)
 			end
@@ -2764,8 +2837,6 @@ local Dungeons = InstanceMode({
 	key = "dungeons",
 	tab = "Dungeons",
 	icon = "Interface\\Icons\\INV_Misc_Bone_HumanSkull_01",
-	listTitle = "Dungeons",
-	listRight = "Levels",
 	allLabel = "All dungeons",
 	groupUnit = "dungeon",
 	raids = false,
@@ -2783,10 +2854,13 @@ local Dungeons = InstanceMode({
 		return d.name, d.minLevel .. "-" .. d.maxLevel, "", level >= d.minLevel and level <= d.maxLevel,
 			nil, K.DifficultyColor(math.floor((d.minLevel + d.maxLevel) / 2))
 	end,
-	defaultNote = function()
+	-- under its name: its levels, colored by how hard it is for you
+	rowSub = function(d)
+		return ns.Colorize(K.DifficultyColor(math.floor((d.minLevel + d.maxLevel) / 2)), LevelText(d))
+	end,
+	about = function()
 		return "Classic loot plus Forever's new drops, from Wowhead, wowtbc.gg and Mobalytics (" ..
-			(ns.DATA_DATE or "") .. "). " .. ns.Colorize(C.grey, "Classic") ..
-			" = not in Forever's game data, so it may have been replaced."
+			(ns.DATA_DATE or "") .. "). Classic: not in Forever's game data, so it may have been replaced."
 	end,
 })
 
@@ -2794,8 +2868,6 @@ local Raids = InstanceMode({
 	key = "raids",
 	tab = "Raids",
 	icon = "Interface\\Icons\\INV_Misc_Head_Dragon_01",
-	listTitle = "Raids",
-	listRight = "Players",
 	allLabel = "All raids",
 	groupUnit = "raid",
 	raids = true,
@@ -2815,9 +2887,14 @@ local Raids = InstanceMode({
 		end
 		return r.name, tostring(r.size or ""), tag, level >= r.minLevel and level <= r.maxLevel, color
 	end,
-	defaultNote = function()
-		return "Loot from Wowhead (" .. (ns.DATA_DATE or "") .. "). " .. ns.Colorize(C.grey, "Classic") ..
-			" = not in Forever's game data."
+	-- under its name: its size, and Classic for the ones Forever hasn't announced
+	rowSub = function(r)
+		local text = r.size and (r.size .. " players") or ""
+		if r.status == "classic" then text = text .. "   ·   " .. ns.Colorize(C.grey, "Classic") end
+		return text
+	end,
+	about = function()
+		return "Loot from Wowhead (" .. (ns.DATA_DATE or "") .. "). Classic: not in Forever's game data."
 	end,
 })
 

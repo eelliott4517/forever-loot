@@ -83,6 +83,7 @@ local FontString = inherit(Region, {
 	GetText = function(self) return self.text end,
 	SetTextColor = function(self, r, g, b) assert(type(r) == "number", "SetTextColor needs numbers"); self.tc = { r, g, b } end,
 	GetStringWidth = function(self) return #(self.text or "") * 6 end,
+	GetStringHeight = function(self) return 12 end,
 })
 local FontStringMT = strict("FontString", FontString)
 
@@ -251,8 +252,7 @@ function CreateFont(name) local f = newFont(12); _G[name] = f; return f end
 GameFontNormal, GameFontNormalSmall, GameFontNormalLarge, GameFontNormalHuge = newFont(12), newFont(10), newFont(16), newFont(20)
 GameFontHighlight, GameFontHighlightSmall, ChatFontNormal = newFont(12), newFont(10), newFont(14)
 GameFontNormalMed1, GameFontHighlightHuge, GameFontHighlightSmall2 = newFont(13), newFont(20), newFont(11)
-SystemFont_Small, SystemFont_Small2, SystemFont_Med1, SystemFont_Med2 = newFont(10), newFont(11), newFont(12), newFont(13)
-SystemFont_Med3, SystemFont_Large, SystemFont_Huge2 = newFont(14), newFont(16), newFont(24)
+GameFontHighlightMed2, GameFontNormalHuge3 = newFont(14), newFont(25)
 
 ----------------------------------------------------------------------
 -- Globals

@@ -148,17 +148,16 @@ end
 
 UI:SetMode("raids")
 check(UI.mode == "raids", "Raids tab opens")
-check(UI.listLabel.text == "Raids" and UI.listRight.text == "Players", "raid list headings")
+check(UI.listLabel == nil and ShownRows()[1].style == "art", "the raid list has pictures, no headings")
 local rows = ShownRows()
 check(#rows == 9, "one row per raid (" .. #rows .. ")")
-check(rows[1] and rows[1].entry == R.BARROW and rows[1].tag.text == "", "Barrow Deeps first, with no New tag")
-check(rows[1] and rows[1].levels.text == "10", "raid size in the list")
+check(rows[1] and rows[1].entry == R.BARROW and not rows[1].sub.text:find("New", 1, true), "Barrow Deeps first, with no New tag")
+check(rows[1] and rows[1].sub.text == "10 players", "raid size in the list")
 local mcRow, onyRow = RowFor(R.MC), RowFor(R.ONY)
-check(mcRow and mcRow.tag.text == "Classic", "Classic raids tagged Classic")
-check(mcRow and mcRow.tag.tc and math.abs(mcRow.tag.tc[1] - C.grey[1]) < 0.01, "Classic tag is grey")
+check(mcRow and mcRow.sub.text:find(ns.Colorize(C.grey, "Classic"), 1, true), "Classic raids tagged Classic, in grey")
 local hyjalRow = RowFor(R.HYJAL)
-check(hyjalRow and hyjalRow.tag.text == "", "no New tag on Hyjal Summit either")
-check(onyRow and onyRow.tag.text == "", "Onyxia has no tag (it's in Forever)")
+check(hyjalRow and not hyjalRow.sub.text:find("New", 1, true), "no New tag on Hyjal Summit either")
+check(onyRow and not onyRow.sub.text:find("Classic", 1, true), "Onyxia has no tag (it's in Forever)")
 check(mcRow and not mcRow.isMarked and math.abs(mcRow.name.tc[3] - C.white[3]) < 0.01, "a level 16 character's raid names are white, not gold")
 
 for _, r in ipairs(ns.Raids) do
@@ -166,7 +165,7 @@ for _, r in ipairs(ns.Raids) do
 	check(UI.current == r and UI.header.name.text == r.name, "select " .. r.name)
 	local meta = UI.header.meta.text
 	check(meta:find("Level 60", 1, true) and meta:find(r.size .. " players", 1, true), "raid header " .. r.name .. ": " .. meta)
-	check(UI.header.note.text ~= "" and UI.header.note.text ~= nil, "raid note " .. r.name)
+	check((UI.header.about or "") ~= "", "raid header says where its loot comes from " .. r.name)
 	-- Raids without wings: every boss is listed, collapsed; opened, each shows its loot (the Quests
 	-- section stays closed)
 	local wings = 0
@@ -190,10 +189,8 @@ check(Count("boss") == 3, "opening a quarter shows its 3 bosses (" .. Count("bos
 
 UI:Select(R.HYJAL)
 OpenAll()
-check(not UI.header.wowhead:IsShown(), "no Wowhead link for a raid Wowhead has no page for")
 check(Count("note") == 13, "each Hyjal boss says it has no drops yet (" .. Count("note") .. ")")
-UI:Select(R.MC)
-check(UI.header.wowhead:IsShown(), "Molten Core: Wowhead link")
+check(UI.header.wowhead == nil, "no Wowhead button")
 
 UI:Select(R.BARROW)
 OpenAll()
@@ -336,8 +333,8 @@ for _, e in ipairs(UI.entries) do
 end
 check(rewardRow, "its reward is an item row")
 -- the tag starts with where the quest stands for you; it leaves out the faction (only yours is listed)
-check(K.QuestTag(defias):find("6 quests first", 1, true) and K.QuestTag(defias):find("choose 1 of", 1, true)
-	and not K.QuestTag(defias):find("Alliance", 1, true), "quest tag: " .. K.QuestTag(defias))
+check(K.QuestTag(defias):find("6 quests first", 1, true) and not K.QuestTag(defias):find("choose 1 of", 1, true)
+	and not K.QuestTag(defias):find("Alliance", 1, true), "quest tag is just its status: " .. K.QuestTag(defias))
 UI.loot:ScrollTo(bars[1].y) -- scroll the quests into view
 local bar
 for i = 1, (UI.used.quest or 0) do if UI.pools.quest[i]:IsShown() then bar = UI.pools.quest[i] break end end
@@ -346,9 +343,6 @@ if bar then
 	bar.scripts.OnEnter(bar)
 	check(GameTooltip.lines[1] == bar.quest.name, "quest bar tooltip")
 	bar.scripts.OnLeave(bar)
-	bar.scripts.OnClick(bar, "RightButton")
-	check(MOCK.popup and MOCK.popup.which == "FOREVERLOOT_WOWHEAD_LINK" and MOCK.popup.data.url:find("quest=" .. bar.quest.id, 1, true)
-		and MOCK.popup:GetEditBox():GetText() == MOCK.popup.data.url, "right-clicking a quest bar gives its Wowhead link in the game's popup")
 end
 -- The other faction's quests are left out
 MOCK.faction = "Horde"
@@ -438,7 +432,7 @@ for _, st in ipairs(ns.Sets) do
 end
 check(valor and valor.name == "Battlegear of Valor" and #valor.pieces == 8 and #valor.bonuses > 0, "Battlegear of Valor")
 UI:SetMode("sets")
-check(UI.mode == "sets" and UI.listLabel.text == "Item sets", "Sets tab")
+check(UI.mode == "sets" and ShownRows()[1].style == nil, "Sets tab, a plain list")
 check(#ShownRows() == #ns.Sets, "one row per set (" .. #ShownRows() .. ")")
 UI:Select(valor)
 check(UI.header.name.text == "Battlegear of Valor" and UI.header.meta.text:find("8 pieces", 1, true), "set header: " .. UI.header.meta.text)
@@ -455,7 +449,6 @@ for _, e in ipairs(Entries("item")) do
 	if e.data.source and e.data.source ~= "No known source" then sourced = sourced + 1 end
 end
 check(sourced >= 6, "most Valor pieces say where they drop (" .. sourced .. ")")
-check(select(2, UI:Mode().WowheadLink(valor)):find("item-set=189", 1, true), "set Wowhead link")
 local valorRow = RowFor(valor)
 check(valorRow and valorRow.isMarked, "gold name: a Warrior can wear Valor")
 MOCK.class = { "Mage", "MAGE", 8 }
@@ -519,7 +512,6 @@ for _, d in ipairs(ns.Dungeons) do
 	UI:Select(d)
 	check(UI.current == d and UI.header.name.text == d.name, "select dungeon " .. d.name)
 	check(UI.header.meta.text:find(K.LevelText(d), 1, true) ~= nil, "dungeon levels " .. d.name)
-	check(UI.header.wowhead:IsShown() == (d.zone ~= 0), "Wowhead link only with a zone page: " .. d.name)
 end
 UI:Search("gloves")
 check((UI.searchTotal or 0) > 0, "dungeon search still works")

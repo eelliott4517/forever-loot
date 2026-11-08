@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.0
+
+- **Dungeon pictures.** Every dungeon and raid in the list has its picture: the Encounter Journal's art, or for the dungeons Forever added (The Hall of Thanes, Ruins of Lordaeron, Dalaran, The Drowned City and the rest) Forever's own loading screen. The open one gets a gold frame. Names are bigger, with their levels on a line under them. Professions show their icons.
+- **Boss portraits.** Each boss shows its Encounter Journal portrait (212 of them). A boss the journal has none for, mostly Forever's own, gets its shadowed silhouette, and trash drops get a bag. A boss's loot lines up under its name.
+- **A cleaner page.** The Wowhead button is gone, and so are the right-click Wowhead links on bosses and quests, the footer, the list's heading and the explanation under each name. A dungeon's heading is now its name, larger, over one line (levels and where it is); a note shows only when there's news, like a raid's unlock date. Hover the name for where the data comes from. Quests just say where they stand ("Available", "3 quests first").
+- Everything that opens (sections, bosses, quests) has the same gold plus or minus at its right.
+- Clicking an item still gives its Wowhead link.
+
 ## 1.11.0
 
 - **The Rep Planner and Trainer Locator look.** The parchment is gone: the window now has the character window's dark wood backdrop that Rep Planner and Trainer Locator use, in the game's own fonts and colors (gold headings, white entries, grey details), so all three addons match.

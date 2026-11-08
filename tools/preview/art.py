@@ -20,7 +20,7 @@ import urllib.request
 
 from PIL import Image
 
-BUILD = "1.60.1.70205"
+BUILD = "1.60.1.70790"
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".art")
 TABLES = ("UiTextureAtlas", "UiTextureAtlasMember", "UiTextureAtlasElement", "UiTextureAtlasElementSliceData")
 

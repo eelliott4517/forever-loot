@@ -123,12 +123,16 @@ UI.loot._h = 422
 check(UI.frame:IsShown() and UI.mode == "dungeons", "/fl opens the Dungeons tab")
 check(UI.current and UI.current.key == "RFC", "opens on a dungeon for your level", UI.current and UI.current.key)
 check(#listRows() == #ns.Dungeons, "list shows every dungeon", #listRows())
-check(UI.header.wowhead:IsShown() and not UI.header.clear:IsShown(), "dungeon view shows the Wowhead button")
+check(UI.header.wowhead == nil and not UI.header.clear:IsShown(), "no Wowhead button, and no Clear search outside a search")
 check(#entries("item") == 0 and #entries("boss") == #UI.current.bosses, "RFC lists its bosses, collapsed", #entries("item"))
 openAll()
-check(#entries("item") == 12 and #painted("item") == 12, "opened, RFC shows its 12 drops", #entries("item"))
+-- (the ones in view, and a little past it, are painted)
+local inView = 0
+for _, e in ipairs(entries("item")) do if e.y <= UI.loot:GetHeight() + 60 then inView = inView + 1 end end
+check(#entries("item") == 12 and inView > 0 and #painted("item") == inView, "opened, RFC shows its 12 drops", #entries("item") .. ", " .. inView)
 check(tab("dungeons").selected and not tab("raids").selected, "Dungeons tab is highlighted")
-check(UI.listLabel:GetText() == "Dungeons" and UI.listRight:GetText() == "Levels", "list labels for dungeons")
+check(UI.listLabel == nil and listRows()[1].style == "art" and listRows()[1].art:GetTexture() == ns.InstanceArt[listRows()[1].entry.key][1],
+	"no list label; each dungeon has its picture")
 
 ---------------------------------------------------------------- dungeon search
 local n = search("gloves")
@@ -140,7 +144,7 @@ check(allRow.entry == nil and allRow.name:GetText() == "All dungeons" and allRow
 local sum = 0
 for i, r in ipairs(listRows()) do if i > 1 then sum = sum + tonumber(r.count:GetText()) end end
 check(sum == gloves, "per-dungeon counts add up", sum)
-check(UI.header.clear:IsShown() and not UI.header.wowhead:IsShown(), "Clear search replaces the Wowhead button")
+check(UI.header.clear:IsShown(), "search results have the Clear search button")
 local itemsPainted = painted("item")
 check(#itemsPainted > 0 and #itemsPainted < 30, "only the rows in view get widgets", #itemsPainted)
 for _, row in ipairs(itemsPainted) do
@@ -234,7 +238,7 @@ wipe(UI.sections)   -- back to everything collapsed
 tab("professions"):Click()
 check(UI.mode == "professions" and tab("professions").selected and not tab("dungeons").selected, "Professions tab switches and highlights")
 check(#listRows() == #ns.Professions and #ns.Professions == 11, "list shows the 11 professions", #listRows())
-check(UI.listLabel:GetText() == "Professions" and UI.listRight:GetText() == "Recipes", "list labels for professions")
+check(listRows()[1].style == "icon" and listRows()[1].art:GetTexture() == listRows()[1].entry.icon, "each profession has its icon")
 check(UI.current and UI.current.name == "Leatherworking", "opens on your best crafting profession, not Skinning", UI.current and UI.current.name)
 local lwRow
 for _, r in ipairs(listRows()) do if r.entry and r.entry.name == "Leatherworking" then lwRow = r end end
@@ -522,9 +526,8 @@ tab("wishlist"):Click()
 check(UI.mode == "wishlist" and UI.current and UI.current.name == "Everything", "the Wishlist tab opens on everything")
 print("  meta: " .. UI.header.meta:GetText())
 check(UI.header.name:GetText() == "Wishlist" and UI.header.meta:GetText():find("2 items", 1, true), "header counts the list")
-check(not UI.header.wowhead:IsShown(), "no Wowhead button for the whole list")
 local wrows = listRows()
-check(wrows[1].name:GetText() == "Everything" and wrows[1].levels:GetText() == "2", "list starts with Everything")
+check(wrows[1].name:GetText() == "Everything" and wrows[1].sub:GetText() == "2 items", "list starts with Everything")
 check(wrows[2].entry == ns.DungeonByKey.DM and wrows[3].entry == lw and #wrows == 3, "then each source, dungeons first")
 check(#entries("item") == 0 and #entries("recipe") == 0 and #entries("wing") == 2, "its groups start collapsed")
 openAll()
@@ -546,7 +549,7 @@ check(painted("recipe")[1].badge:GetText() == "Owned", "so do items you're weari
 MOCK.equipped[craftedID] = nil
 
 listRows()[2]:Click()
-check(UI.current == ns.DungeonByKey.DM and #entries("item") == 1 and #entries("recipe") == 0 and UI.header.wowhead:IsShown(),
+check(UI.current == ns.DungeonByKey.DM and #entries("item") == 1 and #entries("recipe") == 0,
 	"clicking a source shows just its items")
 UI.searchBox:Type(ns.Items[craftedID][1])
 openAll()
@@ -579,7 +582,7 @@ tab("wishlist"):Click()
 UI:Select(listRows()[1].entry)
 painted("item")[1]:Click("RightButton")
 check(not ns.Wishlist.IsWanted(wantedID) and #entries("item") == 0 and chatHas("is off your wishlist"), "right-click in the list takes it off")
-check(UI.header.meta:GetText():find("1 item", 1, true) and listRows()[1].levels:GetText() == "1", "the counts follow")
+check(UI.header.meta:GetText():find("1 item", 1, true) and listRows()[1].sub:GetText() == "1 item", "the counts follow")
 ns.Wishlist.Toggle(987654)
 UI:Refresh()
 UI:BuildList()
@@ -622,23 +625,21 @@ local function wipeFilters() ns.char.filters.myClass, ns.char.filters.hideClassi
 wipeFilters()
 SlashCmdList.FOREVERLOOT("raids")
 check(UI.frame:IsShown() and UI.mode == "raids" and tab("raids").selected, "/fl raids opens the Raids tab")
-check(#listRows() == #ns.Raids and UI.listLabel:GetText() == "Raids" and UI.listRight:GetText() == "Players",
-	"the list shows every raid, with a players column", #listRows())
-check(listRows()[1].levels:GetText() == tostring(ns.Raids[1].size), "raid rows show the raid size", listRows()[1].levels:GetText())
+check(#listRows() == #ns.Raids, "the list shows every raid", #listRows())
+check(listRows()[1].sub:GetText():find(ns.Raids[1].size .. " players", 1, true), "raid rows show the raid size", listRows()[1].sub:GetText())
 local classicRow
 for _, r in ipairs(listRows()) do if r.entry.status == "classic" then classicRow = r break end end
-check(classicRow and classicRow.tag:GetText() == "Classic" and classicRow.tagColor == nil and classicRow.tag._textColor[1] == ns.COLORS.grey[1], "Classic raids are tagged Classic in grey")
+check(classicRow and classicRow.sub:GetText():find(ns.Colorize(ns.COLORS.grey, "Classic"), 1, true), "Classic raids are tagged Classic in grey")
 check(UI.current == ns.Raids[1], "below 60 it opens on the first raid", UI.current and UI.current.key)
 check(UI.toggles.myClass:IsShown() and UI.toggles.hideClassic:IsShown(), "the loot filters show on the Raids tab")
 local naxx = ns.DungeonByKey.NAXX
 UI:Select(naxx)
 check(#entries("boss") == 0 and #entries("wing") >= 6, "Naxxramas's quarters start collapsed", #entries("wing"))
-check(not UI.header.wowhead:IsShown() == (naxx.zone == 0), "the Wowhead button follows the zone id")
 local mc = ns.DungeonByKey.MC
 UI:Select(mc)
 check(#entries("boss") == #mc.bosses, "a raid without wings lists every boss", #entries("boss") .. " vs " .. #mc.bosses)
 UI:Select(ns.DungeonByKey.HYJAL)
-check(UI.header.meta:GetText():find("20 players", 1, true) and not UI.header.wowhead:IsShown(), "a new raid without a zone page shows its size and no link",
+check(UI.header.meta:GetText():find("20 players", 1, true), "a new raid shows its size",
 	UI.header.meta:GetText())
 UI.searchBox:Type("")
 UI:SetFilter("slot", "trinket")
@@ -679,15 +680,12 @@ local qTip = MOCK.TooltipText()
 check(qTip:find(qEntry.data.quest.name, 1, true) and (qTip:find("Alliance only", 1, true) or qTip:find("Alliance and Horde", 1, true)),
 	"a quest's tooltip names it and its side")
 qRow:GetScript("OnLeave")(qRow)
-check(qTip:find("Click to see where it starts and its rewards.", 1, true) and qTip:find("Right-click for its Wowhead link.", 1, true),
-	"its tooltip says a click opens it and a right-click gives the link")
-qRow:Click("RightButton")
-check(MOCK.popup and MOCK.popup.data.url == ns.WOWHEAD .. "quest=" .. qEntry.data.quest.id, "right-clicking a quest gives its Wowhead link")
-MOCK.popup = nil
+check(qTip:find("Click to see where it starts and its rewards.", 1, true) and not qTip:find("Wowhead", 1, true),
+	"its tooltip says a click opens it, and nothing about Wowhead")
 local qRewards = #(qEntry.data.quest.choices or {}) + #(qEntry.data.quest.rewards or {})
 check(#entries("item") == 0, "each quest starts collapsed")
 qRow:Click()
-check(not UI:IsCollapsed(qEntry.data.id) and #entries("item") == qRewards and qRow.toggle:GetAtlas() == "campaign_headericon_open",
+check(not UI:IsCollapsed(qEntry.data.id) and #entries("item") == qRewards and qRow.toggle:GetAtlas() == "common-button-list-minus",
 	"clicking a quest opens it to its rewards", #entries("item") .. " vs " .. qRewards)
 qRow:Click()
 check(UI:IsCollapsed(qEntry.data.id) and #entries("item") == 0, "and clicking again closes it")
@@ -763,7 +761,7 @@ check(not ns.char.filters.myClass and not ns.char.filters.hideClassic and #entri
 
 ---------------------------------------------------------------- 1.6.0: sets
 SlashCmdList.FOREVERLOOT("sets")
-check(UI.mode == "sets" and #listRows() == #ns.Sets and UI.listLabel:GetText() == "Item sets", "/fl sets lists every set", #listRows())
+check(UI.mode == "sets" and #listRows() == #ns.Sets and listRows()[1].style == nil, "/fl sets lists every set, plain", #listRows())
 local defias = ns.Sets[1]
 check(UI.current == defias and UI.header.name:GetText() == defias.name, "a rogue opens on the first set it can wear", UI.current and UI.current.name)
 local meta = UI.header.meta:GetText()
@@ -1015,7 +1013,7 @@ UI:Select(listRows()[1].entry)
 openAll()
 local wrow
 for _, r in ipairs(listRows()) do if r.entry == multiIn then wrow = r end end
-check(#entries("item") == 1 and wrow and wrow.levels:GetText() == "1", "an item " .. multiBosses .. " bosses drop is one wishlist row, counted once")
+check(#entries("item") == 1 and wrow and wrow.sub:GetText() == "1 item", "an item " .. multiBosses .. " bosses drop is one wishlist row, counted once")
 check(entries("item")[1] and entries("item")[1].data.source:find(" +" .. (multiBosses - 1), 1, true),
 	"and its line names the others: " .. tostring(entries("item")[1] and entries("item")[1].data.source))
 wipe(ns.char.wishlist)
@@ -1340,7 +1338,7 @@ check(not UI:IsCollapsed("q:DM:166") and UI.loot:GetVerticalScroll() > 0, "with 
 local qrows = listRows()
 check(#qrows == 1 + #ns.Dungeons + #ns.Raids and qrows[1].entry.isTodo and qrows[1].name:GetText() == "Quests you can do",
 	"the list is the to-do page, then every dungeon and raid", #qrows)
-check(UI.listLabel:GetText() == "Dungeons and raids" and UI.toggles.myClass:IsShown(), "list label, and the loot filters (for rewards)")
+check(listRows()[1].style == "art" and UI.toggles.myClass:IsShown(), "dungeon pictures, and the loot filters (for rewards)")
 local heads = entries("qhead")
 local allianceQuests = 0
 for _, q in ipairs(dm.quests) do if q.side ~= 2 then allianceQuests = allianceQuests + 1 end end
@@ -1427,7 +1425,7 @@ check(turnIn and turnIn.right == "In your log" and type(turnIn.rightColor) == "t
 resetQuests()
 UI:Select(qrows[1].entry)
 openAll()
-check(UI.header.name:GetText() == "Quests you can do" and UI.header.meta:GetText():find(" in ", 1, true) and not UI.header.wowhead:IsShown(),
+check(UI.header.name:GetText() == "Quests you can do" and UI.header.meta:GetText():find(" in ", 1, true),
 	"its header counts them", UI.header.meta:GetText())
 MOCK.level = 60
 UI:Select(qrows[1].entry)
@@ -1540,11 +1538,11 @@ wing:Click()
 local inWing = #entries("boss")
 check(inWing > 0 and #entries("item") == 0, "a click opens one wing to its bosses, still closed", inWing)
 local bossBar = painted("boss")[1]
-check(bossBar.icon:GetAtlas() == "campaign_headericon_closed", "a closed boss shows a plus box")
+check(bossBar.icon:GetAtlas() == "common-button-list-plus", "a closed boss shows a plus")
 bossBar:GetScript("OnEnter")(bossBar)
 local bossTip = MOCK.TooltipText()
-check(bossTip:find("Click to see its loot.", 1, true) and bossTip:find("Right-click for its Wowhead link.", 1, true),
-	"its tooltip says what the clicks do", bossTip)
+check(bossTip:find("Click to see its loot.", 1, true) and not bossTip:find("Wowhead", 1, true),
+	"its tooltip says what a click does", bossTip)
 bossBar:GetScript("OnLeave")(bossBar)
 local bossID = bossBar.sectionId
 bossBar:Click()
@@ -1552,12 +1550,7 @@ local bossEntry
 for _, e in ipairs(UI.entries) do if e.kind == "boss" and e.data.id == bossID then bossEntry = e end end
 check(not UI:IsCollapsed(bossID) and #entries("item") > 0, "clicking a boss shows its drops")
 for _, w in ipairs(painted("boss")) do if w.sectionId == bossID then bossBar = w end end
-check(bossBar.icon:GetAtlas() == "campaign_headericon_open", "with a minus box")
-MOCK.popup = nil
-bossBar:Click("RightButton")
-check(MOCK.popup and MOCK.popup.data.url:find(ns.WOWHEAD .. "npc=", 1, true) and not UI:IsCollapsed(bossID),
-	"right-clicking a boss gives its Wowhead link and leaves it open")
-MOCK.popup = nil
+check(bossBar.icon:GetAtlas() == "common-button-list-minus", "with a minus")
 bossBar:Click()
 check(UI:IsCollapsed(bossID) and #entries("item") == 0, "clicking it again closes it")
 -- Search results start collapsed, each header counting its matches
@@ -1874,6 +1867,62 @@ check(newItems > 100 and newRecipes > 0 and newQuests > 0, "there are new items,
 check(#found == 0, "no New tag on any list, header, item, recipe, quest or tooltip", found[1])
 UI:Hide()
 end)()
+
+---------------------------------------------------------------- 1.12.0: pictures, a clean page
+do
+SlashCmdList.FOREVERLOOT("")
+tab("dungeons"):Click()
+UI:Select(ns.DungeonByKey.DM)
+-- every dungeon and raid has a picture from the client's own files
+local missing = {}
+for _, list in ipairs({ ns.Dungeons, ns.Raids }) do
+	for _, d in ipairs(list) do
+		local art = ns.InstanceArt[d.key]
+		if not (art and type(art[1]) == "number" and art[2] < art[3] and art[4] < art[5] and art[6] > 0) then missing[#missing + 1] = d.key end
+	end
+end
+check(#missing == 0, "every dungeon and raid has a picture", table.concat(missing, ", "))
+local dmRow
+for _, r in ipairs(listRows()) do if r.entry == ns.DungeonByKey.DM then dmRow = r end end
+local _, r, _, b = dmRow.art:GetTexCoord()
+check(dmRow.art:GetTexture() == ns.InstanceArt.DM[1] and dmRow.frame:IsShown() and r <= ns.InstanceArt.DM[3] + 1e-6 and b <= ns.InstanceArt.DM[5] + 1e-6,
+	"the open dungeon's row shows its picture, cut from the journal art")
+check(dmRow.sub:GetText():find("Levels 15-25", 1, true) and dmRow.name:GetFontObject() == GameFontHighlightMed2, "a larger name, its levels under it")
+-- the heading: a short line, no note, the sources in the name's tooltip
+check(UI.header.note:GetText() == "" and UI.header:GetHeight() == 72 and UI.header.about:find("wowtbc.gg", 1, true)
+	and not UI.header.meta:GetText():find("bosses", 1, true), "the Deadmines heading is short; where the loot comes from is in its tooltip")
+UI.header.hover:GetScript("OnEnter")(UI.header.hover)
+check(MOCK.TooltipText():find("Mobalytics", 1, true), "hovering the name shows it")
+UI.header.hover:GetScript("OnLeave")(UI.header.hover)
+-- bosses: the journal's portrait, its silhouette dimmed for one it has none for, a bag for trash
+local known, unknown, trash
+for _, w in ipairs(painted("boss")) do
+	if w.boss.name == "Rhahk'Zor" then known = w elseif w.boss.name == "Miner Johnson" then unknown = w end
+end
+UI.loot:ScrollTo(10000)
+for _, w in ipairs(painted("boss")) do if w.boss.name == "Trash & zone drops" then trash = w end end
+check(known and known.portrait:IsShown() and known.portrait:GetTexture() == ns.BossArt["Rhahk'Zor"] and known.portrait:GetAlpha() == 1,
+	"Rhahk'Zor shows his portrait")
+check(unknown and unknown.portrait:GetTexture() == ns.UnknownBossArt and unknown.portrait:GetAlpha() < 1, "Miner Johnson, with none, gets the dimmed silhouette")
+check(trash and trash.badgeIcon:IsShown() and not trash.portrait:IsShown(), "trash drops get a bag instead")
+UI.loot:ScrollToTop()
+-- a boss's loot lines up under its name
+UI:ToggleSection(known.sectionId)
+local item = painted("item")[1]
+local _, x = item.icon:GetPoint(1)
+local _, nameX = known.name:GetPoint(1)
+check(item and x == nameX, "its loot's icons line up under the boss's name", tostring(x) .. " vs " .. tostring(nameX))
+UI:ToggleSection(known.sectionId)
+-- no Wowhead anywhere on the page
+check(UI.header.wowhead == nil, "no Wowhead button")
+-- the other tabs: icons for professions, pictures for the wishlist, a plain list of sets
+tab("professions"):Click()
+check(listRows()[1].style == "icon" and listRows()[1].art:IsShown(), "professions have their icons")
+tab("sets"):Click()
+check(listRows()[1].style == nil and not listRows()[1].art:IsShown(), "sets are a plain list")
+tab("dungeons"):Click()
+UI:Hide()
+end
 
 ---------------------------------------------------------------- globals
 local allowed = { ForeverLootDB = true, ForeverLootCharDB = true, SLASH_FOREVERLOOT1 = true, SLASH_FOREVERLOOT2 = true }

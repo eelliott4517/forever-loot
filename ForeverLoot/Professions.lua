@@ -395,8 +395,7 @@ local Professions = {
 	key = "professions",
 	tab = "Professions",
 	icon = "Interface\\ICONS\\INV_SideTab_Professions_c60",
-	listTitle = "Professions",
-	listRight = "Recipes",
+	listStyle = "icon",
 	allLabel = "All professions",
 	unit = "recipe",
 	groupUnit = "profession",
@@ -406,12 +405,7 @@ local Professions = {
 		"No recipe in any profession matches that.",
 		"Try a material like copper bar, a slot like gloves, a type like leather, or a stat like agility.",
 	},
-	footer = "Click: Wowhead link    Shift-click: link in chat    Right-click: wishlist    Skill color: skill-up chance",
 }
-
-function Professions.dataDate()
-	return ns.PROFESSION_DATE
-end
 
 function Professions.Entries()
 	return professions
@@ -446,8 +440,8 @@ function Professions.Remember(p)
 	ns.db.lastProfession = p.key
 end
 
-function Professions.WowheadLink(p)
-	return p.name .. " on Wowhead", ns.WOWHEAD .. "skill=" .. p.skill
+function Professions.ListIcon(p)
+	return p.icon
 end
 
 function Professions.ShowHeader(ui, h, p)
@@ -460,10 +454,9 @@ function Professions.ShowHeader(ui, h, p)
 	local mine = MySkill(p)
 	if mine then parts[#parts + 1] = "Your skill " .. mine.rank .. "/" .. mine.max end
 	h.meta:SetText(table.concat(parts, "   ·   "))
-	h.note:SetText("Forever's recipes, materials and sources from Wowhead (" .. (ns.PROFESSION_DATE or "") .. "). " ..
-		ns.Colorize(C.blue, "Changed") ..
-		" = different from Classic. " ..
-		(mine and "Skill numbers are colored by your chance of a skill-up." or "Numbers are the skill each recipe needs."))
+	h.about = "Forever's recipes, materials and sources from Wowhead (" .. (ns.PROFESSION_DATE or "") .. "). " ..
+		"Changed: different from Classic. " ..
+		(mine and "Skill numbers are colored by your chance of a skill-up." or "Numbers are the skill each recipe needs.")
 end
 
 -- One collapsible section per group, collapsed until opened (a profession with a single

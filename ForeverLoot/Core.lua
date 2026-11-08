@@ -35,8 +35,10 @@ ns.QUALITY_HEX = {
 	[4] = "a335ee", [5] = "ff8000", [6] = "e6cc80", [7] = "00ccff",
 }
 
+-- Text in a color: one of ns.COLORS, or any { r, g, b }
 function ns.Colorize(c, text)
-	return "|cff" .. c.hex .. text .. "|r"
+	local hex = c.hex or ("%02x%02x%02x"):format(math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5))
+	return "|cff" .. hex .. text .. "|r"
 end
 
 function ns:Print(msg)

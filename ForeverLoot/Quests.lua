@@ -115,19 +115,19 @@ end
 ----------------------------------------------------------------------
 -- Rows
 ----------------------------------------------------------------------
--- A quest's header: the box that opens it, its status mark, its name in the quest log's colors,
--- and its status. Click to open it (shift-click opens or closes them all).
+-- A quest's header: its status mark, its name in the quest log's colors, its status, and the
+-- plus or minus that opens it. Click to open it (shift-click opens or closes them all).
 local function CreateQuestHeader(parent, width)
 	local w = K.Card(CreateFrame("Button", nil, parent))
 	w:SetSize(width, K.WING_H)
 	w.isForeverLootRow = true
 	w:RegisterForClicks("LeftButtonUp")
-	-- the status mark comes after the box
+	-- the status mark at its left, the plus or minus at its right
 	w.status = w:CreateTexture(nil, "ARTWORK")
 	w.status:SetSize(16, 16)
-	w.status:SetPoint("LEFT", K.TEXT_X - 2, 0)
+	w.status:SetPoint("LEFT", K.STATUS_X, 0)
 	w.levels = K.Text(w, "GameFontHighlightSmall", "RIGHT")
-	w.levels:SetPoint("RIGHT", -6, 0)
+	w.levels:SetPoint("RIGHT", -28, 0)
 	w.text = K.Text(w, "GameFontHighlight")
 	w.text:SetPoint("LEFT", w.status, "RIGHT", 6, 0)
 	w.text:SetPoint("RIGHT", w.levels, "LEFT", -10, 0)
@@ -218,8 +218,7 @@ local Quests = {
 	key = "quests",
 	tab = "Quests",
 	icon = "Interface\\Icons\\INV_Misc_Book_08",
-	listTitle = "Dungeons and raids",
-	listRight = "Levels",
+	listStyle = "art",
 	allLabel = "All instances",
 	unit = "quest",
 	groupUnit = "instance",
@@ -229,13 +228,8 @@ local Quests = {
 		"No quest matches that.",
 		"Try a quest name like defias, a quest giver like Gryan, a zone like Westfall, or a reward like gloves.",
 	},
-	footer = "Click a quest: how to get it    Pin button: map pin on the quest giver    Click a step: Wowhead link",
 	filters = true,
 }
-
-function Quests.dataDate()
-	return ns.DATA_DATE
-end
 
 function Quests.Entries()
 	return Instances()
@@ -256,6 +250,15 @@ function Quests.RowInfo(d)
 		level >= d.minLevel and level <= d.maxLevel, C.gold, K.DifficultyColor(math.floor((d.minLevel + d.maxLevel) / 2))
 end
 
+-- Under its name: its levels, and how many quests you can do there
+function Quests.RowSub(d)
+	local todo = d.isTodo and AllTodo().total or #(TodoOf(d))
+	local mark = todo > 0 and ns.Colorize(C.gold, TODO_MARK .. todo) or ""
+	if d.isTodo then return mark end
+	local levels = ns.Colorize(K.DifficultyColor(math.floor((d.minLevel + d.maxLevel) / 2)), K.LevelText(d))
+	return todo > 0 and (levels .. "   ·   " .. mark) or levels
+end
+
 function Quests.Default()
 	local here = ns.CurrentDungeon()
 	if here then return here end
@@ -269,11 +272,6 @@ function Quests.Remember(d)
 	ns.db.lastQuests = d.key
 end
 
-function Quests.WowheadLink(d)
-	if d.isTodo or not (d.zone and d.zone ~= 0) then return d.name, nil end
-	return d.name .. " on Wowhead", ns.WOWHEAD .. "zone=" .. d.zone
-end
-
 local LEGEND = "|TInterface\\GossipFrame\\AvailableQuestIcon:0|t you can take it   " ..
 	"|TInterface\\GossipFrame\\IncompleteQuestIcon:0|t in your log   |A:common-icon-checkmark:0:0|a done. "
 
@@ -283,9 +281,10 @@ function Quests.ShowHeader(ui, h, d)
 		local all = AllTodo()
 		local n, places, easy = all.total, all.places, all.easy
 		h.meta:SetText(n > 0 and (Count(n, "quest") .. " in " .. Count(places, "instance")) or "Nothing to do right now")
-		h.note:SetText("Dungeon and raid quests you can pick up, have in your log, or can work toward now: the next " ..
-			"quest to pick up is under each. " .. (easy > 0 and (Count(easy, "grey quest") .. " too easy to bother with " ..
-			(easy == 1 and "isn't" or "aren't") .. " listed. ") or "") .. "Data from cMaNGOS and Wowhead (" .. (ns.DATA_DATE or "") .. ").")
+		h.note:SetText(easy > 0 and (Count(easy, "grey quest") .. " too easy to bother with " ..
+			(easy == 1 and "isn't" or "aren't") .. " listed.") or "")
+		h.about = "Dungeon and raid quests you can pick up, have in your log, or can work toward now: the next " ..
+			"quest to pick up is under each. Data from cMaNGOS and Wowhead (" .. (ns.DATA_DATE or "") .. ")."
 		return
 	end
 	local todo, done, total = Counts(d)
@@ -293,7 +292,7 @@ function Quests.ShowHeader(ui, h, d)
 	if todo > 0 then parts[#parts + 1] = todo .. " to do" end
 	if done > 0 then parts[#parts + 1] = done .. " done" end
 	h.meta:SetText(table.concat(parts, "   ·   "))
-	h.note:SetText(LEGEND .. "Open a quest for where it starts and the quests before it; the pin button puts a map pin on the quest giver.")
+	h.about = LEGEND .. "Open a quest for where it starts and the quests before it; the pin button puts a map pin on the quest giver."
 end
 
 -- How to get one quest: where it starts and ends, any lead-in, the quests before it, its rewards
