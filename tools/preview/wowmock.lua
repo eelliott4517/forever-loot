@@ -311,6 +311,12 @@ function Frame:CreateTexture(name, layer, template, sublevel)
 	table.insert(self._textures, t)
 	return t
 end
+-- The game draws a portrait from a creature model; the preview can't render models, so it shows
+-- the game's stand-in portrait in its place
+function SetPortraitTextureFromCreatureDisplayID(tex, displayID)
+	assert(type(displayID) == "number", "SetPortraitTextureFromCreatureDisplayID needs a display ID")
+	tex:SetTexture("Interface\\CharacterFrame\\TempPortrait")
+end
 function Frame:CreateMaskTexture()
 	local m = setmetatable({ _parent = self, _shown = true, _kind = "MaskTexture" }, MaskTexture)
 	return m

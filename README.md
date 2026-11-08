@@ -2,7 +2,7 @@
 
 A WoW: Forever addon with dungeon and raid loot tables, dungeon quests, item sets, profession recipes, a search across all of them, and a wishlist of gear to chase.
 
-- Click the minimap button (or type `/fl`) to open it. The window looks like Rep Planner and Trainer Locator, which take their look from Forever's character window: the game's portrait frame over the character window's dark wood backdrop, the list on the left and the open dungeon (or set, profession or search) on the right, in the game's own fonts and colors. Each dungeon and raid in the list has its picture (the Encounter Journal's art, or Forever's own loading screen for its new dungeons), and each boss has its Encounter Journal portrait. Sections sit on the Reputation tab's list plates, and everything that opens has a plus or minus. Hover the name at the top for where its data comes from. The tabs hang below it: Dungeons, Raids, Quests, Sets, Professions and Wishlist. Drag the title bar to move it.
+- Click the minimap button (or type `/fl`) to open it. The window looks like Rep Planner and Trainer Locator, which take their look from Forever's character window: the game's portrait frame over the character window's dark wood backdrop, the list on the left and the open dungeon (or set, profession or search) on the right, in the game's own fonts and colors. Each dungeon and raid in the list has its picture (the Encounter Journal's art, or Forever's own loading screen for its new dungeons), and each boss has its Encounter Journal portrait, or one the game draws from its model. Sections sit on the Reputation tab's list plates, and everything that opens has a plus or minus. Hover the name at the top for where its data comes from. The tabs hang below it: Dungeons, Raids, Quests, Sets, Professions and Wishlist. Drag the title bar to move it.
 - **Dungeons** are sorted by level. Level ranges are colored by how hard the dungeon is for you, as the quest log colors quests; dungeons at your level have gold names.
 - **Raids** has Forever's new raids (The Barrow Deeps and Hyjal Summit), Onyxia's Lair, and the Classic raids: Molten Core, Blackwing Lair, Zul'Gurub, Ruins and Temple of Ahn'Qiraj, and Naxxramas. The list shows each raid's size, and Classic marks Classic raids Forever hasn't announced.
 - **Everything starts collapsed.** Click a header to open it, click again to close it, and shift-click any header to open or close every section at once (the bosses inside wings too). Closed headers say how many items or quests they hold. What you open stays open while you're logged in.
@@ -72,6 +72,9 @@ tools/raw/db2/      Forever's UiMap and UiMapAssignment tables (wago.tools), for
 tools/link_recipes.py  links ProfessionData.lua's new recipes to the items they make (refresh.py runs it)
 tools/build_art.py  builds Art.lua: each dungeon's picture and each boss's portrait, as file IDs from the
                     live client's file list on wago.tools (cached in tools/cache/)
+tools/boss_models.py  the creature model of each boss, for the ones the Encounter Journal has no portrait of
+                    (the game draws those): `python3 tools/boss_models.py <ClassicDB .sql.gz>` writes
+                    tools/raw/boss_models.json from cMaNGOS's classic-db and tools/raw/wowhead_npc_models.json
 tools/item_info.py  Wowhead tooltip API client; caches raw tooltips in tools/cache/
 tools/scrape_template.js  the browser scrape of Wowhead (refresh.py fills in the pages to fetch)
 tools/raw/wowhead.json    its output: zone loot and quests, raid boss pages, quest lookups, new items,

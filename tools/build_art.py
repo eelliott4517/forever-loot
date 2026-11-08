@@ -6,7 +6,8 @@ from WoW: Forever's own files.
 Dungeons and raids use the Encounter Journal's button art (interface/encounterjournal/
 ui-ej-dungeonbutton-*), and the dungeons Forever added use its own loading screens (interface/
 glues/loadingscreens/...). Bosses use the Encounter Journal's portraits (ui-ej-boss-*); a boss
-without one gets the journal's own "unknown boss" silhouette. Everything is written as file IDs
+without one gets its creature model (tools/raw/boss_models.json, from boss_models.py), which the game
+draws as a round portrait, or else the journal's own "unknown boss" silhouette. Pictures are file IDs
 from the live client's file list on wago.tools (cached in tools/cache), so the game loads each
 picture by its ID.
 """
@@ -83,7 +84,7 @@ def norm(s):
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
-def instances():
+def instances(with_npcs=False):
     rt = lua51.LuaRuntime(unpack_returned_tuples=True)
     ns = rt.eval("{}")
     rt.eval('function(f, ns) return assert(loadfile(f))("ForeverLoot", ns) end')(os.path.join(ROOT, "ForeverLoot", "Data.lua"), ns)
@@ -95,7 +96,11 @@ def instances():
             bosses = []
             for j in range(1, len(d["bosses"] or {}) + 1):
                 b = d["bosses"][j]
-                bosses.append((b["name"], bool(b["trash"])))
+                if with_npcs:
+                    npcs = [b["npc"][k] for k in range(1, len(b["npc"]) + 1)] if b["npc"] else []
+                    bosses.append((b["name"], bool(b["trash"]), npcs, bool(d["isNew"])))
+                else:
+                    bosses.append((b["name"], bool(b["trash"])))
             out.append((d["key"], d["name"], bosses))
     return out
 
@@ -164,10 +169,29 @@ def main():
                 without.append(f"{name} ({key})")
     lines.append("}")
     lines.append(f"ns.UnknownBossArt = {portraits[UNKNOWN_BOSS]}")
+    # the rest: the game draws a portrait from the boss's model
+    models_file = os.path.join(TOOLS, "raw", "boss_models.json")
+    models = json.load(open(models_file)) if os.path.exists(models_file) else {}
+    lines += [
+        "",
+        "-- A boss with no journal portrait: its creature model, which the game draws as a portrait",
+        "ns.BossModel = {",
+    ]
+    drawn = 0
+    still = []
+    for item in without:
+        name = item.rsplit(" (", 1)[0]
+        if name in models:
+            drawn += 1
+            lines.append(f"\t[{lua_string(name)}] = {models[name]},")
+        else:
+            still.append(item)
+    lines.append("}")
     with open(OUT, "w") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"wrote {OUT}: {len(insts)} instances, {found} boss portraits; {len(without)} bosses without one:")
-    print("  " + ", ".join(without))
+    print(f"wrote {OUT}: {len(insts)} instances, {found} boss portraits, {drawn} drawn from models; "
+          f"{len(still)} bosses with neither:")
+    print("  " + ", ".join(still))
 
 
 if __name__ == "__main__":

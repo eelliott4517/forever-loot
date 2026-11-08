@@ -68,8 +68,14 @@ local Texture = inherit(Region, {
 	GetAtlas = function(self) return self.atlas end,
 	SetDesaturated = function(self, on) assert(type(on) == "boolean", "SetDesaturated needs a boolean"); self.desaturated = on end,
 	SetBlendMode = function(self, mode) assert(mode == "ADD" or mode == "BLEND" or mode == "ALPHAKEY" or mode == "DISABLE" or mode == "MOD"); self.blend = mode end,
+	AddMaskTexture = function(self, mask) assert(mask.isMask, "AddMaskTexture needs a mask texture"); self.mask = mask end,
 })
 local TextureMT = strict("Texture", Texture)
+-- the game draws a portrait of a creature model into a texture
+function SetPortraitTextureFromCreatureDisplayID(tex, displayID)
+	assert(type(displayID) == "number", "SetPortraitTextureFromCreatureDisplayID needs a display ID")
+	tex.texture, tex.atlas, tex.portrait = nil, nil, displayID
+end
 
 local FontString = inherit(Region, {
 	SetFontObject = function(self, f) assert(f and f.__isFont, "SetFontObject needs a font object"); self.font = f end,
@@ -94,6 +100,9 @@ local Frame = inherit(Region, {
 	CreateTexture = function(self, name, layer)
 		local t = setmetatable({ parent = self, layer = layer, shown = true }, TextureMT)
 		return t
+	end,
+	CreateMaskTexture = function(self)
+		return setmetatable({ parent = self, shown = true, isMask = true }, TextureMT)
 	end,
 	CreateFontString = function(self, name, layer)
 		return setmetatable({ parent = self, layer = layer, shown = true }, FontStringMT)

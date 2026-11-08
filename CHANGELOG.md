@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.1
+
+- **81 more boss portraits.** Bosses the Encounter Journal has no picture of now get one the game draws from their own model, round, in the thin gold ring Blizzard puts around boss portraits on its kill banner: Miner Johnson, Sneed's Shredder, Archmage Arugal and the rest of Shadowfang Keep, the Stockade's bosses, Zul'Gurub's high priests, Lord Valthalak, Balzaphon and more. The models come from cMaNGOS's Classic database and Wowhead.
+- Forever's own bosses (The Hall of Thanes, Ruins of Lordaeron, Excavation Site, Dalaran, the Drowned City, the Barrow Deeps and Hyjal Summit) still show the silhouette: no site lists their models yet.
+
 ## 1.12.0
 
 - **Dungeon pictures.** Every dungeon and raid in the list has its picture: the Encounter Journal's art, or for the dungeons Forever added (The Hall of Thanes, Ruins of Lordaeron, Dalaran, The Drowned City and the rest) Forever's own loading screen. The open one gets a gold frame. Names are bigger, with their levels on a line under them. Professions show their icons.

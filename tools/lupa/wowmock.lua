@@ -132,6 +132,14 @@ function Frame:GetFrameLevel() return self._level or ((self._parent and self._pa
 function Frame:SetToplevel() end
 function Frame:SetClampedToScreen() end
 function Frame:CreateTexture(name, layer) local t = setmetatable({ _parent = self, _shown = true, _layer = layer }, Texture); return t end
+-- a mask is a texture that only shapes the ones it's added to
+function Frame:CreateMaskTexture() return setmetatable({ _parent = self, _shown = true, _mask = true }, Texture) end
+function Texture:AddMaskTexture(mask) assert(mask._mask, "AddMaskTexture needs a mask texture"); self._masks = self._masks or {}; table.insert(self._masks, mask) end
+-- the game draws a portrait of a creature model into a texture
+function SetPortraitTextureFromCreatureDisplayID(tex, displayID)
+	assert(type(displayID) == "number", "SetPortraitTextureFromCreatureDisplayID needs a display ID")
+	tex._texture, tex._atlas, tex._portrait = nil, nil, displayID
+end
 function Frame:CreateFontString(name, layer) local t = setmetatable({ _parent = self, _shown = true, _layer = layer }, FontString); return t end
 function Frame:GetCenter() return 0, 0 end
 function Frame:GetEffectiveScale() return 1 end

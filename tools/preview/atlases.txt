@@ -20,6 +20,9 @@ campaign_headericon_open 22 22
 campaign_headericon_closed 22 22
 charactercreate-customize-dropdown-linemouseover-side 6 20
 charactercreate-customize-dropdown-linemouseover-middle 1 20
+# a boss portrait drawn from its model: round, in the boss banner's ring
+CircleMaskScalable 64 64
+BossBanner-PortraitBorder 61 61
 uiframe-activetab-left 35 42
 _uiframe-activetab-center 1 42
 uiframe-activetab-right 37 42

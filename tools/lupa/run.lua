@@ -1903,8 +1903,16 @@ UI.loot:ScrollTo(10000)
 for _, w in ipairs(painted("boss")) do if w.boss.name == "Trash & zone drops" then trash = w end end
 check(known and known.portrait:IsShown() and known.portrait:GetTexture() == ns.BossArt["Rhahk'Zor"] and known.portrait:GetAlpha() == 1,
 	"Rhahk'Zor shows his portrait")
-check(unknown and unknown.portrait:GetTexture() == ns.UnknownBossArt and unknown.portrait:GetAlpha() < 1, "Miner Johnson, with none, gets the dimmed silhouette")
+check(unknown and unknown.face:IsShown() and unknown.ring:IsShown() and not unknown.portrait:IsShown()
+	and unknown.face._portrait == ns.BossModel["Miner Johnson"] and #unknown.face._masks == 1,
+	"Miner Johnson, with no journal portrait, gets one drawn from his model, round, in a ring")
 check(trash and trash.badgeIcon:IsShown() and not trash.portrait:IsShown(), "trash drops get a bag instead")
+UI:Select(ns.DungeonByKey.HOT)
+local faldrim
+for _, w in ipairs(painted("boss")) do if w.boss.name == "Faldrim Anvilmar" then faldrim = w end end
+check(faldrim and faldrim.portrait:IsShown() and not faldrim.face:IsShown() and faldrim.portrait:GetTexture() == ns.UnknownBossArt
+	and faldrim.portrait:GetAlpha() < 1, "a Forever boss with neither gets the journal's silhouette, dimmed")
+UI:Select(ns.DungeonByKey.DM)
 UI.loot:ScrollToTop()
 -- a boss's loot lines up under its name
 UI:ToggleSection(known.sectionId)

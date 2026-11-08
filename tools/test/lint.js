@@ -13,6 +13,7 @@ const KNOWN = new Set(`
   _G C_Item C_Timer CreateFrame CreateFont UIParent Minimap GameTooltip DEFAULT_CHAT_FRAME UISpecialFrames
   SlashCmdList SLASH_FOREVERLOOT1 SLASH_FOREVERLOOT2 ForeverLootDB
   GetItemInfo GetItemInfoInstant GetItemIcon GetInstanceInfo UnitLevel GetTime GetCursorPosition
+  SetPortraitTextureFromCreatureDisplayID
   IsModifierKeyDown HandleModifiedItemClick PlaySound SOUNDKIT GetNumLootItems GetLootSlotLink GetLootSourceInfo
   GameFontNormal GameFontNormalSmall GameFontNormalLarge GameFontNormalHuge GameFontHighlight GameFontHighlightSmall
   ChatFontNormal strsplit strtrim wipe tinsert UnitGUID

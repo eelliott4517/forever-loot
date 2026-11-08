@@ -2169,6 +2169,18 @@ local function CreateBoss(parent, width)
 	b.portrait = b:CreateTexture(nil, "ARTWORK")
 	b.portrait:SetSize(PORTRAIT_W, PORTRAIT_H)
 	b.portrait:SetPoint("BOTTOMLEFT", 2, 2)
+	-- a boss the journal has no portrait for: the game draws one from its model, round, in the
+	-- thin gold ring Blizzard puts around boss portraits on its kill banner
+	b.face = b:CreateTexture(nil, "ARTWORK")
+	b.face:SetSize(34, 34)
+	b.face:SetPoint("CENTER", b.portrait, "CENTER", 0, 1)
+	b.faceMask = b:CreateMaskTexture()
+	b.faceMask:SetAtlas("CircleMaskScalable")
+	b.faceMask:SetAllPoints(b.face)
+	b.face:AddMaskTexture(b.faceMask)
+	b.ring = Atlas(b, "OVERLAY", "BossBanner-PortraitBorder")
+	b.ring:SetSize(40, 40)
+	b.ring:SetPoint("CENTER", b.face, "CENTER")
 	-- trash and unconfirmed drops get an icon in the portrait's place
 	b.badgeIcon = b:CreateTexture(nil, "ARTWORK")
 	b.badgeIcon:SetSize(30, 30)
@@ -2196,16 +2208,22 @@ K.RegisterKind("boss", CreateBoss, function(b, d)
 	b.name:SetText(d.name)
 	b.tag:SetText(d.tag or "")
 	SetSectionIcon(b.icon, d.id)
-	-- the journal's portrait; a boss it has none for gets its silhouette, dimmed
+	-- the journal's portrait; else one the game draws from the boss's model; else the journal's
+	-- silhouette, dimmed
 	local icon = d.trash and TRASH_ICON or (d.unconfirmed and UNCONFIRMED_ICON) or nil
+	local art = not icon and ns.BossArt and ns.BossArt[d.name]
+	local model = not icon and not art and SetPortraitTextureFromCreatureDisplayID and ns.BossModel and ns.BossModel[d.name]
 	b.badgeIcon:SetShown(icon ~= nil)
-	b.portrait:SetShown(icon == nil)
+	b.face:SetShown(model and true or false)
+	b.ring:SetShown(model and true or false)
+	b.portrait:SetShown(not icon and not model)
 	if icon then
 		b.badgeIcon:SetTexture(icon)
+	elseif model then
+		SetPortraitTextureFromCreatureDisplayID(b.face, model)
 	else
-		local art = ns.BossArt and ns.BossArt[d.name]
 		b.portrait:SetTexture(art or ns.UnknownBossArt)
-		b.portrait:SetDesaturated(art == nil)
+		b.portrait:SetDesaturated(not art)
 		b.portrait:SetAlpha(art and 1 or 0.35)
 	end
 end)
