@@ -3,6 +3,7 @@ local ADDON, ns = ...
 -- Wowhead's Forever data is still filling in. When you loot a
 -- boss, any rare-or-better item it drops is remembered under that boss so the
 -- loot tables fill in as you play. Stored per account in ForeverLootDB.learned.
+-- The levels of the bosses Forever added are learned too, in ForeverLootDB.bossLevels.
 
 local Learn = {}
 ns.Learn = Learn
@@ -115,14 +116,55 @@ function Learn:OnLootOpened()
 	if changed then ns.UI:Refresh() end
 end
 
+-- A boss's level for the badge on its portrait: Art.lua's, from the Classic database, or the one
+-- learned here for a boss Forever added. A number, "low-high", or -1 for "??"; nil if unknown.
+function ns.BossLevelOf(name)
+	local known = ns.BossLevel and ns.BossLevel[name]
+	if known then return known end
+	return ns.db and ns.db.bossLevels and ns.db.bossLevels[name]
+end
+
+local function Plain(v)
+	if v ~= nil and issecretvalue and issecretvalue(v) then return nil end
+	return v
+end
+
+-- A boss Art.lua has no level for: its level the first time you target it or mouse over it, by its
+-- NPC id, or by its name for a boss Data.lua has no id for
+function Learn:OnUnit(unit)
+	if not (UnitExists(unit) and not UnitIsPlayer(unit)) then return end
+	local dungeon = ns.CurrentDungeon()
+	if not dungeon then return end
+	local npcID = NPCFromGUID(UnitGUID(unit))
+	local boss = npcID and ns.BossByNPC[npcID]
+	if not (boss and boss.dungeon == dungeon) then
+		local name = Plain(UnitName(unit))
+		boss = type(name) == "string" and BossByName(dungeon, name) or nil
+	end
+	if not boss or (ns.BossLevel and ns.BossLevel[boss.name]) then return end
+	local level = Plain(UnitLevel(unit))
+	if type(level) ~= "number" or level == 0 then return end
+	if level < 0 then level = -1 end
+	if ns.db.bossLevels[boss.name] ~= level then
+		ns.db.bossLevels[boss.name] = level
+		ns.UI:Refresh()
+	end
+end
+
 function Learn:Init()
 	local f = CreateFrame("Frame")
 	f:RegisterEvent("LOOT_OPENED")
+	f:RegisterEvent("PLAYER_TARGET_CHANGED")
+	f:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 	-- Registering an event the client doesn't know throws, so don't let this one break login
 	pcall(f.RegisterEvent, f, "ENCOUNTER_END")
 	f:SetScript("OnEvent", function(_, event, ...)
 		if event == "LOOT_OPENED" then
 			Learn:OnLootOpened()
+		elseif event == "PLAYER_TARGET_CHANGED" then
+			Learn:OnUnit("target")
+		elseif event == "UPDATE_MOUSEOVER_UNIT" then
+			Learn:OnUnit("mouseover")
 		else
 			Learn:OnEncounterEnd(...)
 		end

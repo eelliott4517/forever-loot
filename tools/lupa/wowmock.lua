@@ -325,7 +325,16 @@ DEFAULT_CHAT_FRAME = { AddMessage = function(_, msg) table.insert(MOCK.chat, msg
 SOUNDKIT = { IG_CHARACTER_INFO_OPEN = 1, IG_CHARACTER_INFO_CLOSE = 2 }
 function PlaySound(id) table.insert(MOCK.sounds or {}, id) end
 MOCK.level = 25
-function UnitLevel() return MOCK.level end
+-- Units other than the player: MOCK.units[unit] = { guid = ..., name = ..., level = ..., player = bool }
+MOCK.units = {}
+function UnitLevel(unit)
+	local u = unit ~= "player" and unit ~= nil and MOCK.units[unit]
+	if u then return u.level end
+	return MOCK.level
+end
+function UnitExists(unit) return unit == "player" or MOCK.units[unit] ~= nil end
+function UnitIsPlayer(unit) return unit == "player" or (MOCK.units[unit] and MOCK.units[unit].player) or false end
+function UnitName(unit) local u = MOCK.units[unit]; return u and u.name end
 MOCK.instance = { "Elwynn Forest", "none", 0, "", 0, 0, false, 0 }
 function GetInstanceInfo() return unpack(MOCK.instance) end
 -- Each call is a new frame, unless a test freezes the clock (MOCK.frozen) to see what the
@@ -335,7 +344,7 @@ function GetTime()
 	if not MOCK.frozen then MOCK.clock = MOCK.clock + 0.001 end
 	return MOCK.clock
 end
-function UnitGUID() return nil end
+function UnitGUID(unit) local u = unit and MOCK.units[unit]; return u and u.guid end
 -- Loot window and rolls: MOCK.loot = { link, ... }, MOCK.rolls[rollID] = link
 MOCK.loot, MOCK.rolls = {}, {}
 function GetNumLootItems() return #MOCK.loot end

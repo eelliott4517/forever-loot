@@ -443,6 +443,7 @@ end
 local defaults = {
 	minimap = { angle = 215, hide = false },
 	learned = {},
+	bossLevels = {}, -- [boss name] = level, for bosses Art.lua has no level for (Learn.lua)
 	tooltip = true, -- "Drops from" lines on item tooltips
 }
 

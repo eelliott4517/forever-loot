@@ -259,6 +259,41 @@ function Quests.RowSub(d)
 	return todo > 0 and (levels .. "   ·   " .. mark) or levels
 end
 
+-- Your class's icon on an instance with a quest only some classes can take, yours among them
+local CLASS_ICONS = "Interface\\TargetingFrame\\UI-Classes-Circles"
+local CLASS_COORDS = { -- CLASS_ICON_TCOORDS, for a client without it
+	WARRIOR = { 0, 0.25, 0, 0.25 }, MAGE = { 0.25, 0.49609375, 0, 0.25 },
+	ROGUE = { 0.49609375, 0.7421875, 0, 0.25 }, DRUID = { 0.7421875, 0.98828125, 0, 0.25 },
+	HUNTER = { 0, 0.25, 0.25, 0.5 }, SHAMAN = { 0.25, 0.49609375, 0.25, 0.5 },
+	PRIEST = { 0.49609375, 0.7421875, 0.25, 0.5 }, WARLOCK = { 0.7421875, 0.98828125, 0.25, 0.5 },
+	PALADIN = { 0, 0.25, 0.5, 0.75 },
+}
+
+local function HasClassQuest(d)
+	local c = ns.QuestCache().extra
+	local key = "class:" .. d.key
+	if c[key] == nil then
+		c[key] = false
+		for _, q in ipairs(d.quests or {}) do
+			local info = q.id and ns.QuestInfo[q.id]
+			if info and info.classes and ns.QuestOpenToMe(q) then
+				c[key] = true
+				break
+			end
+		end
+	end
+	return c[key]
+end
+
+function Quests.ListBadge(d)
+	if d.isTodo or not HasClassQuest(d) then return end
+	local class = select(2, UnitClass("player"))
+	if class == nil or (issecretvalue and issecretvalue(class)) then return end
+	local coords = (CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]) or CLASS_COORDS[class]
+	if not coords then return end
+	return { CLASS_ICONS, coords[1], coords[2], coords[3], coords[4] }
+end
+
 function Quests.Default()
 	local here = ns.CurrentDungeon()
 	if here then return here end

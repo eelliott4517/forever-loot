@@ -1907,11 +1907,17 @@ check(unknown and unknown.face:IsShown() and unknown.ring:IsShown() and not unkn
 	and unknown.face._portrait == ns.BossModel["Miner Johnson"] and #unknown.face._masks == 1,
 	"Miner Johnson, with no journal portrait, gets one drawn from his model, round, in a ring")
 check(trash and trash.badgeIcon:IsShown() and not trash.portrait:IsShown(), "trash drops get a bag instead")
+-- 1.13.0: each boss's level in its portrait's corner
+check(known.levelPlate:IsShown() and known.level:IsShown() and known.level:GetText() == "19" and not known.skull:IsShown(),
+	"Rhahk'Zor's portrait shows his level", known.level:GetText())
+check(unknown.levelPlate:IsShown() and unknown.level:GetText() == "19", "so does a portrait drawn from a model")
+check(not trash.levelPlate:IsShown() and not trash.level:IsShown(), "trash drops have no level")
 UI:Select(ns.DungeonByKey.HOT)
 local faldrim
 for _, w in ipairs(painted("boss")) do if w.boss.name == "Faldrim Anvilmar" then faldrim = w end end
 check(faldrim and faldrim.portrait:IsShown() and not faldrim.face:IsShown() and faldrim.portrait:GetTexture() == ns.UnknownBossArt
 	and faldrim.portrait:GetAlpha() < 1, "a Forever boss with neither gets the journal's silhouette, dimmed")
+check(not faldrim.levelPlate:IsShown() and not faldrim.level:IsShown(), "a Forever boss's level isn't known until you target it")
 UI:Select(ns.DungeonByKey.DM)
 UI.loot:ScrollToTop()
 -- a boss's loot lines up under its name
@@ -1929,6 +1935,94 @@ check(listRows()[1].style == "icon" and listRows()[1].art:IsShown(), "profession
 tab("sets"):Click()
 check(listRows()[1].style == nil and not listRows()[1].art:IsShown(), "sets are a plain list")
 tab("dungeons"):Click()
+UI:Hide()
+end
+
+---------------------------------------------------------------- 1.13.0: boss levels, class quests
+do
+SlashCmdList.FOREVERLOOT("")
+local function boss(name)
+	for _, w in ipairs(painted("boss")) do if w.boss.name == name then return w end end
+end
+-- a raid boss the game shows as "??" gets the target frame's skull
+tab("raids"):Click()
+UI:Select(ns.DungeonByKey.MC)
+local lucifron = boss("Lucifron")
+check(ns.BossLevel.Lucifron == -1 and lucifron and lucifron.skull:IsShown() and lucifron.levelPlate:IsShown()
+	and not lucifron.level:IsShown(), "a raid boss shows a skull")
+-- an encounter of creatures at different levels shows the range
+tab("dungeons"):Click()
+UI:Select(ns.DungeonByKey.BRD)
+UI.loot:ScrollTo(10000)
+check(ns.BossLevel["Ring of Law"] == "53-56", "Ring of Law's creatures run 53 to 56", tostring(ns.BossLevel["Ring of Law"]))
+-- every Classic boss has a level; Forever's own bosses don't, until you meet them
+local without = {}
+for _, list in ipairs({ ns.Dungeons, ns.Raids }) do
+	for _, d in ipairs(list) do
+		for _, b in ipairs(d.bosses) do
+			if not b.trash and b.name ~= "Boss not confirmed" and not d.isNew and not ns.BossLevel[b.name] then
+				without[#without + 1] = b.name
+			end
+		end
+	end
+end
+check(#without == 0, "every Classic boss has a level", table.concat(without, ", "))
+-- targeting a Forever boss in its dungeon learns its level, by its NPC id
+wipe(ns.db.bossLevels)
+MOCK.instance = { ns.DungeonByKey.HOT.name, "party", 1, "", 5, 0, false, 0 }
+MOCK.units.target = { guid = "Creature-0-1-2-3-261306-00004A1B2C", name = "Faldrim Anvilmar", level = 18 }
+MOCK.Fire("PLAYER_TARGET_CHANGED")
+check(ns.db.bossLevels["Faldrim Anvilmar"] == 18, "targeting Faldrim Anvilmar learns his level", tostring(ns.db.bossLevels["Faldrim Anvilmar"]))
+UI:Select(ns.DungeonByKey.HOT)
+UI.loot:ScrollToTop()
+local faldrim = boss("Faldrim Anvilmar")
+check(faldrim and faldrim.levelPlate:IsShown() and faldrim.level:GetText() == "18", "and his portrait shows it")
+-- a player or a Classic boss isn't recorded
+MOCK.units.target = { guid = "Player-1-0ABC", name = "Faldrim Anvilmar", level = 3, player = true }
+MOCK.Fire("PLAYER_TARGET_CHANGED")
+check(ns.db.bossLevels["Faldrim Anvilmar"] == 18, "a player with a boss's name doesn't count")
+-- by name, for a boss with no NPC id, even when the game keeps its GUID secret; "??" is a skull
+MOCK.instance = { ns.DungeonByKey.DAL.name, "party", 1, "", 5, 0, false, 0 }
+MOCK.units.mouseover = { guid = MOCK.Secret(), name = "Arcane Anomaly", level = -1 }
+MOCK.Fire("UPDATE_MOUSEOVER_UNIT")
+check(ns.db.bossLevels["Arcane Anomaly"] == -1, "mousing over a boss Data.lua has no NPC id for learns it by name")
+MOCK.units.mouseover = { guid = MOCK.Secret(), name = MOCK.Secret(), level = MOCK.Secret() }
+check(pcall(MOCK.Fire, "UPDATE_MOUSEOVER_UNIT"), "a unit with a secret name and level is skipped, not an error")
+-- outside a dungeon nothing is recorded
+MOCK.instance = { "Elwynn Forest", "none", 0, "", 0, 0, false, 0 }
+MOCK.units.target = { guid = "Creature-0-1-2-3-261311-00004A1B2C", name = "Plunder", level = 18 }
+MOCK.Fire("PLAYER_TARGET_CHANGED")
+check(ns.db.bossLevels.Plunder == nil, "outside the dungeon nothing is learned")
+MOCK.units = {}
+wipe(ns.db.bossLevels)
+
+-- the Quests list: your class's icon on an instance with a quest only some classes can take
+MOCK.questsDone, MOCK.questLog, MOCK.level, MOCK.faction, MOCK.classFile = {}, {}, 25, "Alliance", "ROGUE"
+tab("quests"):Click()
+local function row(key)
+	for _, r in ipairs(listRows()) do if r.entry and r.entry.key == key then return r end end
+end
+local dire, dm, sfk = row("DIRE"), row("DM"), row("SFK")
+local l, r, t, b = dire.badge:GetTexCoord()
+check(dire.badge:IsShown() and dire.badge:GetTexture() == "Interface\\TargetingFrame\\UI-Classes-Circles"
+	and l == 0.49609375 and t == 0, "a rogue sees the rogue icon on Dire Maul (Garona: A Study on Stealth and Treachery)")
+check(not dm.badge:IsShown(), "and none on The Deadmines, which has no class quest")
+check(not sfk.badge:IsShown(), "nor on Shadowfang Keep, whose class quests are a paladin's and a warlock's")
+check(not row("todo").badge:IsShown(), "nor on Quests you can do")
+MOCK.classFile = "PALADIN"
+UI:BuildList()
+sfk = row("SFK")
+l, r, t, b = sfk.badge:GetTexCoord()
+check(sfk.badge:IsShown() and l == 0 and t == 0.5, "a paladin sees the paladin icon on Shadowfang Keep")
+MOCK.faction = "Horde"
+MOCK.race = { "Orc", "Orc", 2 }
+MOCK.classFile = "WARLOCK"
+UI:BuildList()
+check(row("SFK").badge:IsShown() and row("BFD").badge:IsShown(), "a warlock sees it on Shadowfang Keep and Blackfathom Deeps (The Orb of Soran'ruk)")
+tab("dungeons"):Click()
+check(not listRows()[1].badge:IsShown(), "the Dungeons list has no class icons")
+MOCK.questsDone, MOCK.questLog, MOCK.level, MOCK.faction, MOCK.classFile = {}, {}, 25, "Alliance", "ROGUE"
+MOCK.race = { "Human", "Human", 1 }
 UI:Hide()
 end
 

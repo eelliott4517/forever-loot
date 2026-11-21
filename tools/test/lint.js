@@ -23,6 +23,7 @@ const KNOWN = new Set(`
   UnitClass UnitFactionGroup TooltipDataProcessor Enum ItemRefTooltip
   GetQuestGreenRange QuestDifficultyColors StaticPopupDialogs StaticPopup_Show CLOSE
   C_QuestLog UnitRace C_Map UiMapPoint C_SuperTrack TomTom C_Reputation FACTION_STANDING_LABEL
+  UnitExists UnitIsPlayer UnitName CLASS_ICON_TCOORDS
   ipairs pairs type tostring tonumber select math table string next error pcall
 `.split(/\s+/).filter(Boolean));
 

@@ -928,6 +928,11 @@ local function CreateListRow(parent, width)
 	b.frame = b:CreateTexture(nil, "BORDER")
 	b.frame:SetPoint("TOPLEFT", b.art, "TOPLEFT", -1, 1)
 	b.frame:SetPoint("BOTTOMRIGHT", b.art, "BOTTOMRIGHT", 1, -1)
+	-- a mark in the picture's corner: on the Quests tab, your class's icon
+	b.badge = b:CreateTexture(nil, "OVERLAY")
+	b.badge:SetSize(24, 24)
+	b.badge:SetPoint("BOTTOMRIGHT", b.art, "BOTTOMRIGHT", -1, 1)
+	b.badge:Hide()
 	b.levels = Text(b, "GameFontHighlightSmall", "RIGHT")
 	b.levels:SetPoint("RIGHT", -6, 0)
 	b.levels:SetWidth(44)
@@ -988,8 +993,8 @@ end
 -- RowInfo gives name, right column, tag, marker (the entry is yours: your level range, your
 -- profession, your class), tag color and right column color. Marked names are gold, as the
 -- game marks what's yours; the rest are white. A tab with pictures (listStyle "art") shows
--- RowSub's line under the name instead of the right column and tag; one with icons ("icon")
--- shows ListIcon's icon.
+-- RowSub's line under the name instead of the right column and tag, and ListBadge's mark ({ file,
+-- left, right, top, bottom }) in its picture's corner; one with icons ("icon") shows ListIcon's icon.
 function UI:BuildList()
 	local mode = self:Mode()
 	local searching = self:IsSearching()
@@ -1047,6 +1052,12 @@ function UI:BuildList()
 			rightSide = row.tag
 		end
 		LayoutListRow(row, style, rightSide)
+		local badge = style == "art" and e.entry and mode.ListBadge and mode.ListBadge(e.entry) or nil
+		row.badge:SetShown(badge ~= nil)
+		if badge then
+			row.badge:SetTexture(badge[1])
+			row.badge:SetTexCoord(badge[2], badge[3], badge[4], badge[5])
+		end
 		if style == "art" then
 			SetArt(row.art, (mode.ListArt or K.InstanceArt)(e.entry), ART_W, ART_H)
 			row.sub:SetText(e.entry and mode.RowSub and mode.RowSub(e.entry) or "")
@@ -2160,6 +2171,7 @@ K.SectionHint = SectionHint
 -- Boss bar: the boss's portrait from the Encounter Journal, its name, and how many drops it has.
 -- Click it to see them.
 local TRASH_ICON = "Interface\\Icons\\INV_Misc_Bag_10"
+local SKULL_ICON = "Interface\\TargetingFrame\\UI-TargetingFrame-Skull"
 local UNCONFIRMED_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local function CreateBoss(parent, width)
 	local b = Card(CreateFrame("Button", nil, parent))
@@ -2186,6 +2198,18 @@ local function CreateBoss(parent, width)
 	b.badgeIcon:SetSize(30, 30)
 	b.badgeIcon:SetPoint("CENTER", b.portrait, "CENTER")
 	b.badgeIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	-- its level in the portrait's corner: a number in the quest log's color for how hard it is
+	-- for you, or the target frame's skull for a boss the game shows as "??"
+	b.levelPlate = b:CreateTexture(nil, "ARTWORK", nil, 7)
+	b.levelPlate:SetColorTexture(0, 0, 0, 0.8)
+	b.levelPlate:SetPoint("BOTTOMRIGHT", b.portrait, "BOTTOMRIGHT")
+	b.levelPlate:SetHeight(14)
+	b.level = Text(b, "GameFontNormalSmall", "CENTER")
+	b.level:SetPoint("CENTER", b.levelPlate, "CENTER", 0, 0)
+	b.skull = b:CreateTexture(nil, "OVERLAY", nil, 7)
+	b.skull:SetTexture(SKULL_ICON)
+	b.skull:SetSize(12, 12)
+	b.skull:SetPoint("CENTER", b.levelPlate, "CENTER")
 	b.name = Text(b, "GameFontHighlightMed2")
 	b.name:SetPoint("LEFT", BOSS_TEXT_X, 0)
 	b.tag = Text(b, "GameFontHighlightSmall", "RIGHT")
@@ -2225,6 +2249,20 @@ K.RegisterKind("boss", CreateBoss, function(b, d)
 		b.portrait:SetTexture(art or ns.UnknownBossArt)
 		b.portrait:SetDesaturated(not art)
 		b.portrait:SetAlpha(art and 1 or 0.35)
+	end
+	local level = (not icon and ns.BossLevelOf) and ns.BossLevelOf(d.name) or nil
+	local skull = level == -1
+	b.levelPlate:SetShown(level ~= nil)
+	b.skull:SetShown(skull)
+	b.level:SetShown(level ~= nil and not skull)
+	if skull then
+		b.levelPlate:SetWidth(18)
+	elseif level then
+		local text = tostring(level)
+		b.level:SetText(text)
+		-- a range is colored by its top
+		SetTextColor(b.level, DifficultyColor(tonumber(text:match("(%d+)$"))))
+		b.levelPlate:SetWidth(math.ceil(b.level:GetStringWidth()) + 8)
 	end
 end)
 

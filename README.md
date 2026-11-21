@@ -6,8 +6,8 @@ A WoW: Forever addon with dungeon and raid loot tables, dungeon quests, item set
 - **Dungeons** are sorted by level. Level ranges are colored by how hard the dungeon is for you, as the quest log colors quests; dungeons at your level have gold names.
 - **Raids** has Forever's new raids (The Barrow Deeps and Hyjal Summit), Onyxia's Lair, and the Classic raids: Molten Core, Blackwing Lair, Zul'Gurub, Ruins and Temple of Ahn'Qiraj, and Naxxramas. The list shows each raid's size, and Classic marks Classic raids Forever hasn't announced.
 - **Everything starts collapsed.** Click a header to open it, click again to close it, and shift-click any header to open or close every section at once (the bosses inside wings too). Closed headers say how many items or quests they hold. What you open stays open while you're logged in.
-- Click a dungeon or raid to see its bosses, then click a boss for its drops. Its quests are in the **Quests** section at the bottom (quests for the other faction are left out): click one for where it starts and its rewards. Each quest has the mark a quest giver would show you (a yellow "!" you can pick it up, a grey one not yet, a "?" in your log, a check once it's done). An open quest has a line saying who starts it, where, and how many quests come before it; click that line for the whole chain on the Quests tab.
-- **Quests** is every dungeon and raid quest with how to get it. Its first page, "Quests you can do", lists the quests you can pick up, have in your log, or can work toward now, with the next quest to pick up under each (grey quests too easy for you are left out). Pick a dungeon or raid for all of its quests: click one to see where it starts and where to turn it in, its optional lead-in, every quest before it in order with your progress on each, and its rewards. The pin button next to a quest giver puts the game's map pin (and its arrow in the world) on them, and a TomTom arrow when TomTom is installed. Quests you can't take (another faction, race or class) are left out, and one that needs reputation or a profession skill says which. The page updates as your quest log changes.
+- Click a dungeon or raid to see its bosses, then click a boss for its drops. Each boss's portrait has its level in the corner, colored by how hard it is for you as the quest log colors quests, or a skull for a raid boss the game shows as "??". Its quests are in the **Quests** section at the bottom (quests for the other faction are left out): click one for where it starts and its rewards. Each quest has the mark a quest giver would show you (a yellow "!" you can pick it up, a grey one not yet, a "?" in your log, a check once it's done). An open quest has a line saying who starts it, where, and how many quests come before it; click that line for the whole chain on the Quests tab.
+- **Quests** is every dungeon and raid quest with how to get it. Its first page, "Quests you can do", lists the quests you can pick up, have in your log, or can work toward now, with the next quest to pick up under each (grey quests too easy for you are left out). Pick a dungeon or raid for all of its quests: click one to see where it starts and where to turn it in, its optional lead-in, every quest before it in order with your progress on each, and its rewards. The pin button next to a quest giver puts the game's map pin (and its arrow in the world) on them, and a TomTom arrow when TomTom is installed. Quests you can't take (another faction, race or class) are left out, and one that needs reputation or a profession skill says which. In the list, your class's icon sits on the picture of each dungeon and raid with a quest for your class. The page updates as your quest log changes.
 - **Sets** lists every item set with a piece in the dungeon, raid or quest loot: its set bonuses, and where each piece comes from. Sets your class can wear have gold names.
 - **My class** and **Hide Classic** (the checkboxes next to the Slot and Type menus, along the top of the right page) filter the Dungeons, Raids and Sets tabs and their searches. My class keeps what your class can use: your armor types (for Warriors, Paladins, Hunters and Shamans also the type they wear before level 40), your weapon skills, shields and relics where they apply, and class-only items for your class. Rings, necks, cloaks and trinkets always show. Each character keeps its own settings.
 - Every item tooltip in the game (bags, chat links, the auction house, loot) gets a Forever Loot section saying which bosses drop it, which quest gives it, and which profession makes it. `/fl tooltip` turns it off.
@@ -42,6 +42,8 @@ Every item's stats are bundled from Wowhead too (Forever stats where Wowhead has
 
 The dungeons up to the City of Dalaran have confirmed new drops. The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and Shaper's Terrace opened at launch (Nov 4), and no site has their loot yet.
 
+Boss levels come from cMaNGOS's Classic database (Forever kept Classic's dungeon level ranges). Forever's own bosses aren't in it, so the addon records each one's level the first time you target it or mouse over it in its dungeon.
+
 To fill gaps, the addon records any rare-or-better item you loot from a dungeon or raid boss and shows it under that boss marked Seen. Bosses it doesn't know yet are picked up from the boss-kill event and listed under "Recorded by you". `/fl forget` clears this.
 
 ## Commands
@@ -73,8 +75,9 @@ tools/link_recipes.py  links ProfessionData.lua's new recipes to the items they 
 tools/build_art.py  builds Art.lua: each dungeon's picture and each boss's portrait, as file IDs from the
                     live client's file list on wago.tools (cached in tools/cache/)
 tools/boss_models.py  the creature model of each boss, for the ones the Encounter Journal has no portrait of
-                    (the game draws those): `python3 tools/boss_models.py <ClassicDB .sql.gz>` writes
-                    tools/raw/boss_models.json from cMaNGOS's classic-db and tools/raw/wowhead_npc_models.json
+                    (the game draws those), and each boss's level for the badge on its portrait:
+                    `python3 tools/boss_models.py <ClassicDB .sql.gz>` writes tools/raw/boss_models.json and
+                    tools/raw/boss_levels.json from cMaNGOS's classic-db and tools/raw/wowhead_npc_models.json
 tools/item_info.py  Wowhead tooltip API client; caches raw tooltips in tools/cache/
 tools/scrape_template.js  the browser scrape of Wowhead (refresh.py fills in the pages to fetch)
 tools/raw/wowhead.json    its output: zone loot and quests, raid boss pages, quest lookups, new items,
@@ -85,7 +88,8 @@ tools/package.py    builds dist/ForeverLoot-<version>.zip (CurseForge: only the 
                     and dist/ForeverLoot-<version>-Windows-installer.zip (addon + double-click installer)
 tools/test/         Lua 5.1 lint and a smoke test that runs the addon against a strict WoW API mock
 tools/preview/      draws the window as WoW: Forever does, from the game's own art and font (preview.py,
-                    scenarios quests-dm, quests-todo, dungeons-dm, dungeons-bosses, quests-tooltip)
+                    scenarios quests-dm, quests-todo, dungeons-dm, dungeons-bosses, quests-tooltip,
+                    quests-class and the rest listed at the top of preview.py)
 ForeverLoot/ProfessionData.lua  generated by 1.4.0's tools/build_professions.py, which isn't in this folder
                     (its Item Level lines were removed by hand in 1.6.2; the smoke test checks)
 tools/install.sh    copies the addon into the live Forever client's AddOns folder (_forever_)
