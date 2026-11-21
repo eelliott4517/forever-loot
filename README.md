@@ -15,11 +15,12 @@ A WoW: Forever addon with dungeon and raid loot tables, dungeon quests, item set
 
 ## Where the data comes from
 
-WoW addons can't go online, so the loot data is bundled in `ForeverLoot/Data.lua` from three sites (wowtbc.gg and item stats pulled 2026-11-04, Wowhead's zone and quest pages 2026-10-08):
+WoW addons can't go online, so the loot data is bundled in `ForeverLoot/Data.lua` from four sites (wowtbc.gg, warcraft.wiki.gg and item stats pulled 2026-11-21, Wowhead's zone and quest pages 2026-10-08):
 
 1. **Wowhead**: Forever and Classic drop tables, Forever level ranges, each dungeon's and raid's quests, the Hall of Thanes guide, a Ruins of Lordaeron boss/loot comment, and the First Mate Band news post.
-2. **wowtbc.gg**: Forever loot tables for every original dungeon. These have the Classic Era boss tables, the new Forever drops players have found so far, Classic drop chances, and more dungeon quests. The wing level ranges (Scarlet Monastery, Dire Maul, Blackrock Spire) also come from here.
-3. **Mobalytics**: a few Forever drops the other sites don't have yet (Satyrskin Cloak from Bazzalan in Ragefire Chasm; Nightskulker Ring from Targorr the Dread and Repurposed Rack from Hamhock in The Stockade).
+2. **wowtbc.gg**: Forever loot tables for every dungeon, Forever's own included. These have the Classic Era boss tables, the new Forever drops players have found so far, Classic drop chances, and more dungeon quests. The wing level ranges (Scarlet Monastery, Dire Maul, Blackrock Spire) also come from here.
+3. **warcraft.wiki.gg**: Forever's own dungeons and raids: their bosses in the order you meet them, which are rares, each boss's level, and their boss and trash loot tables, read through the wiki's API (`tools/wiki.py`).
+4. **Mobalytics**: a few Forever drops the other sites don't have yet (Satyrskin Cloak from Bazzalan in Ragefire Chasm; Nightskulker Ring from Targorr the Dread and Repurposed Rack from Hamhock in The Stockade).
 
 Quest chains come from **cMaNGOS** (its Classic 1.12 world database: which quests come before each one, who starts and ends it, and its race and class limits) for the quests Forever kept, and from **Wowhead's Forever quest pages** for Forever's own quests and quest-starting items. Quest givers' names and spots are Forever's, from Wowhead's tooltips, placed on Forever's own maps (its UiMap tables, from wago.tools). Wowhead doesn't know yet where 10 of Forever's new quests start; those say so.
 
@@ -40,9 +41,9 @@ Every item's stats are bundled from Wowhead too (Forever stats where Wowhead has
 - **The Classic raids** use Wowhead Classic's drop tables plus each boss's page, which gives drop chances from recorded kills. Chest loot is credited to its boss (Majordomo Executus and the Four Horsemen). The random world blues that Onyxia, Ragnaros and Nefarian also roll are left out.
 - Items Forever's game data doesn't have are tagged CLASSIC, as with dungeons. A few say Wowhead only has Season of Discovery's version of their stats.
 
-The dungeons up to the City of Dalaran have confirmed new drops. The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and Shaper's Terrace opened at launch (Nov 4), and no site has their loot yet.
+Every dungeon has confirmed new drops, The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and Shaper's Terrace (open since launch, Nov 4) included.
 
-Boss levels come from cMaNGOS's Classic database (Forever kept Classic's dungeon level ranges). Forever's own bosses aren't in it, so the addon records each one's level the first time you target it or mouse over it in its dungeon.
+Boss levels come from cMaNGOS's Classic database (Forever kept Classic's dungeon level ranges), and Forever's own bosses' from their warcraft.wiki.gg pages. For a boss neither has yet, the addon records its level the first time you target it or mouse over it in its dungeon.
 
 To fill gaps, the addon records any rare-or-better item you loot from a dungeon or raid boss and shows it under that boss marked Seen. Bosses it doesn't know yet are picked up from the boss-kill event and listed under "Recorded by you". `/fl forget` clears this.
 
@@ -73,7 +74,9 @@ tools/raw/cmangos_quests.json  cMaNGOS's Classic quest graph; `python3 tools/que
 tools/raw/db2/      Forever's UiMap and UiMapAssignment tables (wago.tools), for the quest givers' map pins
 tools/link_recipes.py  links ProfessionData.lua's new recipes to the items they make (refresh.py runs it)
 tools/build_art.py  builds Art.lua: each dungeon's picture and each boss's portrait, as file IDs from the
-                    live client's file list on wago.tools (cached in tools/cache/)
+                    live client's file list on wago.tools (cached in tools/cache/), and each boss's level
+tools/wiki.py       reads Forever's own dungeons and raids from warcraft.wiki.gg's API into tools/raw/wiki.json:
+                    bosses in encounter order, rares, boss levels, boss and trash loot (cached in tools/cache/wiki)
 tools/boss_models.py  the creature model of each boss, for the ones the Encounter Journal has no portrait of
                     (the game draws those), and each boss's level for the badge on its portrait:
                     `python3 tools/boss_models.py <ClassicDB .sql.gz>` writes tools/raw/boss_models.json and
@@ -101,7 +104,7 @@ tools/install.sh    copies the addon into the live Forever client's AddOns folde
 python3 tools/refresh.py
 ```
 
-It fetches wowtbc.gg, then needs your browser for Wowhead (which blocks scripted clients): it writes `tools/scrape_console.js`, copies it to the clipboard and opens Wowhead. Open the developer console there (F12, or Cmd+Option+J on a Mac), paste, and press Enter. The script fetches about 300 pages, one every 5 seconds, and downloads `forever-loot-wowhead.json` when it's done. The refresh picks that up from your Downloads folder and carries on: item tooltips, Data.lua, the tests, and the release zips. Add `--install` to copy the addon into the game, `--skip-wowhead` to rebuild from the last scrape, and `--help` for the rest.
+It fetches wowtbc.gg and warcraft.wiki.gg, then needs your browser for Wowhead (which blocks scripted clients): it writes `tools/scrape_console.js`, copies it to the clipboard and opens Wowhead. Open the developer console there (F12, or Cmd+Option+J on a Mac), paste, and press Enter. The script fetches about 300 pages, one every 5 seconds, and downloads `forever-loot-wowhead.json` when it's done. The refresh picks that up from your Downloads folder and carries on: item tooltips, Data.lua, Art.lua, the tests, and the release zips. Add `--install` to copy the addon into the game, `--skip-wowhead` to rebuild from the last scrape, and `--help` for the rest.
 
 Tests alone (needs Node; `npm install` in `tools/` the first time):
 

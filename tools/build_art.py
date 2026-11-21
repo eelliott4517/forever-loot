@@ -10,7 +10,8 @@ without one gets its creature model (tools/raw/boss_models.json, from boss_model
 draws as a round portrait, or else the journal's own "unknown boss" silhouette. Pictures are file IDs
 from the live client's file list on wago.tools (cached in tools/cache), so the game loads each
 picture by its ID. Each boss's level for the badge on its portrait comes from
-tools/raw/boss_levels.json (boss_models.py again).
+tools/raw/boss_levels.json (boss_models.py again) or, for Forever's own bosses, tools/raw/wiki.json
+(wiki.py).
 """
 import json
 import os
@@ -188,28 +189,39 @@ def main():
         else:
             still.append(item)
     lines.append("}")
-    # each boss's level, for the badge on its portrait (tools/raw/boss_levels.json, from boss_models.py)
+    # each boss's level, for the badge on its portrait: cMaNGOS's (tools/raw/boss_levels.json, from
+    # boss_models.py), or for Forever's own bosses the wiki's (tools/raw/wiki.json, from wiki.py)
     levels_file = os.path.join(TOOLS, "raw", "boss_levels.json")
     levels = json.load(open(levels_file)) if os.path.exists(levels_file) else {}
+    wiki_file = os.path.join(TOOLS, "raw", "wiki.json")
+    wiki = {}
+    if os.path.exists(wiki_file):
+        for key, inst in json.load(open(wiki_file))["instances"].items():
+            for b in inst["bosses"]:
+                if b.get("level") is not None:
+                    wiki[(key, norm(b["name"]))] = b["level"]
     lines += [
         "",
-        "-- Each boss's level from cMaNGOS's Classic database, for the badge on its portrait: a number,",
-        "-- a range for an encounter whose creatures differ, or -1 for a boss the game shows as \"??\".",
-        "-- Forever's own bosses aren't here; the addon learns theirs when you target one.",
+        "-- Each boss's level, for the badge on its portrait, from cMaNGOS's Classic database or, for",
+        "-- Forever's own bosses, warcraft.wiki.gg: a number, a range for an encounter whose creatures",
+        "-- differ, or -1 for a boss the game shows as \"??\". The addon learns the rest when you target one.",
         "ns.BossLevel = {",
     ]
-    leveled = set()
-    for _, _, bosses in insts:
+    leveled, from_wiki = set(), 0
+    for key, _, bosses in insts:
         for name, trash in bosses:
-            if name in levels and name not in leveled:
+            level = levels.get(name)
+            if level is None and (key, norm(name)) in wiki:
+                level = wiki[(key, norm(name))]
+                from_wiki += 1
+            if level is not None and name not in leveled:
                 leveled.add(name)
-                level = levels[name]
                 lines.append(f"\t[{lua_string(name)}] = {lua_string(level) if isinstance(level, str) else level},")
     lines.append("}")
     with open(OUT, "w") as f:
         f.write("\n".join(lines) + "\n")
     print(f"wrote {OUT}: {len(insts)} instances, {found} boss portraits, {drawn} drawn from models; "
-          f"{len(still)} bosses with neither; {len(leveled)} boss levels")
+          f"{len(still)} bosses with neither; {len(leveled)} boss levels ({from_wiki} from the wiki)")
     print("  " + ", ".join(still))
 
 

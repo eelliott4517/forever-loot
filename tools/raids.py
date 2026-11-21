@@ -28,7 +28,7 @@ RAIDS = [
          location="Mount Hyjal",
          bosses=["Bandalar", "Ancient of Decay", "Time-Lost Battalion", "Sylvestris Dusksong", "Old Gloomlurker",
                  "Gharalis the Abyssal", "Kathris the Haunted", "Anara Chillwind", "Elder Minderel",
-                 "Tracker Stillwind", "Council of Thorns", "Nythus the Dreadmbound", "The Wild King"]),
+                 "Tracker Stillwind", "Council of Thorns", "Nythus the Dreambound", "The Wild King"]),
     dict(key="ONY", name="Onyxia's Lair", zones=[2159], map=249, size=40, status="forever", levels=(60, 60),
          location="Dustwallow Marsh",
          bosses=[dict(name="Onyxia", npc=[10184, 268401], aliases=["Onyxia Prime"])]),

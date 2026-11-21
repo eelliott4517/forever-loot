@@ -2942,7 +2942,7 @@ local Dungeons = InstanceMode({
 		return ns.Colorize(K.DifficultyColor(math.floor((d.minLevel + d.maxLevel) / 2)), LevelText(d))
 	end,
 	about = function()
-		return "Classic loot plus Forever's new drops, from Wowhead, wowtbc.gg and Mobalytics (" ..
+		return "Classic loot plus Forever's new drops, from Wowhead, wowtbc.gg, warcraft.wiki.gg and Mobalytics (" ..
 			(ns.DATA_DATE or "") .. "). Classic: not in Forever's game data, so it may have been replaced."
 	end,
 })

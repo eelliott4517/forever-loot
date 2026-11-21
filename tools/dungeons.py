@@ -10,9 +10,12 @@ dungeons, which Wowhead's database lists as 0-0, so those use Wowhead's
 "Dungeons Overview for Forever" guide. Wing ranges (and Dire Maul, which Wowhead
 lists as 44-54) come from wowtbc.gg's Forever loot tables.
 
-tbc maps a dungeon to its wowtbc.gg loot-table page(s): {slug: wing or None}. The new dungeons'
-pages are empty until players find their loot; refresh.py fetches them anyway, and any bosses
-and drops wowtbc.gg adds show up on the next build.
+tbc maps a dungeon to its wowtbc.gg loot-table page(s): {slug: wing or None}. refresh.py fetches
+them, and any bosses and drops wowtbc.gg adds show up on the next build.
+
+The new dungeons' bosses are in the order you meet them, from each one's Encounters list on
+warcraft.wiki.gg (wiki.py, 2026-11-21), with its rares tagged; a boss only wowtbc.gg lists
+comes after them.
 """
 
 RARE = "Rare spawn"
@@ -53,25 +56,35 @@ DUNGEONS = [
              # wowtbc.gg calls it the Deathsworn Captain (SFK's rare, with the same two drops)
              dict(name="Lordaeron Captain", npc=[255699], tag=RARE, aliases=["Deathsworn Captain"]),
          ]),
-    # Boss names from the game client's encounter list (wowclassicforever.info and MaxDPS, Sep 19-20);
-    # no loot is known until players get in
+    # Highland Horror (EXC) and Mana Elemental and Mana Wraith (DAL) are from the game client's encounter
+    # list (wowclassicforever.info and MaxDPS, Sep 19-20); neither wowtbc.gg nor the wiki has them since launch
     dict(key="EXC", name="Excavation Site: Wetlands", zones=[16732], new=True, levels=(24, 29), tbc={"excavation-site-wetlands": None},
          location="Wetlands", territory="Contested", aliases=["Excavation Site", "Whelgar's Excavation Site"],
-         bosses=["Saltspine", "Shadetooth", "Highland Horror", "Relic Guardian"]),
+         bosses=["Saltspine", "Shadetooth", "Relic Guardian", "Highland Horror"]),
     dict(key="DAL", name="City of Dalaran", zones=[16544, 16560], new=True, levels=(28, 33), tbc={"city-of-dalaran": None},
-         location="Alterac Mountains", territory="Contested", aliases=["Dalaran"], bosses=["Arcane Anomaly", "Fel Ancient", "Mana Devourer", "Mana Elemental", "Unstable Sentinel",
-                 "Shade of the Archmage", "Lyn the Ignored", "Atrexis the Grave Knight", "Mana Wraith"]),
+         location="Alterac Mountains", territory="Contested", aliases=["Dalaran"],
+         bosses=["Atrexis the Grave Knight", "Arcane Anomaly", "Arcanic Enigma", "Unstable Sentinel", "Mana Devourer",
+                 "Fel Ancient", dict(name="Lyn the Ignored", tag=RARE), "Shade of the Archmage", "Mana Elemental", "Mana Wraith"]),
     dict(key="DROWN", name="The Drowned City", zones=[], new=True, levels=(35, 40), tbc={"the-drowned-city": None},
-         location="Stranglethorn Vale coast", territory="Contested", bosses=[]),
+         location="Stranglethorn Vale coast", territory="Contested",
+         bosses=["Zul'Alai", "Var'Taka", "Primeval Elemental", "Captain Dreadrise", "Deathless Marrow",
+                 "Min'loth the Serpent", dict(name="Umbra", tag=RARE), dict(name="Gill", tag=RARE)]),
     dict(key="KROL", name="Krol'dok Stronghold", zones=[], new=True, levels=(40, 45), tbc={"krol-dok-stronghold": None},
-         location="Riverglades", territory="Contested", bosses=[]),
+         location="Riverglades", territory="Contested",
+         bosses=["Slavecrusher Grox", "Twilight Commander Zarmok", "War Handler Ashka", "Nar'gurk", "Bossman Toof",
+                 "Overlord Mugg"]),
     dict(key="ALCAZ", name="Alcaz Prison", zones=[], new=True, levels=(48, 53), tbc={"alcaz-prison": None},
-         location="Alcaz Island, Dustwallow Marsh", territory="Contested", bosses=[]),
+         location="Alcaz Island, Dustwallow Marsh", territory="Contested",
+         bosses=["The Questioner", "Tidemistress Ca'zass", "Overseer Wrex", "Katerina the Cleaner", "Blazeroar"]),
     dict(key="BMH", name="Blackmaw Hold", zones=[], new=True, levels=(55, 60), tbc={"blackmaw-hold": None},
-         location="Northern Azshara", territory="Contested", bosses=[]),
+         location="Northern Azshara", territory="Contested",
+         bosses=["Bonesnout the Unbroken", "Elder Shaman Bloodmane", "Impaan the Imprisoner", "Unbound Spirit",
+                 "Varrox Bleakhoof", "Withermaw", dict(name="Moontouched Wanderer", tag=RARE),
+                 dict(name="Tunnelweb Matriarch", tag=RARE)]),
     dict(key="SHAPER", name="Shaper's Terrace", zones=[], new=True, levels=(58, 60), tbc={"shaper-s-terrace": None},
          location="Un'Goro Crater", territory="Contested", aliases=["The Shapers Terrace", "Shapers Terrace"],
-         bosses=[]),
+         bosses=["Cinder", "Snowtalon", "Bolt", "Vitrix", "Nanaya", "Titanosaur", "Tor'Rel", "Venomridge",
+                 "Thunderhoof", "Direhorn Matriarch"]),
 
     # ---------------------------------------------------------------- original dungeons
     dict(key="RFC", name="Ragefire Chasm", zones=[2437], map=389, tbc={"ragefire-chasm": None}, location="Orgrimmar", territory="Horde",

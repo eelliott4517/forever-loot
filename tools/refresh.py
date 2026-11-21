@@ -5,7 +5,9 @@
     python3 tools/refresh.py --install        also copy the addon into WoW: Forever
 
 Steps
-  1. wowtbc.gg loot tables and dungeon quests (fetched directly).
+  1. wowtbc.gg loot tables and dungeon quests (fetched directly), and warcraft.wiki.gg's pages for
+     Forever's own dungeons and raids (wiki.py: their bosses' levels, encounter order and loot;
+     cached in tools/cache/wiki, so delete that folder to read the wiki fresh).
   2. Wowhead pages: zone loot and quests, raid boss pages, new items, the quest pages of
      Forever's own quests and the items that start them. Wowhead blocks
      scripted clients, so this step runs in your browser: the script is written to
@@ -15,7 +17,8 @@ Steps
      lands in your Downloads folder the refresh carries on by itself.
      (Or run the script yourself and pass the file with --wowhead PATH.)
   3. link_recipes.py links new recipes to the items Wowhead says they make, then build_data.py:
-     item tooltips from Wowhead's tooltip API (cached in tools/cache), Data.lua.
+     item tooltips from Wowhead's tooltip API (cached in tools/cache), Data.lua; and build_art.py:
+     Art.lua's pictures, portraits and boss levels.
   4. The tests (npm test in tools/), when Node is installed.
   5. package.py: the release zips in dist/.
 """
@@ -207,6 +210,7 @@ def run(cmd, cwd, env=None):
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--skip-wowtbc", action="store_true", help="use the wowtbc.gg pages already in tools/raw")
+    p.add_argument("--skip-wiki", action="store_true", help="use the warcraft.wiki.gg pages already in tools/raw")
     p.add_argument("--skip-wowhead", action="store_true", help="use the Wowhead scrape already in tools/raw")
     p.add_argument("--wowhead", metavar="PATH", help="a forever-loot-wowhead.json you downloaded already")
     p.add_argument("--no-browser", action="store_true", help="don't open Wowhead in the browser")
@@ -220,11 +224,15 @@ def main():
         print(write_console_script()[0])
         return
 
-    step("1/5 wowtbc.gg")
+    step("1/5 wowtbc.gg and warcraft.wiki.gg")
     if args.skip_wowtbc:
-        print("skipped")
+        print("wowtbc.gg skipped")
     else:
         fetch_wowtbc()
+    if args.skip_wiki:
+        print("warcraft.wiki.gg skipped")
+    else:
+        run([sys.executable, "wiki.py"], HERE)
 
     step("2/5 Wowhead")
     if args.skip_wowhead:
@@ -238,6 +246,7 @@ def main():
     env = dict(os.environ, FL_DATE=time.strftime("%Y-%m-%d"), FL_ITEM_AGE=str(args.item_age))
     run([sys.executable, "link_recipes.py"], HERE)
     run([sys.executable, "build_data.py"], HERE, env)
+    run([sys.executable, "build_art.py"], HERE)
 
     step("4/5 tests")
     if shutil.which("npm"):

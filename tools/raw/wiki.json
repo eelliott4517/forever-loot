@@ -1,0 +1,1236 @@
+{
+ "fetched": "2026-11-21",
+ "source": "warcraft.wiki.gg",
+ "instances": {
+  "HOT": {
+   "page": "Hall of Thanes (instance)",
+   "levels": "13-18",
+   "bosses": [
+    {
+     "name": "Faldrim Anvilmar",
+     "page": "Faldrim Anvilmar",
+     "rare": false,
+     "note": "",
+     "level": 14,
+     "level_text": "14",
+     "type": "Elite"
+    },
+    {
+     "name": "Magmatus",
+     "page": "Magmatus",
+     "rare": false,
+     "note": "",
+     "level": 16,
+     "level_text": "16",
+     "type": "Elite"
+    },
+    {
+     "name": "Plunder",
+     "page": "Plunder (boss)",
+     "rare": false,
+     "note": "",
+     "level": 16,
+     "level_text": "16",
+     "type": "Elite"
+    },
+    {
+     "name": "Durgen Dirgehammer",
+     "page": "Durgen Dirgehammer",
+     "rare": false,
+     "note": "",
+     "level": 16,
+     "level_text": "16",
+     "type": "Elite"
+    }
+   ],
+   "loot": [
+    {
+     "boss": "Faldrim Anvilmar",
+     "items": [
+      271096,
+      270227,
+      271097
+     ]
+    },
+    {
+     "boss": "Magmatus",
+     "items": [
+      271095,
+      270231,
+      270230
+     ]
+    },
+    {
+     "boss": "Plunder",
+     "items": [
+      271098,
+      270228,
+      270229
+     ]
+    },
+    {
+     "boss": "Durgen Direhammer",
+     "items": [
+      270260,
+      270256,
+      270261
+     ]
+    }
+   ],
+   "trash": []
+  },
+  "ROL": {
+   "page": "Ruins of Lordaeron (instance)",
+   "levels": "15-22",
+   "bosses": [
+    {
+     "name": "Witherfang",
+     "page": "Witherfang",
+     "rare": false,
+     "note": "{{raceicon|spider}}",
+     "level": 17,
+     "level_text": "17",
+     "type": "Elite"
+    },
+    {
+     "name": "The Baron",
+     "page": "The Baron",
+     "rare": false,
+     "note": "{{raceicon|abomination}}",
+     "level": 17,
+     "level_text": "17",
+     "type": "Elite"
+    },
+    {
+     "name": "Viktor the Vile",
+     "page": "Viktor the Vile",
+     "rare": false,
+     "note": "{{raceicon|northrendghoul}}",
+     "level": 19,
+     "level_text": "19",
+     "type": "Elite"
+    },
+    {
+     "name": "The Abandoned",
+     "page": "The Abandoned",
+     "rare": false,
+     "note": "{{raceicon|ghost2}}",
+     "level": 18,
+     "level_text": "18",
+     "type": "Elite"
+    },
+    {
+     "name": "Bjork",
+     "page": "Bjork",
+     "rare": false,
+     "note": "{{raceicon|wight}}",
+     "level": 19,
+     "level_text": "19",
+     "type": "Elite"
+    },
+    {
+     "name": "Rath'mael",
+     "page": "Rath'mael",
+     "rare": false,
+     "note": "{{raceicon|skeletalmage}}",
+     "level": 20,
+     "level_text": "20",
+     "type": "Elite"
+    },
+    {
+     "name": "Lordaeron Captain",
+     "page": "Lordaeron Captain",
+     "rare": true,
+     "note": "rare",
+     "level": 19,
+     "level_text": "19",
+     "type": "Rare Elite"
+    }
+   ],
+   "loot": [
+    {
+     "boss": "Witherfang",
+     "items": [
+      271201,
+      271203,
+      271202
+     ]
+    },
+    {
+     "boss": "The Baron",
+     "items": [
+      271205,
+      271206,
+      271204
+     ]
+    },
+    {
+     "boss": "Viktor the Vile",
+     "items": [
+      271212,
+      271218,
+      271211
+     ]
+    },
+    {
+     "boss": "The Abandoned",
+     "items": [
+      271208,
+      271207,
+      271216
+     ]
+    },
+    {
+     "boss": "Bjork",
+     "items": [
+      271209,
+      271217,
+      271210
+     ]
+    },
+    {
+     "boss": "Rath'mael",
+     "items": [
+      271215,
+      271213,
+      271214
+     ]
+    },
+    {
+     "boss": "Lordaeron Captain (rare)",
+     "items": [
+      6641,
+      6642
+     ]
+    }
+   ],
+   "trash": [
+    286981,
+    286978,
+    286979,
+    286980,
+    286977
+   ]
+  },
+  "EXC": {
+   "page": "Excavation Site: Wetlands",
+   "levels": "26-32",
+   "bosses": [
+    {
+     "name": "Saltspine",
+     "page": "Saltspine",
+     "rare": false,
+     "note": "",
+     "level": 28,
+     "level_text": "28",
+     "type": "Elite"
+    },
+    {
+     "name": "Shadetooth",
+     "page": "Shadetooth",
+     "rare": false,
+     "note": "",
+     "level": 29,
+     "level_text": "29",
+     "type": "Elite"
+    },
+    {
+     "name": "Relic Guardian",
+     "page": "Relic Guardian",
+     "rare": false,
+     "note": "",
+     "level": 31,
+     "level_text": "31",
+     "type": "Elite"
+    }
+   ],
+   "loot": [
+    {
+     "boss": "Saltspine",
+     "items": [
+      273024,
+      273023,
+      273022
+     ]
+    },
+    {
+     "boss": "Shadetooth",
+     "items": [
+      273026,
+      273025,
+      273027
+     ]
+    },
+    {
+     "boss": "Relic Guardian",
+     "items": [
+      270865,
+      273029,
+      273028,
+      273030,
+      273097
+     ]
+    }
+   ],
+   "trash": []
+  },
+  "DAL": {
+   "page": "City of Dalaran",
+   "levels": "28-34",
+   "bosses": [
+    {
+     "name": "Atrexis the Grave Knight",
+     "page": "Atrexis the Grave Knight",
+     "rare": false,
+     "note": "",
+     "level": 29,
+     "level_text": "29",
+     "type": "Elite"
+    },
+    {
+     "name": "Arcane Anomaly",
+     "page": "Arcane Anomaly (Forever)",
+     "rare": false,
+     "note": "",
+     "level": 30,
+     "level_text": "30",
+     "type": "Elite"
+    },
+    {
+     "name": "Arcanic Enigma",
+     "page": "Arcanic Enigma",
+     "rare": false,
+     "note": "",
+     "level": 30,
+     "level_text": "30",
+     "type": "Elite"
+    },
+    {
+     "name": "Unstable Sentinel",
+     "page": "Unstable Sentinel",
+     "rare": false,
+     "note": "",
+     "level": 31,
+     "level_text": "31",
+     "type": "Elite"
+    },
+    {
+     "name": "Mana Devourer",
+     "page": "Mana Devourer (Forever)",
+     "rare": false,
+     "note": "",
+     "level": 31,
+     "level_text": "31",
+     "type": "Elite"
+    },
+    {
+     "name": "Fel Ancient",
+     "page": "Fel Ancient",
+     "rare": false,
+     "note": "",
+     "level": 32,
+     "level_text": "32",
+     "type": "Elite"
+    },
+    {
+     "name": "Lyn the Ignored",
+     "page": "Lyn the Ignored",
+     "rare": false,
+     "note": "",
+     "level": 31,
+     "level_text": "31",
+     "type": "Rare Elite"
+    },
+    {
+     "name": "Shade of the Archmage",
+     "page": "Shade of the Archmage",
+     "rare": false,
+     "note": "",
+     "level": 33,
+     "level_text": "33",
+     "type": "Elite"
+    }
+   ],
+   "loot": [
+    {
+     "boss": "Atrexis the Grave Knight",
+     "items": [
+      273032,
+      273033,
+      273036
+     ]
+    },
+    {
+     "boss": "Arcane Anomaly",
+     "items": [
+      273034,
+      273035,
+      273031
+     ]
+    },
+    {
+     "boss": "Arcanic Enigma",
+     "items": [
+      273045,
+      273044,
+      273043
+     ]
+    },
+    {
+     "boss": "Unstable Sentinel",
+     "items": [
+      273046,
+      273048,
+      273047,
+      273099
+     ]
+    },
+    {
+     "boss": "Mana Devourer",
+     "items": [
+      273042,
+      273041,
+      273040
+     ]
+    },
+    {
+     "boss": "Fel Ancient",
+     "items": [
+      273039,
+      273037,
+      273038
+     ]
+    },
+    {
+     "boss": "Lyn the Ignored",
+     "items": [
+      273055,
+      273054,
+      273053
+     ]
+    },
+    {
+     "boss": "Shade of the Archmage",
+     "items": [
+      273049,
+      273052,
+      273051,
+      273103
+     ]
+    }
+   ],
+   "trash": []
+  },
+  "DROWN": {
+   "page": "Drowned City",
+   "levels": "35-42",
+   "bosses": [
+    {
+     "name": "Zul'Alai",
+     "page": "Zul'Alai",
+     "rare": false,
+     "note": "",
+     "level": 37,
+     "level_text": "37",
+     "type": "Elite"
+    },
+    {
+     "name": "Var'Taka",
+     "page": "Var'Taka",
+     "rare": false,
+     "note": "",
+     "level": 38,
+     "level_text": "38",
+     "type": "Elite"
+    },
+    {
+     "name": "Primeval Elemental",
+     "page": "Primeval Elemental",
+     "rare": false,
+     "note": "",
+     "level": 38,
+     "level_text": "38",
+     "type": "Elite"
+    },
+    {
+     "name": "Captain Dreadrise",
+     "page": "Captain Dreadrise",
+     "rare": false,
+     "note": "",
+     "level": 38,
+     "level_text": "38",
+     "type": "Elite"
+    },
+    {
+     "name": "Deathless Marrow",
+     "page": "Deathless Marrow",
+     "rare": false,
+     "note": "",
+     "level": 39,
+     "level_text": "39",
+     "type": "Elite"
+    },
+    {
+     "name": "Min'loth the Serpent",
+     "page": "Min'loth the Serpent",
+     "rare": false,
+     "note": "",
+     "level": 40,
+     "level_text": "40",
+     "type": "Elite"
+    },
+    {
+     "name": "Umbra",
+     "page": "Umbra",
+     "rare": true,
+     "note": "rare",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Gill",
+     "page": "Gill",
+     "rare": true,
+     "note": "rare",
+     "level": null,
+     "level_text": null,
+     "type": null
+    }
+   ],
+   "loot": [
+    {
+     "boss": "Zul'Alai",
+     "items": [
+      274600,
+      274598,
+      274599
+     ]
+    },
+    {
+     "boss": "Var'Taka",
+     "items": [
+      274602,
+      274601,
+      274613
+     ]
+    },
+    {
+     "boss": "Primeval Elemental",
+     "items": [
+      274615,
+      271718,
+      274611,
+      274612
+     ]
+    },
+    {
+     "boss": "Captain Dreadrise",
+     "items": [
+      274605,
+      274603,
+      274604
+     ]
+    },
+    {
+     "boss": "Deathless Marrow",
+     "items": [
+      274606,
+      274614,
+      274607
+     ]
+    },
+    {
+     "boss": "Min'loth the Serpent",
+     "items": [
+      274608,
+      274610,
+      274609
+     ]
+    },
+    {
+     "boss": "Umbra",
+     "items": [
+      286662,
+      286658
+     ]
+    },
+    {
+     "boss": "Gill",
+     "items": [
+      286646,
+      286649
+     ]
+    },
+    {
+     "boss": "Shared",
+     "items": [
+      271718
+     ]
+    }
+   ],
+   "trash": [
+    287003,
+    286998,
+    286997,
+    271718,
+    287006,
+    287000,
+    287005,
+    287004,
+    287001
+   ]
+  },
+  "KROL": {
+   "page": "Krol'dok Stronghold",
+   "levels": "40-45",
+   "bosses": [
+    {
+     "name": "Slavecrusher Grox",
+     "page": "Slavecrusher Grox",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Twilight Commander Zarmok",
+     "page": "Twilight Commander Zarmok",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "War Handler Ashka",
+     "page": "War Handler Ashka",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Nar'gurk",
+     "page": "Nar'gurk",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Bossman Toof",
+     "page": "Bossman Toof",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Overlord Mugg",
+     "page": "Overlord Mugg",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    }
+   ],
+   "loot": [
+    {
+     "boss": "Slavecrusher Grox",
+     "items": [
+      274997,
+      274996,
+      274995,
+      273101
+     ]
+    },
+    {
+     "boss": "Twilight Commander Zarmok",
+     "items": [
+      274999,
+      274998,
+      275000
+     ]
+    },
+    {
+     "boss": "War Handler Ashka",
+     "items": []
+    },
+    {
+     "boss": "Nar'gurk",
+     "items": [
+      275004,
+      275005,
+      275006,
+      267104
+     ]
+    },
+    {
+     "boss": "Bossman Toof",
+     "items": []
+    },
+    {
+     "boss": "Overlord Mugg",
+     "items": [
+      275009,
+      275007,
+      275008,
+      275010,
+      267086,
+      271721
+     ]
+    }
+   ],
+   "trash": []
+  },
+  "ALCAZ": {
+   "page": "Alcaz Prison",
+   "levels": "48-53",
+   "bosses": [
+    {
+     "name": "The Questioner",
+     "page": "The Questioner",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Tidemistress Ca'zass",
+     "page": "Tidemistress Ca'zass",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Overseer Wrex",
+     "page": "Overseer Wrex",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Katerina the Cleaner",
+     "page": "Katerina the Cleaner",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Blazeroar",
+     "page": "Blazeroar",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    }
+   ],
+   "loot": [
+    {
+     "boss": "The Questioner",
+     "items": [
+      276741,
+      276743,
+      276742,
+      274029
+     ]
+    },
+    {
+     "boss": "Tidemistress Ca'zass",
+     "items": [
+      276737,
+      276736,
+      276735,
+      273883
+     ]
+    },
+    {
+     "boss": "Overseer Wrex",
+     "items": [
+      276732,
+      276733,
+      276734
+     ]
+    },
+    {
+     "boss": "Katerina the Cleaner",
+     "items": [
+      276739,
+      276738,
+      276740
+     ]
+    },
+    {
+     "boss": "Blazeroar",
+     "items": [
+      276745,
+      276746,
+      276744,
+      276890
+     ]
+    }
+   ],
+   "trash": []
+  },
+  "BMH": {
+   "page": "Blackmaw Hold (instance)",
+   "levels": "55-60",
+   "bosses": [
+    {
+     "name": "Bonesnout the Unbroken",
+     "page": "Bonesnout the Unbroken",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Elder Shaman Bloodmane",
+     "page": "Elder Shaman Bloodmane",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Impaan the Imprisoner",
+     "page": "Impaan the Imprisoner",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Unbound Spirit",
+     "page": "Unbound Spirit",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Varrox Bleakhoof",
+     "page": "Varrox Bleakhoof",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Withermaw",
+     "page": "Withermaw",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Moontouched Wanderer",
+     "page": "Moontouched Wanderer",
+     "rare": true,
+     "note": "rare",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Tunnelweb Matriarch",
+     "page": "Tunnelweb Matriarch",
+     "rare": true,
+     "note": "rare",
+     "level": null,
+     "level_text": null,
+     "type": null
+    }
+   ],
+   "loot": [
+    {
+     "boss": "Bonesnout the Unbroken",
+     "items": [
+      280060,
+      280061,
+      280059
+     ]
+    },
+    {
+     "boss": "Elder Shaman Bloodmane",
+     "items": [
+      280068,
+      280069,
+      280070
+     ]
+    },
+    {
+     "boss": "Impaan the Imprisoner",
+     "items": [
+      280056,
+      280058,
+      280057
+     ]
+    },
+    {
+     "boss": "Unbound Spirit",
+     "items": [
+      280073,
+      280072,
+      280071
+     ]
+    },
+    {
+     "boss": "Varrox Bleakhoof",
+     "items": [
+      280075,
+      280076,
+      280074
+     ]
+    },
+    {
+     "boss": "Withermaw",
+     "items": [
+      280063,
+      280062,
+      280064
+     ]
+    },
+    {
+     "boss": "Moontouched Wanderer",
+     "items": [
+      280079,
+      280080
+     ]
+    },
+    {
+     "boss": "Tunnelweb Matriarch",
+     "items": [
+      280086,
+      280085
+     ]
+    }
+   ],
+   "trash": []
+  },
+  "SHAPER": {
+   "page": "Shaper's Terrace (instance)",
+   "levels": "55-60",
+   "bosses": [
+    {
+     "name": "Cinder",
+     "page": "Cinder (raptor)",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": "Elite"
+    },
+    {
+     "name": "Snowtalon",
+     "page": "Snowtalon",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": "Elite"
+    },
+    {
+     "name": "Bolt",
+     "page": "Bolt (raptor)",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Vitrix",
+     "page": "Vitrix",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": "Elite"
+    },
+    {
+     "name": "Nanaya",
+     "page": "Nanaya",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Titanosaur",
+     "page": "Titanosaur",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Tor'Rel",
+     "page": "Tor'Rel",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Venomridge",
+     "page": "Venomridge",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Thunderhoof",
+     "page": "Thunderhoof (Shaper's Terrace)",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Direhorn Matriarch",
+     "page": "Direhorn Matriarch",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    }
+   ],
+   "loot": [],
+   "trash": []
+  },
+  "BARROW": {
+   "page": "Barrow Deeps (instance)",
+   "levels": "60",
+   "bosses": [
+    {
+     "name": "Deepscar Matriarch",
+     "page": "Deepscar Matriarch",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Khalith the Dreadspinner",
+     "page": "Khalith the Dreadspinner",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Amethrax",
+     "page": "Amethrax",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Ravus and Darlissa",
+     "page": "Ravus and Darlissa",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Elder Tangleclaw",
+     "page": "Elder Tangleclaw",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Well of Sorrow",
+     "page": "Well of Sorrow",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Del'lynar Songwood",
+     "page": "Del'lynar Songwood",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Sonya Darkhallow",
+     "page": "Sonya Darkhallow",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    }
+   ],
+   "loot": [],
+   "trash": []
+  },
+  "HYJAL": {
+   "page": "Hyjal Summit (instance)",
+   "levels": "60",
+   "bosses": [
+    {
+     "name": "Bandalar",
+     "page": "Bandalar",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Time-Lost Battalion",
+     "page": "Time-Lost Battalion",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Old Gloomlurker",
+     "page": "Old Gloomlurker",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Kathris the Haunted",
+     "page": "Kathris the Haunted",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Elder Minderel",
+     "page": "Elder Minderel",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Council of Thorns",
+     "page": "Council of Thorns",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "The Wild King",
+     "page": "The Wild King",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Ancient of Decay",
+     "page": "Ancient of Decay",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Sylvesteris Dusksong",
+     "page": "Sylvesteris Dusksong",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Gharalis the Abyssal",
+     "page": "Gharalis the Abyssal",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Anara Chillwind",
+     "page": "Anara Chillwind",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Tracker Stillwind",
+     "page": "Tracker Stillwind",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    },
+    {
+     "name": "Nythus the Dreambound",
+     "page": "Nythus the Dreambound",
+     "rare": false,
+     "note": "",
+     "level": null,
+     "level_text": null,
+     "type": null
+    }
+   ],
+   "loot": [],
+   "trash": []
+  }
+ }
+}
