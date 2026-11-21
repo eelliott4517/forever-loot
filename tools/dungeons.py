@@ -157,7 +157,9 @@ DUNGEONS = [
          bosses=w("Main Gate", dict(name="Skul", tag=RARE), "Stratholme Courier", "Fras Siabi",
                   dict(name="Hearthsinger Forresten", tag=RARE), "The Unforgiven", "Timmy the Cruel",
                   "Malor the Zealous", "Crimson Hammersmith", "Cannon Master Willey", "Archivist Galford",
-                  dict(name="Balnazzar", aliases=["Grand Crusader Dathrohan"]), dict(name="Sothos", tag=SUMMON, aliases=["Jarien"]), "Postmaster Malown")
+                  dict(name="Balnazzar", aliases=["Grand Crusader Dathrohan", "Grand Crusader Dathrohan / Balnazzar"]),
+                  # wowtbc.gg files the chest the pair leaves as "Sothon and Jarien's Heirlooms"
+                  dict(name="Sothos", tag=SUMMON, aliases=["Jarien", "Sothon and Jarien's Heirlooms", "Sothos and Jarien's Heirlooms"]), "Postmaster Malown")
                 + w("Service Entrance", "Magistrate Barthilas", dict(name="Stonespine", tag=RARE),
                     "Baroness Anastari", "Black Guard Swordsmith", "Nerub'enkan", "Maleki the Pallid",
                     "Ramstein the Gorger", "Baron Rivendare")

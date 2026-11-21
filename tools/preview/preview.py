@@ -24,6 +24,8 @@ Scenarios (all by default), each for an Alliance Human Rogue at level 20 who has
   professions-item professions with the mouse over the second recipe
   sets-item        sets with the mouse over the first piece
   wishlist         the Wishlist tab with five items from two dungeons on it, one of them in the bags
+  dungeons-new     the Dungeons tab on The Drowned City for a level 38 rogue instead, its first boss open:
+                   a dungeon Forever added, with its loot and its bosses' levels from the wiki
   quests-class     the Quests tab on Dire Maul for a level 58 Human Paladin instead, the list scrolled to
                    it: each instance's class icons right of its name
 
@@ -47,7 +49,7 @@ import art  # noqa: E402
 
 TOOLS = os.path.dirname(HERE)
 SCENARIOS = ["quests-dm", "quests-todo", "dungeons-dm", "quests-tooltip", "dungeons-bosses", "search", "professions", "sets",
-             "dungeons-item", "raids", "professions-item", "sets-item", "wishlist", "quests-class"]
+             "dungeons-item", "raids", "professions-item", "sets-item", "wishlist", "quests-class", "dungeons-new"]
 S = 2  # pixels per UI unit (--scale)
 
 # GlobalColor (1.60.1.70205): NORMAL_FONT_COLOR FFD200, DISABLED_FONT_COLOR 808080, TOOLTIP_DEFAULT_BACKGROUND_COLOR 171730
@@ -237,6 +239,7 @@ MOCK.Measure = function(font, text, width, spacing) return MEASURE(font, text, w
 -- the fourth (141) in the quest log
 MOCK.side, MOCK.classFile, MOCK.raceID, MOCK.level = "Alliance", "ROGUE", 1, 20
 if SCENARIO == "quests-class" then MOCK.classFile, MOCK.level = "PALADIN", 58 end
+if SCENARIO == "dungeons-new" then MOCK.level = 38 end
 for id, name in pairs(MAPS) do MOCK.mapNames[id] = name end
 MOCK.done[65], MOCK.done[132], MOCK.done[135] = true, true, true
 MOCK.log[141] = true
@@ -309,6 +312,10 @@ elseif SCENARIO == "raids" then
 	UI:Select(MC)
 	OpenFirstBoss(MC)
 	HoverRow("item", function(r) return select(2, ns.ItemDisplay(r.itemID)) == 4 end)
+elseif SCENARIO == "dungeons-new" then
+	local drown = ns.DungeonByKey.DROWN
+	UI:Select(drown)
+	OpenFirstBoss(drown)
 elseif SCENARIO == "quests-class" then
 	OpenTab("quests")
 	UI:Select(ns.DungeonByKey.DIRE)

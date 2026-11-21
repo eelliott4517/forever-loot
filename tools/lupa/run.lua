@@ -1917,7 +1917,8 @@ local faldrim
 for _, w in ipairs(painted("boss")) do if w.boss.name == "Faldrim Anvilmar" then faldrim = w end end
 check(faldrim and faldrim.portrait:IsShown() and not faldrim.face:IsShown() and faldrim.portrait:GetTexture() == ns.UnknownBossArt
 	and faldrim.portrait:GetAlpha() < 1, "a Forever boss with neither gets the journal's silhouette, dimmed")
-check(not faldrim.levelPlate:IsShown() and not faldrim.level:IsShown(), "a Forever boss's level isn't known until you target it")
+check(faldrim.levelPlate:IsShown() and faldrim.level:GetText() == "14", "a Forever boss's level comes from the wiki",
+	faldrim.level:GetText())
 UI:Select(ns.DungeonByKey.DM)
 UI.loot:ScrollToTop()
 -- a boss's loot lines up under its name
@@ -1967,8 +1968,12 @@ for _, list in ipairs({ ns.Dungeons, ns.Raids }) do
 	end
 end
 check(#without == 0, "every Classic boss has a level", table.concat(without, ", "))
--- targeting a Forever boss in its dungeon learns its level, by its NPC id
+-- warcraft.wiki.gg's levels for Forever's own bosses
+check(ns.BossLevel["Zul'Alai"] == 37 and ns.BossLevel["Lordaeron Captain"] == 19, "Forever's bosses have the wiki's levels")
+-- targeting a Forever boss the bundled data has no level for learns it, by its NPC id
 wipe(ns.db.bossLevels)
+local wikiLevel = ns.BossLevel["Faldrim Anvilmar"]
+ns.BossLevel["Faldrim Anvilmar"] = nil
 MOCK.instance = { ns.DungeonByKey.HOT.name, "party", 1, "", 5, 0, false, 0 }
 MOCK.units.target = { guid = "Creature-0-1-2-3-261306-00004A1B2C", name = "Faldrim Anvilmar", level = 18 }
 MOCK.Fire("PLAYER_TARGET_CHANGED")
@@ -1981,11 +1986,16 @@ check(faldrim and faldrim.levelPlate:IsShown() and faldrim.level:GetText() == "1
 MOCK.units.target = { guid = "Player-1-0ABC", name = "Faldrim Anvilmar", level = 3, player = true }
 MOCK.Fire("PLAYER_TARGET_CHANGED")
 check(ns.db.bossLevels["Faldrim Anvilmar"] == 18, "a player with a boss's name doesn't count")
+ns.BossLevel["Faldrim Anvilmar"] = wikiLevel
+MOCK.Fire("PLAYER_TARGET_CHANGED")
+check(ns.BossLevelOf("Faldrim Anvilmar") == 14, "a bundled level wins over a learned one")
 -- by name, for a boss with no NPC id, even when the game keeps its GUID secret; "??" is a skull
-MOCK.instance = { ns.DungeonByKey.DAL.name, "party", 1, "", 5, 0, false, 0 }
-MOCK.units.mouseover = { guid = MOCK.Secret(), name = "Arcane Anomaly", level = -1 }
+local nameOnly = ns.DungeonByKey.KROL.bosses[1].name
+check(not ns.BossLevel[nameOnly] and not (ns.DungeonByKey.KROL.bosses[1].npc or {})[1], "a Krol'dok boss has neither a level nor an NPC id", nameOnly)
+MOCK.instance = { ns.DungeonByKey.KROL.name, "party", 1, "", 5, 0, false, 0 }
+MOCK.units.mouseover = { guid = MOCK.Secret(), name = nameOnly, level = -1 }
 MOCK.Fire("UPDATE_MOUSEOVER_UNIT")
-check(ns.db.bossLevels["Arcane Anomaly"] == -1, "mousing over a boss Data.lua has no NPC id for learns it by name")
+check(ns.db.bossLevels[nameOnly] == -1, "mousing over a boss Data.lua has no NPC id for learns it by name")
 MOCK.units.mouseover = { guid = MOCK.Secret(), name = MOCK.Secret(), level = MOCK.Secret() }
 check(pcall(MOCK.Fire, "UPDATE_MOUSEOVER_UNIT"), "a unit with a secret name and level is skipped, not an error")
 -- outside a dungeon nothing is recorded

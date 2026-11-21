@@ -348,10 +348,38 @@ ns.BossModel = {
 	["High Priestess Arlokk"] = 15218,
 }
 
--- Each boss's level from cMaNGOS's Classic database, for the badge on its portrait: a number,
--- a range for an encounter whose creatures differ, or -1 for a boss the game shows as "??".
--- Forever's own bosses aren't here; the addon learns theirs when you target one.
+-- Each boss's level, for the badge on its portrait, from cMaNGOS's Classic database or, for
+-- Forever's own bosses, warcraft.wiki.gg: a number, a range for an encounter whose creatures
+-- differ, or -1 for a boss the game shows as "??". The addon learns the rest when you target one.
 ns.BossLevel = {
+	["Faldrim Anvilmar"] = 14,
+	["Magmatus"] = 16,
+	["Plunder"] = 16,
+	["Durgen Dirgehammer"] = 16,
+	["Witherfang"] = 17,
+	["The Baron"] = 17,
+	["Viktor the Vile"] = 19,
+	["The Abandoned"] = 18,
+	["Bjork"] = 19,
+	["Rath'mael"] = 20,
+	["Lordaeron Captain"] = 19,
+	["Saltspine"] = 28,
+	["Shadetooth"] = 29,
+	["Relic Guardian"] = 31,
+	["Atrexis the Grave Knight"] = 29,
+	["Arcane Anomaly"] = 30,
+	["Arcanic Enigma"] = 30,
+	["Unstable Sentinel"] = 31,
+	["Mana Devourer"] = 31,
+	["Fel Ancient"] = 32,
+	["Lyn the Ignored"] = 31,
+	["Shade of the Archmage"] = 33,
+	["Zul'Alai"] = 37,
+	["Var'Taka"] = 38,
+	["Primeval Elemental"] = 38,
+	["Captain Dreadrise"] = 38,
+	["Deathless Marrow"] = 39,
+	["Min'loth the Serpent"] = 40,
 	["Oggleflint"] = 16,
 	["Taragaman the Hungerer"] = 16,
 	["Jergosh the Invoker"] = 16,

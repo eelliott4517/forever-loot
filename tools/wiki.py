@@ -11,6 +11,7 @@ them, and is cached in tools/cache/wiki (delete it to read the pages fresh).
 boss_models.py takes the levels of the bosses cMaNGOS doesn't have (Forever's own), and
 build_data.py takes the loot as a source next to wowtbc.gg and Wowhead.
 """
+import difflib
 import json
 import os
 import re
@@ -134,6 +135,19 @@ def loot_table(text):
     return [(b, items) for b, items in rows if items]
 
 
+def boss_name(name, bosses):
+    """A loot table's boss as the Encounters list names it: without a note like "(rare)", and a
+    misspelling ("Durgen Direhammer") matched to the closest name"""
+    if not name:
+        return name
+    name = re.sub(r"\s*\([^)]*\)\s*$", "", name).strip()
+    names = [b["name"] for b in bosses]
+    if name in names or name.lower() == "shared":
+        return name
+    close = difflib.get_close_matches(name, names, n=1, cutoff=0.85)
+    return close[0] if close else name
+
+
 def npc_level(page):
     """(level text, type) from a boss's Npcbox"""
     text, _ = wikitext(page)
@@ -188,7 +202,7 @@ def main():
                     ids.append(iid)
                 else:
                     missing.append(f"{key}: no item id on {p}")
-            loot.append(dict(boss=boss, items=ids))
+            loot.append(dict(boss=boss_name(boss, bosses), items=ids))
         trash = []
         for _, pages in loot_table(subsection(loot_text, "Trash mob drops")):
             for p in pages:

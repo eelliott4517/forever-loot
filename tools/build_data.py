@@ -322,7 +322,7 @@ class Build:
                 if norm(tb["name"]) not in by_name and all(norm(p) in quest_names for p in parts):
                     self.tbc_quest_rewards[d["key"]].append(dict(name=tb["name"], items=tb["items"], new=tb.get("new", [])))
                     continue
-                if tb["name"] == "Trash":
+                if tb["name"] in ("Trash", "Trash Drop", "Trash Drops"):
                     target = None
                 else:
                     target = by_name.get(norm(tb["name"]))
