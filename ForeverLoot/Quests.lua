@@ -260,7 +260,7 @@ function Quests.RowSub(d)
 end
 
 -- The icon of each class with a quest of its own in an instance (for your faction), in the game's
--- class order
+-- class order; with My class on, only yours
 local CLASS_ICONS = "Interface\\TargetingFrame\\UI-Classes-Circles"
 local CLASS_ORDER = { { 1, "WARRIOR" }, { 2, "PALADIN" }, { 3, "HUNTER" }, { 4, "ROGUE" }, { 5, "PRIEST" },
 	{ 7, "SHAMAN" }, { 8, "MAGE" }, { 9, "WARLOCK" }, { 11, "DRUID" } }
@@ -278,8 +278,10 @@ end
 
 function Quests.ListMarks(d)
 	if d.isTodo then return end
+	local mine = K.Filters().myClass and select(2, UnitClass("player")) or nil
+	if mine and issecretvalue and issecretvalue(mine) then mine = nil end
 	local c = ns.QuestCache().extra
-	local key = "classes:" .. d.key
+	local key = "classes:" .. d.key .. ":" .. (mine or "all")
 	if c[key] then return c[key] end
 	local masks = {}
 	for _, q in ipairs(d.quests or {}) do
@@ -289,7 +291,7 @@ function Quests.ListMarks(d)
 	local marks = {}
 	for _, class in ipairs(CLASS_ORDER) do
 		for _, mask in ipairs(masks) do
-			if HasBit(mask, class[1]) then
+			if HasBit(mask, class[1]) and (mine == nil or mine == class[2]) then
 				local coords = (CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class[2]]) or CLASS_COORDS[class[2]]
 				marks[#marks + 1] = { CLASS_ICONS, coords[1], coords[2], coords[3], coords[4], class = class[2] }
 				break

@@ -2032,6 +2032,15 @@ local _, _, _, _, y7 = dire.marks[7]:GetPoint(1)
 local _, _, _, nameX = dire.name:GetPoint(1)
 check(x1 > nameX + dire.name:GetWidth() - 90 and x3 > x1 and y1 == 0 and y7 < y1 and not dire.marks[9],
 	"Dire Maul's eight icons are a grid of three lines at the right, starting level with the picture")
+-- My class keeps only your class's icon, and turning it off brings the rest back
+UI.toggles.myClass:Click()
+check(marks(row("DIRE")) == "ROGUE" and marks(row("SFK")) == "" and marks(row("BRD")) == "ROGUE",
+	"with My class on, only the rogue icon shows, and only where rogues have a quest", marks(row("DIRE")))
+UI.toggles.myClass:GetScript("OnEnter")(UI.toggles.myClass)
+check(MOCK.TooltipText():find("only your class's icon", 1, true), "the My class tooltip on the Quests tab says so")
+UI.toggles.myClass:GetScript("OnLeave")(UI.toggles.myClass)
+UI.toggles.myClass:Click()
+check(marks(row("DIRE")) == "WARRIOR PALADIN HUNTER ROGUE PRIEST MAGE WARLOCK DRUID", "with it off, every class's again")
 MOCK.faction = "Horde"
 MOCK.race = { "Orc", "Orc", 2 }
 MOCK.classFile = "WARLOCK"

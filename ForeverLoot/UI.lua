@@ -783,7 +783,13 @@ function UI:Create()
 
 	local classToggle = CreateToggle(right, "myClass", "My class")
 	classToggle:SetPoint("LEFT", kindFilter, "RIGHT", 16, 1)
-	classToggle.Hint = function() return K.ClassFilterText() end
+	classToggle.Hint = function()
+		if UI.mode == "quests" then
+			return "Only quest rewards your class can use, and in the list only your class's icon (off, the list " ..
+				"shows the icon of every class with a quest of its own there)."
+		end
+		return K.ClassFilterText()
+	end
 	local classicToggle = CreateToggle(right, "hideClassic", "Hide Classic")
 	classicToggle:SetPoint("LEFT", classToggle.Text, "RIGHT", 12, 0)
 	classicToggle.Hint = function()
