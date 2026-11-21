@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.13.0
+
+- **Loot for every dungeon.** The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and Shaper's Terrace have their bosses, in the order you meet them with their rares marked, and their loot. The older dungeons get the drops found since the last update (19 more in Zul'Farrak, 12 in Stratholme, and more in Uldaman, Scholomance, Blackrock Depths and others), and 17 items under "Boss not confirmed" now have their boss.
+- **Boss levels.** Each boss's portrait has its level in the corner, colored by how hard it is for you as the quest log colors quests, or a skull for a raid boss the game shows as "??". Classic bosses' levels come from cMaNGOS's Classic database, and 28 of Forever's own from warcraft.wiki.gg. For a boss neither has yet, the addon records its level the first time you target it or mouse over it in its dungeon.
+- **Class quests on the Quests tab.** Next to each dungeon's or raid's name in the list are the icons of the classes with a quest of their own there (your faction's classes). Turn on My class to see only yours.
+- **A new source: warcraft.wiki.gg**, for Forever's own dungeons and raids: their bosses in order, their levels and their loot tables. Every item was checked against Wowhead's Forever database again (Nov 21).
+- Hyjal Summit's Nythus the Dreambound is spelled right.
+
 ## 1.12.1
 
 - **81 more boss portraits.** Bosses the Encounter Journal has no picture of now get one the game draws from their own model, round, in the thin gold ring Blizzard puts around boss portraits on its kill banner: Miner Johnson, Sneed's Shredder, Archmage Arugal and the rest of Shadowfang Keep, the Stockade's bosses, Zul'Gurub's high priests, Lord Valthalak, Balzaphon and more. The models come from cMaNGOS's Classic database and Wowhead.
