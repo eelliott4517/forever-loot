@@ -24,8 +24,8 @@ Scenarios (all by default), each for an Alliance Human Rogue at level 20 who has
   professions-item professions with the mouse over the second recipe
   sets-item        sets with the mouse over the first piece
   wishlist         the Wishlist tab with five items from two dungeons on it, one of them in the bags
-  quests-class     the Quests tab on Shadowfang Keep for a level 22 Human Paladin instead: the paladin
-                   icon on its picture in the list, for The Test of Righteousness
+  quests-class     the Quests tab on Dire Maul for a level 58 Human Paladin instead, the list scrolled to
+                   it: each instance's class icons right of its name
 
 Each is written to tools/preview/preview-<scenario>.png: the 880 x 620 window with its shadow
 (and the tooltip), at --scale pixels per UI unit (2 by default; 1 is the game at UI scale 1). Each run
@@ -236,7 +236,7 @@ MOCK.Measure = function(font, text, width, spacing) return MEASURE(font, text, w
 -- An Alliance Human Rogue at level 20: the first three quests of The Defias Brotherhood turned in,
 -- the fourth (141) in the quest log
 MOCK.side, MOCK.classFile, MOCK.raceID, MOCK.level = "Alliance", "ROGUE", 1, 20
-if SCENARIO == "quests-class" then MOCK.classFile, MOCK.level = "PALADIN", 22 end
+if SCENARIO == "quests-class" then MOCK.classFile, MOCK.level = "PALADIN", 58 end
 for id, name in pairs(MAPS) do MOCK.mapNames[id] = name end
 MOCK.done[65], MOCK.done[132], MOCK.done[135] = true, true, true
 MOCK.log[141] = true
@@ -311,7 +311,10 @@ elseif SCENARIO == "raids" then
 	HoverRow("item", function(r) return select(2, ns.ItemDisplay(r.itemID)) == 4 end)
 elseif SCENARIO == "quests-class" then
 	OpenTab("quests")
-	UI:Select(ns.DungeonByKey.SFK)
+	UI:Select(ns.DungeonByKey.DIRE)
+	for _, row in ipairs(UI.listRows) do
+		if row.entry == ns.DungeonByKey.ST then UI.list:ScrollTo(select(5, row:GetPoint(1)) * -1) end
+	end
 elseif SCENARIO == "wishlist" then
 	for _, name in ipairs({ "Dull Sawblade", "Buzzer Blade", "Buzz Saw", "Bloodmage Mantle", "Orb of the Forgotten Seer" }) do
 		ns.Wishlist.Toggle(ItemNamed(name))

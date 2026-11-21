@@ -259,8 +259,11 @@ function Quests.RowSub(d)
 	return todo > 0 and (levels .. "   ·   " .. mark) or levels
 end
 
--- Your class's icon on an instance with a quest only some classes can take, yours among them
+-- The icon of each class with a quest of its own in an instance (for your faction), in the game's
+-- class order
 local CLASS_ICONS = "Interface\\TargetingFrame\\UI-Classes-Circles"
+local CLASS_ORDER = { { 1, "WARRIOR" }, { 2, "PALADIN" }, { 3, "HUNTER" }, { 4, "ROGUE" }, { 5, "PRIEST" },
+	{ 7, "SHAMAN" }, { 8, "MAGE" }, { 9, "WARLOCK" }, { 11, "DRUID" } }
 local CLASS_COORDS = { -- CLASS_ICON_TCOORDS, for a client without it
 	WARRIOR = { 0, 0.25, 0, 0.25 }, MAGE = { 0.25, 0.49609375, 0, 0.25 },
 	ROGUE = { 0.49609375, 0.7421875, 0, 0.25 }, DRUID = { 0.7421875, 0.98828125, 0, 0.25 },
@@ -269,29 +272,32 @@ local CLASS_COORDS = { -- CLASS_ICON_TCOORDS, for a client without it
 	PALADIN = { 0, 0.25, 0.5, 0.75 },
 }
 
-local function HasClassQuest(d)
+local function HasBit(mask, id)
+	return math.floor(mask / 2 ^ (id - 1)) % 2 == 1
+end
+
+function Quests.ListMarks(d)
+	if d.isTodo then return end
 	local c = ns.QuestCache().extra
-	local key = "class:" .. d.key
-	if c[key] == nil then
-		c[key] = false
-		for _, q in ipairs(d.quests or {}) do
-			local info = q.id and ns.QuestInfo[q.id]
-			if info and info.classes and ns.QuestOpenToMe(q) then
-				c[key] = true
+	local key = "classes:" .. d.key
+	if c[key] then return c[key] end
+	local masks = {}
+	for _, q in ipairs(d.quests or {}) do
+		local info = q.id and ns.QuestInfo[q.id]
+		if info and info.classes and ns.QuestForPlayer(q) then masks[#masks + 1] = info.classes end
+	end
+	local marks = {}
+	for _, class in ipairs(CLASS_ORDER) do
+		for _, mask in ipairs(masks) do
+			if HasBit(mask, class[1]) then
+				local coords = (CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class[2]]) or CLASS_COORDS[class[2]]
+				marks[#marks + 1] = { CLASS_ICONS, coords[1], coords[2], coords[3], coords[4], class = class[2] }
 				break
 			end
 		end
 	end
-	return c[key]
-end
-
-function Quests.ListBadge(d)
-	if d.isTodo or not HasClassQuest(d) then return end
-	local class = select(2, UnitClass("player"))
-	if class == nil or (issecretvalue and issecretvalue(class)) then return end
-	local coords = (CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]) or CLASS_COORDS[class]
-	if not coords then return end
-	return { CLASS_ICONS, coords[1], coords[2], coords[3], coords[4] }
+	c[key] = marks
+	return marks
 end
 
 function Quests.Default()

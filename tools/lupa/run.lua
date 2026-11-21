@@ -1996,31 +1996,49 @@ check(ns.db.bossLevels.Plunder == nil, "outside the dungeon nothing is learned")
 MOCK.units = {}
 wipe(ns.db.bossLevels)
 
--- the Quests list: your class's icon on an instance with a quest only some classes can take
+-- the Quests list: the icon of every class with a quest of its own there, right of the name
 MOCK.questsDone, MOCK.questLog, MOCK.level, MOCK.faction, MOCK.classFile = {}, {}, 25, "Alliance", "ROGUE"
 tab("quests"):Click()
 local function row(key)
 	for _, r in ipairs(listRows()) do if r.entry and r.entry.key == key then return r end end
 end
+-- the classes a row's marks show, by where each is cut from the round class icons
+local CORNERS = { ["0,0"] = "WARRIOR", ["0.25,0"] = "MAGE", ["0.49609375,0"] = "ROGUE", ["0.7421875,0"] = "DRUID",
+	["0,0.25"] = "HUNTER", ["0.25,0.25"] = "SHAMAN", ["0.49609375,0.25"] = "PRIEST", ["0.7421875,0.25"] = "WARLOCK",
+	["0,0.5"] = "PALADIN" }
+local function marks(r)
+	local out, file = {}, true
+	for _, m in ipairs(r.marks) do
+		if m:IsShown() then
+			local l, _, t = m:GetTexCoord()
+			out[#out + 1] = CORNERS[l .. "," .. t] or "?"
+			file = file and m:GetTexture() == "Interface\\TargetingFrame\\UI-Classes-Circles"
+		end
+	end
+	return file and table.concat(out, " ") or "not the round class icons"
+end
 local dire, dm, sfk = row("DIRE"), row("DM"), row("SFK")
-local l, r, t, b = dire.badge:GetTexCoord()
-check(dire.badge:IsShown() and dire.badge:GetTexture() == "Interface\\TargetingFrame\\UI-Classes-Circles"
-	and l == 0.49609375 and t == 0, "a rogue sees the rogue icon on Dire Maul (Garona: A Study on Stealth and Treachery)")
-check(not dm.badge:IsShown(), "and none on The Deadmines, which has no class quest")
-check(not sfk.badge:IsShown(), "nor on Shadowfang Keep, whose class quests are a paladin's and a warlock's")
-check(not row("todo").badge:IsShown(), "nor on Quests you can do")
-MOCK.classFile = "PALADIN"
-UI:BuildList()
-sfk = row("SFK")
-l, r, t, b = sfk.badge:GetTexCoord()
-check(sfk.badge:IsShown() and l == 0 and t == 0.5, "a paladin sees the paladin icon on Shadowfang Keep")
+check(marks(sfk) == "PALADIN WARLOCK", "Shadowfang Keep shows the paladin and warlock icons", marks(sfk))
+check(marks(dire) == "WARRIOR PALADIN HUNTER ROGUE PRIEST MAGE WARLOCK DRUID",
+	"Dire Maul shows every Alliance class's icon, in the game's class order", marks(dire))
+check(marks(dm) == "", "The Deadmines, with no class quest, shows none")
+check(marks(row("todo")) == "", "nor does Quests you can do")
+check(row("ST") and marks(row("ST")) == "WARRIOR", "an Alliance player doesn't see the Horde's shaman quest in Sunken Temple", marks(row("ST")))
+-- the icons sit right of the name, which gives up their width; a full grid starts level with the picture
+check(sfk.name:GetWidth() < dm.name:GetWidth(), "a name with icons beside it is narrower", sfk.name:GetWidth() .. " vs " .. dm.name:GetWidth())
+local _, _, _, x1, y1 = dire.marks[1]:GetPoint(1)
+local _, _, _, x3 = dire.marks[3]:GetPoint(1)
+local _, _, _, _, y7 = dire.marks[7]:GetPoint(1)
+local _, _, _, nameX = dire.name:GetPoint(1)
+check(x1 > nameX + dire.name:GetWidth() - 90 and x3 > x1 and y1 == 0 and y7 < y1 and not dire.marks[9],
+	"Dire Maul's eight icons are a grid of three lines at the right, starting level with the picture")
 MOCK.faction = "Horde"
 MOCK.race = { "Orc", "Orc", 2 }
 MOCK.classFile = "WARLOCK"
 UI:BuildList()
-check(row("SFK").badge:IsShown() and row("BFD").badge:IsShown(), "a warlock sees it on Shadowfang Keep and Blackfathom Deeps (The Orb of Soran'ruk)")
+check(marks(row("SFK")) == "WARLOCK" and marks(row("ST")) == "WARRIOR SHAMAN", "a Horde player sees the Horde's", marks(row("ST")))
 tab("dungeons"):Click()
-check(not listRows()[1].badge:IsShown(), "the Dungeons list has no class icons")
+check(#listRows()[1].marks == 0 or not listRows()[1].marks[1]:IsShown(), "the Dungeons list has no class icons")
 MOCK.questsDone, MOCK.questLog, MOCK.level, MOCK.faction, MOCK.classFile = {}, {}, 25, "Alliance", "ROGUE"
 MOCK.race = { "Human", "Human", 1 }
 UI:Hide()

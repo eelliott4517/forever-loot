@@ -928,11 +928,8 @@ local function CreateListRow(parent, width)
 	b.frame = b:CreateTexture(nil, "BORDER")
 	b.frame:SetPoint("TOPLEFT", b.art, "TOPLEFT", -1, 1)
 	b.frame:SetPoint("BOTTOMRIGHT", b.art, "BOTTOMRIGHT", 1, -1)
-	-- a mark in the picture's corner: on the Quests tab, your class's icon
-	b.badge = b:CreateTexture(nil, "OVERLAY")
-	b.badge:SetSize(24, 24)
-	b.badge:SetPoint("BOTTOMRIGHT", b.art, "BOTTOMRIGHT", -1, 1)
-	b.badge:Hide()
+	-- small icons to the right of the name (the Quests tab's class icons), made as needed
+	b.marks = {}
 	b.levels = Text(b, "GameFontHighlightSmall", "RIGHT")
 	b.levels:SetPoint("RIGHT", -6, 0)
 	b.levels:SetWidth(44)
@@ -955,10 +952,15 @@ local function CreateListRow(parent, width)
 	return b
 end
 
--- A row's shape for its list: "art" (a picture, the name, a line under it), "icon" (an icon and
--- the name) or plain (the name)
-local function LayoutListRow(row, style, right)
+-- A picture row's marks: up to three in a line, up to three lines, so a full grid is about as
+-- tall as the picture and leaves the line under the name room for its levels and quest count
+local MARK_SIZE, MARK_GAP, MARKS_PER_LINE = 13, 2, 3
+
+-- A row's shape for its list: "art" (a picture, the name, a line under it, and any marks right
+-- of the name), "icon" (an icon and the name) or plain (the name)
+local function LayoutListRow(row, style, right, marks)
 	row.style = style
+	for _, mark in ipairs(row.marks) do mark:Hide() end
 	row.name:ClearAllPoints()
 	row.sub:ClearAllPoints()
 	row.art:SetShown(style ~= nil)
@@ -969,12 +971,35 @@ local function LayoutListRow(row, style, right)
 	if style == "art" then
 		row:SetHeight(ART_ROW_H)
 		row.art:SetSize(ART_W, ART_H)
+		-- the marks' grid at the right, its first line beside the name's
+		local n = marks and #marks or 0
+		local cols = math.min(n, MARKS_PER_LINE)
+		local gridW = cols * (MARK_SIZE + MARK_GAP) - MARK_GAP
+		local marksW = n > 0 and (gridW + 4) or 0
 		-- a long name takes two lines, so the pair starts higher
-		local width = row:GetWidth() - (6 + ART_W + 10) - (right:IsShown() and 34 or 6)
+		local width = row:GetWidth() - (6 + ART_W + 10) - (right:IsShown() and 34 or 6) - marksW
 		row.name:SetWidth(width)
 		row.sub:SetWidth(width)
-		row.name:SetPoint("TOPLEFT", row.art, "TOPRIGHT", 10, row.name:GetStringHeight() > 20 and -1 or -7)
+		local nameY = row.name:GetStringHeight() > 20 and -1 or -7
+		row.name:SetPoint("TOPLEFT", row.art, "TOPRIGHT", 10, nameY)
 		row.sub:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -5)
+		-- a grid of several lines starts level with the picture; one line sits beside the name
+		local top = n > MARKS_PER_LINE and 0 or nameY
+		local left = row:GetWidth() - 6 - (right:IsShown() and 34 or 6) - gridW
+		for i = 1, n do
+			local mark = row.marks[i]
+			if not mark then
+				mark = row:CreateTexture(nil, "OVERLAY")
+				mark:SetSize(MARK_SIZE, MARK_SIZE)
+				row.marks[i] = mark
+			end
+			local col, line = (i - 1) % MARKS_PER_LINE, math.floor((i - 1) / MARKS_PER_LINE)
+			mark:ClearAllPoints()
+			mark:SetPoint("TOPLEFT", row.art, "TOPLEFT", left + col * (MARK_SIZE + MARK_GAP), top - line * (MARK_SIZE + MARK_GAP))
+			mark:SetTexture(marks[i][1])
+			mark:SetTexCoord(marks[i][2], marks[i][3], marks[i][4], marks[i][5])
+			mark:Show()
+		end
 	elseif style == "icon" then
 		row:SetHeight(ICON_ROW_H)
 		row.art:SetSize(26, 26)
@@ -993,8 +1018,9 @@ end
 -- RowInfo gives name, right column, tag, marker (the entry is yours: your level range, your
 -- profession, your class), tag color and right column color. Marked names are gold, as the
 -- game marks what's yours; the rest are white. A tab with pictures (listStyle "art") shows
--- RowSub's line under the name instead of the right column and tag, and ListBadge's mark ({ file,
--- left, right, top, bottom }) in its picture's corner; one with icons ("icon") shows ListIcon's icon.
+-- RowSub's line under the name instead of the right column and tag, and ListMarks' small icons
+-- ({ file, left, right, top, bottom } each) right of the name; one with icons ("icon") shows
+-- ListIcon's icon.
 function UI:BuildList()
 	local mode = self:Mode()
 	local searching = self:IsSearching()
@@ -1051,13 +1077,8 @@ function UI:BuildList()
 			row.tag:Show()
 			rightSide = row.tag
 		end
-		LayoutListRow(row, style, rightSide)
-		local badge = style == "art" and e.entry and mode.ListBadge and mode.ListBadge(e.entry) or nil
-		row.badge:SetShown(badge ~= nil)
-		if badge then
-			row.badge:SetTexture(badge[1])
-			row.badge:SetTexCoord(badge[2], badge[3], badge[4], badge[5])
-		end
+		local marks = style == "art" and not e.count and e.entry and mode.ListMarks and mode.ListMarks(e.entry) or nil
+		LayoutListRow(row, style, rightSide, marks)
 		if style == "art" then
 			SetArt(row.art, (mode.ListArt or K.InstanceArt)(e.entry), ART_W, ART_H)
 			row.sub:SetText(e.entry and mode.RowSub and mode.RowSub(e.entry) or "")
